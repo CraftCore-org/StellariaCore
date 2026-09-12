@@ -1,0 +1,58 @@
+plugins {
+    java
+    id("xyz.jpenilla.run-paper") version "3.1.0"
+    id("com.github.johnrengelman.shadow") version "8.1.1"
+}
+
+group = "org.craftcore.stellaria"
+version = "1.0.0-SNAPSHOT"
+
+repositories {
+    mavenCentral()
+    maven("https://repo.papermc.io/repository/maven-public/")
+    maven("https://maven.citizensnpcs.co/repo")                            // Citizens
+    maven("https://repo.codemc.io/repository/maven-releases/")             // PacketEvents
+    maven("https://repo.codemc.org/repository/maven-public")               // VaultUnlocked
+    maven("https://repo.extendedclip.com/content/repositories/placeholderapi/") // PlaceholderAPI
+}
+
+dependencies {
+    compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
+    compileOnly("org.projectlombok:lombok:1.18.34")
+    annotationProcessor("org.projectlombok:lombok:1.18.34")
+    compileOnly("net.citizensnpcs:citizensapi:2.0.35-SNAPSHOT")
+    compileOnly("com.github.retrooper:packetevents-spigot:2.12.5")
+    compileOnly("net.milkbowl.vault:VaultUnlockedAPI:2.9")
+    compileOnly("me.clip:placeholderapi:2.11.6")
+    
+}
+
+tasks.withType<JavaCompile> {
+    options.encoding = "UTF-8"
+    sourceCompatibility = "21"
+    targetCompatibility = "21"
+}
+
+tasks.processResources {
+    val props = mapOf("version" to version)
+    inputs.properties(props)
+    filteringCharset = "UTF-8"
+    filesMatching("plugin.yml") {
+        expand(props)
+    }
+}
+
+tasks.named("build") {
+    doLast {
+        copy {
+            from("build/libs")
+            into("run/plugins")
+        }
+    }
+}
+
+tasks {
+    runServer {
+        minecraftVersion("1.21.11")
+    }
+}

@@ -1,0 +1,9 @@
+main: org.craftcore.stellaria.StellariaCore
+version: 1.0.0-SNAPSHOT
+name: StellariaCore
+author: Nyaffle, shu4700
+description: Feature plugin for Stellaria MC
+api-version: 1.21
+
+depend: [Citizens, packetevents, VaultUnlocked, PlaceholderAPI]
+
