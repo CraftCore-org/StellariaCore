@@ -1,7 +1,7 @@
 plugins {
     java
+    id("com.gradleup.shadow") version "9.6.1"
     id("xyz.jpenilla.run-paper") version "3.1.0"
-    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 group = "org.craftcore.stellaria"
@@ -21,7 +21,7 @@ dependencies {
     compileOnly("org.projectlombok:lombok:1.18.34")
     annotationProcessor("org.projectlombok:lombok:1.18.34")
     compileOnly("net.citizensnpcs:citizensapi:2.0.35-SNAPSHOT")
-    compileOnly("com.github.retrooper:packetevents-spigot:2.12.5")
+    compileOnly("com.github.retrooper:packetevents-spigot:2.13.0")
     compileOnly("net.milkbowl.vault:VaultUnlockedAPI:2.9")
     compileOnly("me.clip:placeholderapi:2.11.6")
     

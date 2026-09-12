@@ -4,7 +4,10 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.craftcore.stellaria.managers.PluginManager;
 import org.craftcore.stellaria.listeners.PlayerListener;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
+
+
+import org.craftcore.stellaria.utils.Console;
+
 
 public class StellariaCore extends JavaPlugin {
     
@@ -12,16 +15,17 @@ public class StellariaCore extends JavaPlugin {
     public void onEnable() {
         
         // Initialize managers
-        PluginManager.getInstance().initialize();
+        // PluginManager.getInstance().initialize();
         
         // Register listeners
-        getServer().getPluginManager().registerEvents(new PlayerListener(), this);
+        // getServer().getPluginManager().registerEvents(new PlayerListener(), this);
         
-        getLogger().info(getDescription().getName() + " has been enabled!");
+        Console.printLogo(getPluginMeta().getVersion());
     }
 
     @Override
     public void onDisable() {
+        Console.printDisabledMessage();
         getLogger().info(getDescription().getName() + " has been disabled!");
     }
     

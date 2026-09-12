@@ -5,5 +5,5 @@ author: Nyaffle, shu4700
 description: Feature plugin for Stellaria MC
 api-version: 1.21
 
-depend: [Citizens, packetevents, VaultUnlocked, PlaceholderAPI]
+depend: [Citizens, packetevents, Vault, PlaceholderAPI]
 
