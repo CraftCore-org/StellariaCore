@@ -1,0 +1,97 @@
+name: Version Bump
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+# Two merges landing close together used to race: both runs read the same
+# pre-bump version, one's tag push won while its branch push lost (or vice
+# versa), leaving a tag on the remote with no matching commit - every run
+# after that failed forever on "tag already exists" since build.gradle.kts
+# never actually advanced. Serializing runs (not cancelling in-flight ones,
+# since each is a real version bump that must land) removes the race.
+concurrency:
+  group: version-bump
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    if: ${{ !contains(github.event.head_commit.message, '[ci-version-bump]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine bump type from merged PR label
+        id: bump-type
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=$(gh api repos/${{ github.repository }}/commits/${{ github.sha }}/pulls --jq '.[0].number // empty')
+          BUMP=patch
+          if [ -n "$PR_NUMBER" ]; then
+            LABELS=$(gh pr view "$PR_NUMBER" --repo ${{ github.repository }} --json labels --jq '.labels[].name')
+            if echo "$LABELS" | grep -qx "bump:major"; then BUMP=major
+            elif echo "$LABELS" | grep -qx "bump:minor"; then BUMP=minor
+            fi
+          fi
+          echo "bump=$BUMP" >> "$GITHUB_OUTPUT"
+
+      - name: Compute and write new version
+        id: new-version
+        run: |
+          LINE=$(grep -m1 -E '^[[:space:]]*version = "[0-9]+\.[0-9]+\.[0-9]+"' build.gradle.kts)
+          CURRENT=$(echo "$LINE" | sed -E 's/^[[:space:]]*version = "([0-9]+\.[0-9]+\.[0-9]+)".*/\1/')
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          case "${{ steps.bump-type.outputs.bump }}" in
+            major) MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR+1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH+1)) ;;
+          esac
+          NEW="$MAJOR.$MINOR.$PATCH"
+          sed -i -E "s/^([[:space:]]*version = \")[0-9]+\.[0-9]+\.[0-9]+(\")/\1$NEW\2/" build.gradle.kts
+          echo "version=$NEW" >> "$GITHUB_OUTPUT"
+          echo "previous=$CURRENT" >> "$GITHUB_OUTPUT"
+
+      - name: Commit, tag, and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add build.gradle.kts
+          git commit -m "chore: bump version to v${{ steps.new-version.outputs.version }} [ci-version-bump]"
+          git tag -a "v${{ steps.new-version.outputs.version }}" -m "Release v${{ steps.new-version.outputs.version }}"
+          git push --follow-tags origin HEAD:main
+
+      # A push authenticated with the default GITHUB_TOKEN (as above, via actions/checkout's
+      # persisted credentials) never triggers other workflow runs - GitHub's own
+      # recursion-prevention rule. A separate release.yml reacting to "on: push: tags" would
+      # therefore never actually fire for the tag just pushed, so building and releasing happens
+      # right here in the same job instead.
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: temurin
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build
+        run: ./gradlew build --no-daemon
+
+      # --notes-start-tag pins the notes diff to the immediately-previous version tag
+      # explicitly, rather than letting gh fall back to "the last published Release" - v2.0.0
+      # (the first tag from before this release automation existed) has no Release object, so
+      # without this the very next run would silently list every PR since the repo's creation.
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ steps.new-version.outputs.version }}" \
+            build/libs/StellariaCore-*.jar \
+            --title "v${{ steps.new-version.outputs.version }}" \
+            --generate-notes --notes-start-tag "v${{ steps.new-version.outputs.previous }}"
