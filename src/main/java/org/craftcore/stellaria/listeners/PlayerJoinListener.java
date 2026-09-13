@@ -7,6 +7,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.managers.EconomyManager;
 import org.craftcore.stellaria.utils.Database;
+import org.craftcore.stellaria.utils.Format;
 
 import java.util.Map;
 
@@ -22,6 +23,17 @@ public class PlayerJoinListener implements Listener {
     public void onJoin(PlayerJoinEvent event) {
         String uuid = event.getPlayer().getUniqueId().toString();
         Player player = event.getPlayer();
+
+        // config.yml から元の文字列を取得
+        String rawMsg = plugin.getConfig().getString("messages.join", "");
+
+        if (!rawMsg.isEmpty()) {
+            // Format を使ってプレースホルダー置き換え
+            event.setJoinMessage(Format.text(player, rawMsg));
+        } else {
+            // 空メッセージの場合はメッセージ自体を非表示にする
+            event.setJoinMessage(null);
+        }
 
         EconomyManager eco = plugin.getEconomyManager();
 
