@@ -24,6 +24,7 @@ dependencies {
     compileOnly("com.github.retrooper:packetevents-spigot:2.13.0")
     compileOnly("net.milkbowl.vault:VaultUnlockedAPI:2.9")
     compileOnly("me.clip:placeholderapi:2.11.6")
+    implementation("org.xerial:sqlite-jdbc:3.46.1.0")
     
 }
 

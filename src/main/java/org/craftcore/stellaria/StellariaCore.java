@@ -7,6 +7,7 @@ import org.bukkit.Bukkit;
 
 
 import org.craftcore.stellaria.utils.Console;
+import org.craftcore.stellaria.utils.Database;
 
 
 public class StellariaCore extends JavaPlugin {
@@ -14,6 +15,13 @@ public class StellariaCore extends JavaPlugin {
     @Override
     public void onEnable() {
         
+        Database.connect(this, "database.db");
+        Database.createTableIfNotExists("players",
+            "uuid TEXT PRIMARY KEY",
+            "name TEXT",
+            "coins INTEGER DEFAULT 0"
+        );
+
         // Initialize managers
         // PluginManager.getInstance().initialize();
         
@@ -25,8 +33,8 @@ public class StellariaCore extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        Database.disconnect();
         Console.printDisabledMessage();
-        getLogger().info(getDescription().getName() + " has been disabled!");
     }
     
 }
