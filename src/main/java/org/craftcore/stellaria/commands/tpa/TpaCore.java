@@ -67,11 +67,11 @@ public class TpaCore implements CommandExecutor {
                 return false;
             } else {
                 if (tpRequest.containsKey(((Player) sender).getUniqueId()) && tpRequest.get(((Player) sender).getUniqueId()).contains(player.getUniqueId())){
-                    ((Player)sender).playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME,1,1);
-                    player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME,1,1);
                     sender.sendMessage("§a§l| §7テレポートリクエストを許可しました。");
                     player.sendMessage("§a§l| §7" + sender.getName() + "§7がテレポートリクエストを許可しました。");
                     player.teleport(((Player) sender).getLocation());
+                    ((Player)sender).playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME,1,1);
+                    player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME,1,1);
                     tpRequest.get(((Player) sender).getUniqueId()).remove(player.getUniqueId());
                     return true;
                 } else {
@@ -143,11 +143,11 @@ public class TpaCore implements CommandExecutor {
                 return false;
             } else {
                 if (tpHere.containsKey(((Player) sender).getUniqueId()) && tpHere.get(((Player) sender).getUniqueId()).contains(player.getUniqueId())){
-                    ((Player)sender).playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME,1,1);
-                    player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME,1,1);
                     sender.sendMessage("§a§l| §7呼び出しリクエストを許可しました。");
                     player.sendMessage("§a§l| §7" + sender.getName() + "§7が呼び出しリクエストを許可しました。");
                     ((Player)sender).teleport(player.getLocation());
+                    ((Player)sender).playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME,1,1);
+                    player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME,1,1);
                     tpHere.get(((Player) sender).getUniqueId()).remove(player.getUniqueId());
                     return true;
                 } else {
