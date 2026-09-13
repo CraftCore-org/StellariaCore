@@ -1,5 +1,5 @@
 main: org.craftcore.stellaria.StellariaCore
-version: 1.0.0-SNAPSHOT
+version: 1.0.0
 name: StellariaCore
 author: Nyaffle, shu4700
 description: Feature plugin for Stellaria MC
