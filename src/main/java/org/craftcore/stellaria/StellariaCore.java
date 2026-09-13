@@ -2,6 +2,7 @@ package org.craftcore.stellaria;
 
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.craftcore.stellaria.commands.tpa.TpaCore;
 import org.craftcore.stellaria.managers.EconomyManager;
 import org.craftcore.stellaria.managers.PluginManager;
 import org.craftcore.stellaria.listeners.PlayerJoinListener;
@@ -18,12 +19,12 @@ import net.milkbowl.vault.economy.Economy;
 public class StellariaCore extends JavaPlugin {
     
     private EconomyManager economyManager;
-    
+
     @Override
     public void onEnable() {
         
         saveDefaultConfig();
-        
+
         // 1. データベースの接続とテーブル作成
         Database.connect(this, "database.db");
         Database.createTableIfNotExists("players",
@@ -40,7 +41,7 @@ public class StellariaCore extends JavaPlugin {
             // Vaultのマネージャー（ServicesManager）に「うちのお金システムを使ってね」と登録する
             getServer().getServicesManager().register(
                 Economy.class,
-                this.economyManager, 
+                this.economyManager,
                 this,
                 ServicePriority.Normal
             );
@@ -53,6 +54,22 @@ public class StellariaCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PlayerJoinListener(this), this);
 
         // 5. 起動ロゴ表示
+        // Initialize managers
+        // PluginManager.getInstance().initialize();
+
+        // Register listeners
+        // getServer().getPluginManager().registerEvents(new PlayerListener(), this);
+        getServer().getPluginManager().registerEvents(new PlayerListener(), this);
+
+        TpaCore tpaCore = new TpaCore();
+
+        getCommand("tpa").setExecutor(tpaCore);
+        getCommand("tpaccept").setExecutor(tpaCore);
+        getCommand("tpdeny").setExecutor(tpaCore);
+        getCommand("tphere").setExecutor(tpaCore);
+        getCommand("tphaccept").setExecutor(tpaCore);
+        getCommand("tphdeny").setExecutor(tpaCore);
+
         Console.printLogo(getPluginMeta().getVersion());
     }
 
