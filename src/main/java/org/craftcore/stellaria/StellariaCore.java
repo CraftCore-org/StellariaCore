@@ -1,6 +1,7 @@
 package org.craftcore.stellaria;
 
 import org.bukkit.plugin.java.JavaPlugin;
+import org.craftcore.stellaria.commands.tpa.TpaCore;
 import org.craftcore.stellaria.managers.PluginManager;
 import org.craftcore.stellaria.listeners.PlayerListener;
 import org.bukkit.Bukkit;
@@ -27,6 +28,14 @@ public class StellariaCore extends JavaPlugin {
         
         // Register listeners
         // getServer().getPluginManager().registerEvents(new PlayerListener(), this);
+        TpaCore tpaCore = new TpaCore();
+
+        getCommand("tpa").setExecutor(tpaCore);
+        getCommand("tpaccept").setExecutor(tpaCore);
+        getCommand("tpdeny").setExecutor(tpaCore);
+        getCommand("tphere").setExecutor(tpaCore);
+        getCommand("tphaccept").setExecutor(tpaCore);
+        getCommand("tphdeny").setExecutor(tpaCore);
         
         Console.printLogo(getPluginMeta().getVersion());
     }

@@ -7,3 +7,10 @@ api-version: 1.21
 
 depend: [Citizens, packetevents, Vault, PlaceholderAPI]
 
+commands:
+  tpa:
+  tpaccept:
+  tpdeny:
+  tphere:
+  tphaccept:
+  tphdeny:
