@@ -1,0 +1,12 @@
+# StellariaCore 設定ファイル
+
+server:
+  prefix: "§b[Stellaria] §r" # メッセージのPrefix !NOTE: 未実装
+
+messages:
+  join: " &%a> &%7%player% さんがログインしました。" # プレイヤー参加時のメッセージ
+  quit: "&%c< &%7%player% さんがログアウトしました。" # プレイヤー参加時のメッセージ
+
+economy:
+  default-balance: 1000 # 新規プレイヤーの初期所持金 !NOTE: 未実装
+

@@ -22,7 +22,7 @@ import java.util.function.Consumer;
  * シンプルなメソッド1発で呼べるようにしたラッパー。
  *
  * 使い方
- * <pre>{@code
+ * {@code
  * // onEnable()で1回だけ呼ぶ
  * Database.connect(this, "database.db");
  *
@@ -50,7 +50,7 @@ import java.util.function.Consumer;
  *
  * // onDisable()で1回だけ呼ぶ
  * Database.disconnect();
- * }</pre>
+ * }
  */
 public final class Database {
 
