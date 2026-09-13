@@ -52,6 +52,16 @@ tasks.named("build") {
     }
 }
 
+tasks.jar {
+    enabled = false
+}
+
+tasks.shadowJar {
+    archiveClassifier.set("")
+}
+
+
+
 tasks {
     runServer {
         minecraftVersion("1.21.11")
