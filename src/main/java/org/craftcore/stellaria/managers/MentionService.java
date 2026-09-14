@@ -1,6 +1,8 @@
 package org.craftcore.stellaria.managers;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
@@ -62,7 +64,14 @@ public class MentionService {
                 result = result.append(literal(plainMessage.substring(lastEnd, matcher.start()), colorizeLiteral));
             }
             String displayName = isAll ? allKeyword : target.getName();
-            result = result.append(ColorUtil.component(format.replace("{name}", displayName)));
+            Component mentionComponent = ColorUtil.component(format.replace("{name}", displayName));
+            if (!isAll && config.getBoolean("chat.click-to-message", true)) {
+                Component hint = ColorUtil.component(config.getMessage("mention.click_hint", target));
+                mentionComponent = mentionComponent
+                        .clickEvent(ClickEvent.suggestCommand("/msg " + target.getName() + " "))
+                        .hoverEvent(HoverEvent.showText(hint));
+            }
+            result = result.append(mentionComponent);
             lastEnd = matcher.end();
 
             if (isAll) {
