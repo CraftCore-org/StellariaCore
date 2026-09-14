@@ -6,6 +6,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.craftcore.stellaria.commands.AfkCommand;
 import org.craftcore.stellaria.commands.BroadcastCommand;
 import org.craftcore.stellaria.commands.HealCommand;
+import org.craftcore.stellaria.commands.MessageCommand;
 import org.craftcore.stellaria.commands.MuteCommand;
 import org.craftcore.stellaria.commands.ReloadCommand;
 import org.craftcore.stellaria.commands.tpa.TpaCore;
@@ -17,6 +18,7 @@ import org.craftcore.stellaria.managers.EconomyManager;
 import org.craftcore.stellaria.managers.MentionService;
 import org.craftcore.stellaria.managers.MuteManager;
 import org.craftcore.stellaria.managers.PlaceholderManager;
+import org.craftcore.stellaria.managers.PrivateMessageManager;
 import org.craftcore.stellaria.managers.ScoreboardManager;
 import org.craftcore.stellaria.managers.TabListManager;
 import org.craftcore.stellaria.listeners.ChatListener;
@@ -44,6 +46,7 @@ public class StellariaCore extends JavaPlugin {
     private AfkManager afkManager;
     private AutoBroadcastManager autoBroadcastManager;
     private MuteManager muteManager;
+    private PrivateMessageManager privateMessageManager;
 
     @Override
     public void onEnable() {
@@ -73,6 +76,7 @@ public class StellariaCore extends JavaPlugin {
 
         this.muteManager = new MuteManager(this);
         muteManager.loadAll();
+        this.privateMessageManager = new PrivateMessageManager(this);
 
         // 2. EconomyManager のインスタンス化
         this.economyManager = new EconomyManager(this);
@@ -162,6 +166,10 @@ public class StellariaCore extends JavaPlugin {
         getCommand("unmute").setExecutor(muteCommand);
         getServer().getPluginManager().registerEvents(new MuteCommandBlockListener(this), this);
 
+        MessageCommand messageCommand = new MessageCommand(this);
+        getCommand("msg").setExecutor(messageCommand);
+        getCommand("reply").setExecutor(messageCommand);
+
         this.autoBroadcastManager = new AutoBroadcastManager(this);
         autoBroadcastManager.start();
 
@@ -209,6 +217,10 @@ public class StellariaCore extends JavaPlugin {
 
     public MuteManager getMuteManager() {
         return this.muteManager;
+    }
+
+    public PrivateMessageManager getPrivateMessageManager() {
+        return this.privateMessageManager;
     }
 
     /**
