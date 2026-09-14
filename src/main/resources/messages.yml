@@ -99,6 +99,9 @@ msg:
 chat:
   click_hint: "&%7クリックでメッセージを送信"
   url_hint: "&%7クリックで開く&%7: &%b%url%"
+  sender_prefix: "&l| " # 送信者名の前に付ける区切り（ランク色で色付けされる）
+  tooltip:
+    rank_line: "&%7ランク: %rank%" # %rank% はランク色+表示名に置き換わる
 
 mention:
   click_hint: "&%7クリックで%player%にメッセージを送信"

@@ -22,8 +22,12 @@ import java.util.stream.Collectors;
  */
 public class RankManager {
 
-    /** 1グループ分の表示情報。tablistTag/displayNameが空文字ならランク無し扱い。 */
-    public record RankInfo(String color, String tablistTag, String displayName) {
+    /**
+     * 1グループ分の表示情報。tablistTag/displayNameが空文字ならランク無し扱い。
+     * keyはluckperms-groupの名前（ランク無しは空文字）。ネームタグのTeam名など、
+     * ランクを一意に識別する必要がある箇所で使う。
+     */
+    public record RankInfo(String key, String color, String tablistTag, String displayName) {
     }
 
     private record RankDefinition(String luckpermsGroup, RankInfo info) {
@@ -32,7 +36,7 @@ public class RankManager {
     private final StellariaCore plugin;
     private LuckPerms luckPerms;
     private boolean enabled;
-    private RankInfo defaultRank = new RankInfo("&%7", "", "");
+    private RankInfo defaultRank = new RankInfo("", "&%7", "", "");
     private List<RankDefinition> definitions = new ArrayList<>();
 
     public RankManager(StellariaCore plugin) {
@@ -59,7 +63,7 @@ public class RankManager {
     public void reload() {
         ConfigManager config = plugin.getConfigManager();
         this.enabled = config.getBoolean("rank.enabled", true);
-        this.defaultRank = new RankInfo(config.getString("rank.default.color", "&%7"), "", "");
+        this.defaultRank = new RankInfo("", config.getString("rank.default.color", "&%7"), "", "");
 
         List<RankDefinition> loaded = new ArrayList<>();
         for (Map<?, ?> entry : config.getMapList("rank.groups")) {
@@ -71,7 +75,7 @@ public class RankManager {
             String color = valueOrDefault(entry.get("color"), "&%7");
             String tag = valueOrDefault(entry.get("tablist-tag"), "");
             String displayName = valueOrDefault(entry.get("display-name"), groupName);
-            loaded.add(new RankDefinition(groupName, new RankInfo(color, tag, displayName)));
+            loaded.add(new RankDefinition(groupName, new RankInfo(groupName, color, tag, displayName)));
         }
         this.definitions = loaded;
     }

@@ -87,11 +87,17 @@ tablist:
   header: "\n&%b%player%さん\n           &%9すてらりあ &%bへようこそ！           \n"
   footer: "\n&%9%online%&%7/&%9%max_online%\n"
   value: "%afk%&%a%ping%ms"
+  rank-prefix: "|" # ランクタグの前に付ける区切り文字（ランク色で色付けされる）
   update-interval-ticks: 20
 
 belowname:
   title: ""
   value: "%afk% &%c❤ &%7%health%"
+  update-interval-ticks: 20
+
+nametag:
+  enabled: true
+  dot-symbol: "●" # ネームタグ左端に付けるランク色ドット（ランク無しのプレイヤーには付かない）
   update-interval-ticks: 20
 
 afk:

@@ -5,6 +5,7 @@ import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
@@ -68,10 +69,11 @@ public class ChatListener implements Listener {
         boolean clickToMessage = config.getBoolean("chat.click-to-message", true);
         RankManager.RankInfo rank = plugin.getRankManager().getRank(sender);
         Component tooltip = buildTooltip(config, sender, clickToMessage, rank);
+        Component rankPrefix = ColorUtil.component(rank.color() + config.getRawMessage("chat.sender_prefix"));
 
         event.renderer(ChatRenderer.viewerUnaware((source, sourceDisplayName, ignoredMessage) -> {
-            Component rankPrefix = ColorUtil.component(rank.color() + "&l| ");
-            Component nameComponent = rankPrefix.append(sourceDisplayName.decoration(TextDecoration.BOLD, false));
+            Component nameComponent = rankPrefix.append(
+                    sourceDisplayName.decoration(TextDecoration.BOLD, false).color(NamedTextColor.WHITE));
             nameComponent = tooltip != null
                     ? nameComponent.hoverEvent(HoverEvent.showText(tooltip))
                     : nameComponent;
@@ -89,7 +91,8 @@ public class ChatListener implements Listener {
     private Component buildTooltip(ConfigManager config, Player sender, boolean clickToMessage, RankManager.RankInfo rank) {
         Component rankLine = rank.displayName().isEmpty()
                 ? null
-                : ColorUtil.component("&%7ランク: " + rank.color() + rank.displayName());
+                : ColorUtil.component(config.getRawMessage("chat.tooltip.rank_line")
+                        .replace("%rank%", rank.color() + rank.displayName()));
 
         Component linesTooltip = config.getBoolean("chat.tooltip.enabled", true)
                 ? plugin.getPlaceholderManager().resolveLines(config.getStringList("chat.tooltip.lines"), sender)

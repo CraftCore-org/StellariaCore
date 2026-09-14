@@ -67,6 +67,7 @@ public class StellariaCore extends JavaPlugin {
     private RankManager rankManager;
     private HomeManager homeManager;
     private WarpManager warpManager;
+    private NametagManager nametagManager;
 
     @Override
     public void onEnable() {
@@ -184,21 +185,29 @@ public class StellariaCore extends JavaPlugin {
             rankManager,
             configManager.getString("tablist.header", ""),
             configManager.getString("tablist.footer", ""),
-            configManager.getString("tablist.value", "")
+            configManager.getString("tablist.value", ""),
+            configManager.getString("tablist.rank-prefix", "|")
         );
         this.belownameManager = new BelownameManager(
             placeholderManager,
             configManager.getString("belowname.title", ""),
             configManager.getString("belowname.value", "%health%")
         );
+        this.nametagManager = new NametagManager(
+            rankManager,
+            configManager.getBoolean("nametag.enabled", true),
+            configManager.getString("nametag.dot-symbol", "●")
+        );
 
         long scoreboardInterval = configManager.getInt("scoreboard.update-interval-ticks", 20);
         long tabListInterval = configManager.getInt("tablist.update-interval-ticks", 20);
         long belownameInterval = configManager.getInt("belowname.update-interval-ticks", 20);
+        long nametagInterval = configManager.getInt("nametag.update-interval-ticks", 20);
 
         Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> scoreboardManager.tick(), scoreboardInterval, scoreboardInterval);
         Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> tabListManager.tick(), tabListInterval, tabListInterval);
         Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> belownameManager.tick(), belownameInterval, belownameInterval);
+        Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> nametagManager.tick(), nametagInterval, nametagInterval);
 
         if (configManager.getBoolean("afk.enabled", true)) {
             Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> afkManager.tick(), 200L, 200L);
@@ -365,6 +374,10 @@ public class StellariaCore extends JavaPlugin {
         return this.warpManager;
     }
 
+    public NametagManager getNametagManager() {
+        return this.nametagManager;
+    }
+
     /**
      * config.yml の scoreboard/tablist/belowname 設定を読み直して各Managerに反映する。
      * ConfigManager#reload() で config.yml 自体を読み直した後に呼ぶ想定（ReloadCommand参照）。
@@ -378,11 +391,16 @@ public class StellariaCore extends JavaPlugin {
         tabListManager.updateSettings(
             configManager.getString("tablist.header", ""),
             configManager.getString("tablist.footer", ""),
-            configManager.getString("tablist.value", "")
+            configManager.getString("tablist.value", ""),
+            configManager.getString("tablist.rank-prefix", "|")
         );
         belownameManager.updateSettings(
             configManager.getString("belowname.title", ""),
             configManager.getString("belowname.value", "%health%")
+        );
+        nametagManager.updateSettings(
+            configManager.getBoolean("nametag.enabled", true),
+            configManager.getString("nametag.dot-symbol", "●")
         );
         autoBroadcastManager.restart();
         rankManager.reload();

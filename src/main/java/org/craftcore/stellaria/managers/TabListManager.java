@@ -2,6 +2,7 @@ package org.craftcore.stellaria.managers;
 
 import io.papermc.paper.scoreboard.numbers.NumberFormat;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.scoreboard.Criteria;
@@ -29,20 +30,23 @@ public class TabListManager {
     private volatile String headerTemplate;
     private volatile String footerTemplate;
     private volatile String valueTemplate;
+    private volatile String rankPrefix;
 
-    public TabListManager(PlaceholderManager placeholders, RankManager rankManager, String headerTemplate, String footerTemplate, String valueTemplate) {
+    public TabListManager(PlaceholderManager placeholders, RankManager rankManager, String headerTemplate, String footerTemplate, String valueTemplate, String rankPrefix) {
         this.placeholders = placeholders;
         this.rankManager = rankManager;
         this.headerTemplate = headerTemplate;
         this.footerTemplate = footerTemplate;
         this.valueTemplate = valueTemplate;
+        this.rankPrefix = rankPrefix;
     }
 
     /** /stellariareload から呼ばれる想定。次のtickで全員分が更新される。 */
-    public void updateSettings(String headerTemplate, String footerTemplate, String valueTemplate) {
+    public void updateSettings(String headerTemplate, String footerTemplate, String valueTemplate, String rankPrefix) {
         this.headerTemplate = headerTemplate;
         this.footerTemplate = footerTemplate;
         this.valueTemplate = valueTemplate;
+        this.rankPrefix = rankPrefix;
     }
 
     public void tick() {
@@ -65,15 +69,19 @@ public class TabListManager {
         }
     }
 
-    /** タブリストの名前欄に、ランクタグがあれば色付きで前置きする。ランク無しなら本来の表示名に戻す。 */
+    /**
+     * タブリストの名前欄に、ランクタグがあれば「rank-prefix + タグ」を色付きで前置きする。
+     * ランク無しなら本来の表示名に戻す。名前部分は常に白固定（タグの色を継承させない）。
+     */
     private void applyPlayerListName(Player target) {
         RankManager.RankInfo rank = rankManager.getRank(target);
         if (rank.tablistTag().isEmpty()) {
             target.playerListName(null);
             return;
         }
-        Component tag = ColorUtil.component(rank.color() + rank.tablistTag() + " ");
-        target.playerListName(tag.append(Component.text(target.getName())));
+        Component tag = ColorUtil.component(rank.color() + rankPrefix + rank.tablistTag() + " ");
+        Component name = Component.text(target.getName(), NamedTextColor.WHITE);
+        target.playerListName(tag.append(name));
     }
 
     private Objective ensureValueObjective(Scoreboard board) {
