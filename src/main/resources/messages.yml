@@ -139,3 +139,7 @@ balance:
   top_header: "&%6&l--- 所持金ランキング（%page%/%max_page%） ---"
   top_entry: "&%7#%rank% &%f%player% &%7- %amount%"
   top_empty: "&%7該当するプレイヤーがいません。"
+
+colors:
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  header: "&%6&l--- カラーコード一覧 ---"

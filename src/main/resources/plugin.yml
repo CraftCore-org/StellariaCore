@@ -29,6 +29,7 @@ commands:
   eco:
   balance:
     aliases: [money, bal]
+  colors:
 
 permissions:
   stellaria.msg:

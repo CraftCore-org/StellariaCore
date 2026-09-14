@@ -8,6 +8,7 @@ import org.craftcore.stellaria.commands.BroadcastCommand;
 import org.craftcore.stellaria.commands.HealCommand;
 import org.craftcore.stellaria.commands.MessageCommand;
 import org.craftcore.stellaria.commands.BalanceCommand;
+import org.craftcore.stellaria.commands.ColorsCommand;
 import org.craftcore.stellaria.commands.EcoCommand;
 import org.craftcore.stellaria.commands.MuteCommand;
 import org.craftcore.stellaria.commands.PayCommand;
@@ -199,6 +200,7 @@ public class StellariaCore extends JavaPlugin {
         getCommand("pay").setExecutor(new PayCommand(this));
         getCommand("eco").setExecutor(new EcoCommand(this));
         getCommand("balance").setExecutor(new BalanceCommand(this));
+        getCommand("colors").setExecutor(new ColorsCommand(this));
 
         this.autoBroadcastManager = new AutoBroadcastManager(this);
         autoBroadcastManager.start();

@@ -50,6 +50,11 @@ public class ColorUtil {
     private ColorUtil() {
     }
 
+    /** カスタムカラーコード（&%<char>）と16進RGB値の対応表。{@code /colors} コマンドの一覧表示用。 */
+    public static Map<Character, String> getCustomColors() {
+        return CUSTOM_COLORS;
+    }
+
     public static String colorize(String input) {
         if (input == null) {
             return "";
