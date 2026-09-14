@@ -46,7 +46,7 @@ public class ElevatorManager {
     public void PlayerElevatorMoveUp(Player player){
         Block elevatorBlock = player.getLocation().subtract(0,1,0).getBlock();
         Material elevatorBlockType = elevatorBlock.getType();
-        int max = plugin.getConfigManager().getInt("elevator.blocks." + elevatorBlockType.toString() + ".max", 0);
+        int max = plugin.getConfigManager().getInt("elevator.blocks." + elevatorBlockType.toString() + ".max", 0, true);
         if (max == 0) return;
         Block checkBlock = elevatorBlock;
         if (!isMoveable(checkBlock)) {
@@ -85,7 +85,7 @@ public class ElevatorManager {
     public void PlayerElevatorMoveDown(Player player){
         Block elevatorBlock = player.getLocation().subtract(0,1,0).getBlock();
         Material elevatorBlockType = elevatorBlock.getType();
-        int max = plugin.getConfigManager().getInt("elevator.blocks." + elevatorBlockType.toString() + ".max", 0);
+        int max = plugin.getConfigManager().getInt("elevator.blocks." + elevatorBlockType.toString() + ".max", 0, true);
         if (max == 0) return;
         Block checkBlock = elevatorBlock;
         if (!isMoveable(checkBlock)) {
