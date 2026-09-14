@@ -4,6 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.craftcore.stellaria.commands.AfkCommand;
+import org.craftcore.stellaria.commands.BroadcastCommand;
 import org.craftcore.stellaria.commands.HealCommand;
 import org.craftcore.stellaria.commands.ReloadCommand;
 import org.craftcore.stellaria.commands.tpa.TpaCore;
@@ -136,6 +137,7 @@ public class StellariaCore extends JavaPlugin {
 
         getCommand("afk").setExecutor(new AfkCommand(this));
         getCommand("heal").setExecutor(new HealCommand(this));
+        getCommand("broadcast").setExecutor(new BroadcastCommand(this));
 
         ConsoleUtil.printLogo(getPluginMeta().getVersion());
     }
