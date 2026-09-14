@@ -116,9 +116,9 @@ elevator:
       max: 50
   message:
     moveup_success: "&7↑"
-    moveup_fail: "&%c↑"
+    moveup_fail: "&%c行先のエレベーターブロックの上に障害物があります"
     movedown_success: "&7↓"
-    movedown_fail: "&%c↓"
+    movedown_fail: "&%c行先のエレベーターブロックの上に障害物があります"
   sound:
     moveup:
       name: "BLOCK_PISTON_EXTEND"

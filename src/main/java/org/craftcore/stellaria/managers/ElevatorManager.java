@@ -57,7 +57,11 @@ public class ElevatorManager {
         for (int i = 0; i < max; i++){
             checkBlock = checkBlock.getLocation().add(0,1,0).getBlock();
             if (checkBlock.getType() == elevatorBlockType){
-                if (!isMoveable(checkBlock)) { break; }
+                if (!isMoveable(checkBlock)) {
+                    Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.moveup_fail",""));
+                    player.sendActionBar(message);
+                    break;
+                }
                 Location location = new Location(player.getWorld(),player.getX(),checkBlock.getY() + 1,player.getZ(),player.getYaw(),player.getPitch());
                 player.teleport(location);
                 Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.moveup_success",""));
@@ -76,8 +80,6 @@ public class ElevatorManager {
                 return;
             }
         }
-        Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.moveup_fail",""));
-        player.sendActionBar(message);
     }
 
     public void PlayerElevatorMoveDown(Player player){
@@ -94,7 +96,11 @@ public class ElevatorManager {
         for (int i = 0; i < max; i++){
             checkBlock = checkBlock.getLocation().subtract(0,1,0).getBlock();
             if (checkBlock.getType() == elevatorBlockType){
-                if (!isMoveable(checkBlock)) { break; }
+                if (!isMoveable(checkBlock)) {
+                    Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.movedown_fail",""));
+                    player.sendActionBar(message);
+                    break;
+                }
                 Location location = new Location(player.getWorld(),player.getX(),checkBlock.getY() + 1,player.getZ(),player.getYaw(),player.getPitch());
                 player.teleport(location);
                 Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.movedown_success",""));
@@ -113,8 +119,5 @@ public class ElevatorManager {
                 return;
             }
         }
-        Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.movedown_fail",""));
-        player.sendActionBar(message);
-
     }
 }
