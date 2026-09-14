@@ -19,6 +19,8 @@ import org.craftcore.stellaria.commands.ReloadCommand;
 import org.craftcore.stellaria.commands.ScoreboardCommand;
 import org.craftcore.stellaria.commands.SeenCommand;
 import org.craftcore.stellaria.commands.tpa.TpaCore;
+import org.craftcore.stellaria.commands.HomeCommand;
+import org.craftcore.stellaria.commands.WarpCommand;
 import org.craftcore.stellaria.managers.*;
 import org.craftcore.stellaria.gui.GuiListener;
 import org.craftcore.stellaria.managers.ActionBarManager;
@@ -63,6 +65,9 @@ public class StellariaCore extends JavaPlugin {
     private ActionBarManager actionBarManager;
     private PlaytimeManager playtimeManager;
     private RankManager rankManager;
+    private HomeManager homeManager;
+    private WarpManager warpManager;
+    private NametagManager nametagManager;
 
     @Override
     public void onEnable() {
@@ -93,9 +98,28 @@ public class StellariaCore extends JavaPlugin {
             "playtime_seconds INTEGER DEFAULT 0"
         );
 
+        DatabaseManager.createTableIfNotExists("homes",
+            "uuid TEXT",
+            "name TEXT",
+            "world TEXT",
+            "x REAL", "y REAL", "z REAL",
+            "yaw REAL", "pitch REAL",
+            "PRIMARY KEY (uuid, name)"
+        );
+
+        DatabaseManager.createTableIfNotExists("warps",
+            "name TEXT PRIMARY KEY",
+            "owner_uuid TEXT",
+            "world TEXT",
+            "x REAL", "y REAL", "z REAL",
+            "yaw REAL", "pitch REAL"
+        );
+
         this.afkManager = new AfkManager(this);
         this.playtimeManager = new PlaytimeManager(this);
         this.rankManager = new RankManager(this);
+        this.homeManager = new HomeManager(this);
+        this.warpManager = new WarpManager(this);
 
         this.muteManager = new MuteManager(this);
         muteManager.loadAll();
@@ -161,21 +185,29 @@ public class StellariaCore extends JavaPlugin {
             rankManager,
             configManager.getString("tablist.header", ""),
             configManager.getString("tablist.footer", ""),
-            configManager.getString("tablist.value", "")
+            configManager.getString("tablist.value", ""),
+            configManager.getString("tablist.rank-prefix", "|")
         );
         this.belownameManager = new BelownameManager(
             placeholderManager,
             configManager.getString("belowname.title", ""),
             configManager.getString("belowname.value", "%health%")
         );
+        this.nametagManager = new NametagManager(
+            rankManager,
+            configManager.getBoolean("nametag.enabled", true),
+            configManager.getString("nametag.dot-symbol", "●")
+        );
 
         long scoreboardInterval = configManager.getInt("scoreboard.update-interval-ticks", 20);
         long tabListInterval = configManager.getInt("tablist.update-interval-ticks", 20);
         long belownameInterval = configManager.getInt("belowname.update-interval-ticks", 20);
+        long nametagInterval = configManager.getInt("nametag.update-interval-ticks", 20);
 
         Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> scoreboardManager.tick(), scoreboardInterval, scoreboardInterval);
         Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> tabListManager.tick(), tabListInterval, tabListInterval);
         Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> belownameManager.tick(), belownameInterval, belownameInterval);
+        Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> nametagManager.tick(), nametagInterval, nametagInterval);
 
         if (configManager.getBoolean("afk.enabled", true)) {
             Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> afkManager.tick(), 200L, 200L);
@@ -257,6 +289,18 @@ public class StellariaCore extends JavaPlugin {
         getCommand("scoreboard").setExecutor(scoreboardCommand);
         getCommand("scoreboard").setTabCompleter(scoreboardCommand);
 
+        HomeCommand homeCommand = new HomeCommand(this);
+        for (String homeCmd : new String[]{"sethome", "home", "delhome", "homes"}) {
+            getCommand(homeCmd).setExecutor(homeCommand);
+            getCommand(homeCmd).setTabCompleter(homeCommand);
+        }
+
+        WarpCommand warpCommand = new WarpCommand(this);
+        for (String warpCmd : new String[]{"setwarp", "warp", "delwarp", "warps"}) {
+            getCommand(warpCmd).setExecutor(warpCommand);
+            getCommand(warpCmd).setTabCompleter(warpCommand);
+        }
+
         this.autoBroadcastManager = new AutoBroadcastManager(this);
         autoBroadcastManager.start();
 
@@ -322,6 +366,18 @@ public class StellariaCore extends JavaPlugin {
         return this.rankManager;
     }
 
+    public HomeManager getHomeManager() {
+        return this.homeManager;
+    }
+
+    public WarpManager getWarpManager() {
+        return this.warpManager;
+    }
+
+    public NametagManager getNametagManager() {
+        return this.nametagManager;
+    }
+
     /**
      * config.yml の scoreboard/tablist/belowname 設定を読み直して各Managerに反映する。
      * ConfigManager#reload() で config.yml 自体を読み直した後に呼ぶ想定（ReloadCommand参照）。
@@ -335,11 +391,16 @@ public class StellariaCore extends JavaPlugin {
         tabListManager.updateSettings(
             configManager.getString("tablist.header", ""),
             configManager.getString("tablist.footer", ""),
-            configManager.getString("tablist.value", "")
+            configManager.getString("tablist.value", ""),
+            configManager.getString("tablist.rank-prefix", "|")
         );
         belownameManager.updateSettings(
             configManager.getString("belowname.title", ""),
             configManager.getString("belowname.value", "%health%")
+        );
+        nametagManager.updateSettings(
+            configManager.getBoolean("nametag.enabled", true),
+            configManager.getString("nametag.dot-symbol", "●")
         );
         autoBroadcastManager.restart();
         rankManager.reload();

@@ -27,6 +27,28 @@ rank:
 economy:
   default-balance: 1000 # 新規プレイヤーの初期所持金
 
+home:
+  max-per-player: 5
+  cost: 0 # /sethome 1回あたりの消費コイン数（0なら無料）
+  teleport-effect:
+    enabled: true
+    particle: "DUST" # Bukkitの Particle enum名。DUSTの時だけ color/size が使われる
+    color: "#FFAA00" # オレンジ
+    size: 1.0
+    radius: 1.0
+    points: 30
+
+warp:
+  max-per-player: 5
+  cost: 0 # /setwarp 1回あたりの消費コイン数（0なら無料）
+  teleport-effect:
+    enabled: true
+    particle: "DUST" # Bukkitの Particle enum名。DUSTの時だけ color/size が使われる
+    color: "#55FF55" # グリーン
+    size: 1.0
+    radius: 1.0
+    points: 30
+
 ranking:
   page-size: 10
 
@@ -65,11 +87,17 @@ tablist:
   header: "\n&%b%player%さん\n           &%9すてらりあ &%bへようこそ！           \n"
   footer: "\n&%9%online%&%7/&%9%max_online%\n"
   value: "%afk%&%a%ping%ms"
+  rank-prefix: "|" # ランクタグの前に付ける区切り文字（ランク色で色付けされる）
   update-interval-ticks: 20
 
 belowname:
   title: ""
   value: "%afk% &%c❤ &%7%health%"
+  update-interval-ticks: 20
+
+nametag:
+  enabled: true
+  dot-symbol: "●" # ネームタグ左端に付けるランク色ドット（ランク無しのプレイヤーには付かない）
   update-interval-ticks: 20
 
 afk:
