@@ -1,4 +1,4 @@
-package org.craftcore.stellaria.utils;
+package org.craftcore.stellaria.managers;
 
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 /**
- * SQLiteとのやり取りをまとめて管理するUtilクラス
+ * SQLiteとのやり取りをまとめて管理するクラス
  *
  * 生のJDBCを直接書くと定型処理(接続開閉・例外処理・PreparedStatementの組み立て)が
  * 毎回同じように増えていくので、よく使う操作(SELECT/INSERT/UPDATE/DELETE/テーブル作成)を
@@ -24,24 +24,24 @@ import java.util.function.Consumer;
  * 使い方
  * {@code
  * // onEnable()で1回だけ呼ぶ
- * Database.connect(this, "database.db");
+ * DatabaseManager.connect(this, "database.db");
  *
  * // テーブル作成(初回のみ実行される)
- * Database.createTableIfNotExists("players",
+ * DatabaseManager.createTableIfNotExists("players",
  *     "uuid TEXT PRIMARY KEY",
  *     "name TEXT",
  *     "coins INTEGER DEFAULT 0"
  * );
  *
  * // データ挿入
- * Database.insert("players", Map.of(
+ * DatabaseManager.insert("players", Map.of(
  *     "uuid", player.getUniqueId().toString(),
  *     "name", player.getName(),
  *     "coins", 100
  * ));
  *
  * // 1行取得
- * Database.queryOneAsync(
+ * DatabaseManager.queryOneAsync(
  *     "SELECT coins FROM players WHERE uuid = ?",
  *     rs -> rs.getInt("coins"),
  *     row -> player.sendMessage("コインは " + row + " です"),
@@ -49,16 +49,16 @@ import java.util.function.Consumer;
  * );
  *
  * // onDisable()で1回だけ呼ぶ
- * Database.disconnect();
+ * DatabaseManager.disconnect();
  * }
  */
-public final class Database {
+public final class DatabaseManager {
 
     private static JavaPlugin plugin;
     private static Connection connection;
     private static String dbPath;
 
-    private Database() {
+    private DatabaseManager() {
     }
 
     // ------------------------------------------------------------------
@@ -112,7 +112,7 @@ public final class Database {
      */
     public static Connection raw() {
         if (connection == null) {
-            throw new IllegalStateException("Database.connect() が呼ばれてないです");
+            throw new IllegalStateException("DatabaseManager.connect() が呼ばれてないです");
         }
         return connection;
     }
@@ -125,7 +125,7 @@ public final class Database {
      * テーブルが存在しない場合のみ作成する。
      *
      * <pre>{@code
-     * Database.createTableIfNotExists("players",
+     * DatabaseManager.createTableIfNotExists("players",
      *     "uuid TEXT PRIMARY KEY",
      *     "name TEXT",
      *     "coins INTEGER DEFAULT 0"
@@ -175,7 +175,7 @@ public final class Database {
      * SQL文を自分で書きたくない時に一番手軽な方法。
      *
      * <pre>{@code
-     * Database.insert("players", Map.of(
+     * DatabaseManager.insert("players", Map.of(
      *     "uuid", uuid.toString(),
      *     "name", "Example",
      *     "coins", 100
@@ -198,7 +198,7 @@ public final class Database {
      * カラム名と値のMapから、UPDATE文を自動生成して実行する。
      *
      * <pre>{@code
-     * Database.update("players",
+     * DatabaseManager.update("players",
      *     Map.of("coins", 200),
      *     "uuid = ?",
      *     uuid.toString()
@@ -234,7 +234,7 @@ public final class Database {
      * SELECT文を実行し、各行を{@link RowMapper}で好きな型に変換したListで受け取る。
      *
      * <pre>{@code
-     * List<String> names = Database.query(
+     * List<String> names = DatabaseManager.query(
      *     "SELECT name FROM players WHERE coins > ?",
      *     rs -> rs.getString("name"),
      *     100
@@ -259,7 +259,7 @@ public final class Database {
      * 結果は非同期スレッドから戻ってくるので、Bukkit APIを直接触るならメインスレッドに戻すこと。
      *
      * <pre>{@code
-     * Database.queryAsync(
+     * DatabaseManager.queryAsync(
      *     "SELECT name FROM players",
      *     rs -> rs.getString("name"),
      *     names -> {
@@ -281,7 +281,7 @@ public final class Database {
      * 1行だけ欲しい場合の検索。該当行が無ければ{@code null}を返す。
      *
      * <pre>{@code
-     * Integer coins = Database.queryOne(
+     * Integer coins = DatabaseManager.queryOne(
      *     "SELECT coins FROM players WHERE uuid = ?",
      *     rs -> rs.getInt("coins"),
      *     uuid.toString()
@@ -313,7 +313,7 @@ public final class Database {
      * 指定した条件のレコードが存在するかだけを確認する。
      *
      * <pre>{@code
-     * boolean exists = Database.exists("players", "uuid = ?", uuid.toString());
+     * boolean exists = DatabaseManager.exists("players", "uuid = ?", uuid.toString());
      * }</pre>
      */
     public static boolean exists(String table, String whereClause, Object... params) {
@@ -331,9 +331,9 @@ public final class Database {
      * 途中で例外が起きた場合は自動的に全部取り消される(ロールバック)。
      *
      * <pre>{@code
-     * Database.transaction(conn -> {
-     *     Database.execute("UPDATE players SET coins = coins - ? WHERE uuid = ?", 100, fromUuid);
-     *     Database.execute("UPDATE players SET coins = coins + ? WHERE uuid = ?", 100, toUuid);
+     * DatabaseManager.transaction(conn -> {
+     *     DatabaseManager.execute("UPDATE players SET coins = coins - ? WHERE uuid = ?", 100, fromUuid);
+     *     DatabaseManager.execute("UPDATE players SET coins = coins + ? WHERE uuid = ?", 100, toUuid);
      * });
      * }</pre>
      */

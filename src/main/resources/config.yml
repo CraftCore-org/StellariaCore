@@ -1,12 +1,56 @@
 # StellariaCore 設定ファイル
 
 server:
-  prefix: "§b[Stellaria] §r" # メッセージのPrefix !NOTE: 未実装
-
-messages:
-  join: " &%a> &%7%player% さんがログインしました。" # プレイヤー参加時のメッセージ
-  quit: "&%c< &%7%player% さんがログアウトしました。" # プレイヤー参加時のメッセージ
+  prefix: "&%b[Stellaria] &r" # メッセージのPrefix !NOTE: 未実装
+  name: "Stellaria"
 
 economy:
   default-balance: 1000 # 新規プレイヤーの初期所持金 !NOTE: 未実装
 
+scoreboard:
+  title: "&%b&lSTELLARIA"
+  update-interval-ticks: 20
+  hide-numbers: true
+  lines:
+    - "&%7%server%"
+    - "&%7オンライン: &%f%online%/%max_online%"
+    - "&%7Ping: &%f%ping%ms"
+    - "&%7ワールド: &%f%world%"
+    - "&%7座標: &%f%x%, %y%, %z%"
+    - "&%7所持金: &%e%money%"
+
+tablist:
+  header: "\n&%d%player%さん\n&%5すてらりあへようこそ\n"
+  footer: "\n&%5stellaria.craftcore.org\n     &%ddiscord.gg/ssaREjBJXg     \n"
+  value: "&%7%ping%ms"
+  update-interval-ticks: 20
+
+belowname:
+  title: "&%c❤"
+  update-interval-ticks: 20
+
+chat:
+  enabled: true
+  format: "{placeholder}{sender}&%7: &%f{message}"
+  placeholder: ""
+  color-codes:
+    enabled: true
+    permission: "stellaria.chat.color"
+  tooltip:
+    enabled: true
+    lines:
+      - "&%7Ping: &%f%ping%ms"
+      - "&%7所持金: &%e%money%"
+
+mention:
+  enabled: true
+  format: "&%6[&%e@{name}&%6]&r"
+  all:
+    enabled: true
+    keyword: "all"
+    permission: "stellaria.chat.mention.all"
+  sound:
+    enabled: true
+    name: "ENTITY_EXPERIENCE_ORB_PICKUP"
+    volume: 1.0
+    pitch: 1.0

@@ -5,7 +5,7 @@ import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.craftcore.stellaria.StellariaCore;
-import org.craftcore.stellaria.utils.Database;
+import org.craftcore.stellaria.utils.MoneyFormat;
 
 import java.util.List;
 import java.util.Collections;
@@ -44,7 +44,7 @@ public class EconomyManager extends AbstractEconomy {
 
     @Override
     public String format(double amount) {
-        return (int) amount + "円";
+        return MoneyFormat.format(amount) + "円";
     }
 
     @Override
@@ -65,7 +65,7 @@ public class EconomyManager extends AbstractEconomy {
     public double getBalance(OfflinePlayer player) {
         if (player == null) return 0;
         String uuid = player.getUniqueId().toString();
-        Integer coins = Database.queryOne(
+        Integer coins = DatabaseManager.queryOne(
             "SELECT coins FROM players WHERE uuid = ?",
             rs -> rs.getInt("coins"),
             uuid
@@ -127,7 +127,7 @@ public class EconomyManager extends AbstractEconomy {
         }
 
         int newBalance = (int) (current - amount);
-        Database.updateAsync("players", java.util.Map.of("coins", newBalance), "uuid = ?", player.getUniqueId().toString());
+        DatabaseManager.updateAsync("players", java.util.Map.of("coins", newBalance), "uuid = ?", player.getUniqueId().toString());
 
         return new EconomyResponse(amount, newBalance, EconomyResponse.ResponseType.SUCCESS, null);
     }
@@ -162,7 +162,7 @@ public class EconomyManager extends AbstractEconomy {
 
         double current = getBalance(player);
         int newBalance = (int) (current + amount);
-        Database.updateAsync("players", java.util.Map.of("coins", newBalance), "uuid = ?", player.getUniqueId().toString());
+        DatabaseManager.updateAsync("players", java.util.Map.of("coins", newBalance), "uuid = ?", player.getUniqueId().toString());
 
         return new EconomyResponse(amount, newBalance, EconomyResponse.ResponseType.SUCCESS, null);
     }

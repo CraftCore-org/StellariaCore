@@ -1,33 +1,50 @@
 package org.craftcore.stellaria;
 
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.craftcore.stellaria.commands.ReloadCommand;
 import org.craftcore.stellaria.commands.tpa.TpaCore;
+import org.craftcore.stellaria.managers.BelownameManager;
+import org.craftcore.stellaria.managers.ConfigManager;
 import org.craftcore.stellaria.managers.EconomyManager;
-import org.craftcore.stellaria.managers.PluginManager;
+import org.craftcore.stellaria.managers.MentionService;
+import org.craftcore.stellaria.managers.PlaceholderManager;
+import org.craftcore.stellaria.managers.ScoreboardManager;
+import org.craftcore.stellaria.managers.TabListManager;
+import org.craftcore.stellaria.listeners.ChatListener;
 import org.craftcore.stellaria.listeners.PlayerJoinListener;
 import org.craftcore.stellaria.listeners.PlayerListener;
-import org.bukkit.Bukkit;
+import org.craftcore.stellaria.listeners.PlayerQuitListener;
 
 
-import org.craftcore.stellaria.utils.Console;
-import org.craftcore.stellaria.utils.Database;
+import org.craftcore.stellaria.utils.ConsoleUtil;
+import org.craftcore.stellaria.managers.DatabaseManager;
 
 import net.milkbowl.vault.economy.Economy;
 
 
 public class StellariaCore extends JavaPlugin {
-    
+
     private EconomyManager economyManager;
+    private ConfigManager configManager;
+    private PlaceholderManager placeholderManager;
+    private ScoreboardManager scoreboardManager;
+    private TabListManager tabListManager;
+    private BelownameManager belownameManager;
+    private MentionService mentionService;
 
     @Override
     public void onEnable() {
-        
-        saveDefaultConfig();
+
+        // 0. 設定ファイルの読み込み管理（config.yml はサーバー設定、messages.yml はメッセージ）
+        this.configManager = new ConfigManager(this);
+        this.configManager.register("config.yml");
+        this.configManager.register("messages.yml");
 
         // 1. データベースの接続とテーブル作成
-        Database.connect(this, "database.db");
-        Database.createTableIfNotExists("players",
+        DatabaseManager.connect(this, "database.db");
+        DatabaseManager.createTableIfNotExists("players",
             "uuid TEXT PRIMARY KEY",
             "name TEXT",
             "coins INTEGER DEFAULT 0"
@@ -52,6 +69,7 @@ public class StellariaCore extends JavaPlugin {
 
         // 4. イベントリスナー登録
         getServer().getPluginManager().registerEvents(new PlayerJoinListener(this), this);
+        getServer().getPluginManager().registerEvents(new PlayerQuitListener(this), this);
 
         // 5. 起動ロゴ表示
         // Initialize managers
@@ -61,7 +79,41 @@ public class StellariaCore extends JavaPlugin {
         // getServer().getPluginManager().registerEvents(new PlayerListener(), this);
         getServer().getPluginManager().registerEvents(new PlayerListener(), this);
 
-        TpaCore tpaCore = new TpaCore();
+        // 6. Scoreboard/Tablist/Belowname のインスタンス化とtick開始
+        this.placeholderManager = new PlaceholderManager(this);
+
+        this.scoreboardManager = new ScoreboardManager(
+            placeholderManager,
+            configManager.getString("scoreboard.title", ""),
+            configManager.getStringList("scoreboard.lines"),
+            configManager.getBoolean("scoreboard.hide-numbers", true)
+        );
+        this.tabListManager = new TabListManager(
+            placeholderManager,
+            configManager.getString("tablist.header", ""),
+            configManager.getString("tablist.footer", ""),
+            configManager.getString("tablist.value", "")
+        );
+        this.belownameManager = new BelownameManager(
+            placeholderManager,
+            configManager.getString("belowname.title", "")
+        );
+
+        long scoreboardInterval = configManager.getInt("scoreboard.update-interval-ticks", 20);
+        long tabListInterval = configManager.getInt("tablist.update-interval-ticks", 20);
+        long belownameInterval = configManager.getInt("belowname.update-interval-ticks", 20);
+
+        Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> scoreboardManager.tick(), scoreboardInterval, scoreboardInterval);
+        Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> tabListManager.tick(), tabListInterval, tabListInterval);
+        Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> belownameManager.tick(), belownameInterval, belownameInterval);
+
+        // 7. チャットフォーマット・メンション
+        this.mentionService = new MentionService(this);
+        if (configManager.getBoolean("chat.enabled", true)) {
+            getServer().getPluginManager().registerEvents(new ChatListener(this, mentionService), this);
+        }
+
+        TpaCore tpaCore = new TpaCore(this);
 
         getCommand("tpa").setExecutor(tpaCore);
         getCommand("tpaccept").setExecutor(tpaCore);
@@ -70,17 +122,61 @@ public class StellariaCore extends JavaPlugin {
         getCommand("tphaccept").setExecutor(tpaCore);
         getCommand("tphdeny").setExecutor(tpaCore);
 
-        Console.printLogo(getPluginMeta().getVersion());
+        getCommand("stellariareload").setExecutor(new ReloadCommand(this));
+
+        ConsoleUtil.printLogo(getPluginMeta().getVersion());
     }
 
     @Override
     public void onDisable() {
         // プラグイン停止時は Vault から自動解除されるため、DB切断だけでOK
-        Database.disconnect();
-        Console.printDisabledMessage();
+        DatabaseManager.disconnect();
+        ConsoleUtil.printDisabledMessage();
     }
     
     public EconomyManager getEconomyManager() {
         return this.economyManager;
+    }
+
+    public ConfigManager getConfigManager() {
+        return this.configManager;
+    }
+
+    public PlaceholderManager getPlaceholderManager() {
+        return this.placeholderManager;
+    }
+
+    public ScoreboardManager getScoreboardManager() {
+        return this.scoreboardManager;
+    }
+
+    public TabListManager getTabListManager() {
+        return this.tabListManager;
+    }
+
+    public BelownameManager getBelownameManager() {
+        return this.belownameManager;
+    }
+
+    public MentionService getMentionService() {
+        return this.mentionService;
+    }
+
+    /**
+     * config.yml の scoreboard/tablist/belowname 設定を読み直して各Managerに反映する。
+     * ConfigManager#reload() で config.yml 自体を読み直した後に呼ぶ想定（ReloadCommand参照）。
+     */
+    public void reloadFeatureManagers() {
+        scoreboardManager.updateSettings(
+            configManager.getString("scoreboard.title", ""),
+            configManager.getStringList("scoreboard.lines"),
+            configManager.getBoolean("scoreboard.hide-numbers", true)
+        );
+        tabListManager.updateSettings(
+            configManager.getString("tablist.header", ""),
+            configManager.getString("tablist.footer", ""),
+            configManager.getString("tablist.value", "")
+        );
+        belownameManager.updateSettings(configManager.getString("belowname.title", ""));
     }
 }
