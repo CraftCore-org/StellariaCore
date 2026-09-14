@@ -3,6 +3,7 @@ package org.craftcore.stellaria;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.craftcore.stellaria.commands.AfkCommand;
 import org.craftcore.stellaria.commands.ReloadCommand;
 import org.craftcore.stellaria.commands.tpa.TpaCore;
 import org.craftcore.stellaria.managers.AfkManager;
@@ -131,6 +132,8 @@ public class StellariaCore extends JavaPlugin {
         getCommand("tphdeny").setExecutor(tpaCore);
 
         getCommand("stellariareload").setExecutor(new ReloadCommand(this));
+
+        getCommand("afk").setExecutor(new AfkCommand(this));
 
         ConsoleUtil.printLogo(getPluginMeta().getVersion());
     }
