@@ -57,7 +57,7 @@ teleport-effect:
 
 mention:
   enabled: true
-  format: "&%6[&%e@{name}&%6]&r"
+  format: "&%e@{name}&r"
   all:
     enabled: true
     keyword: "all"
