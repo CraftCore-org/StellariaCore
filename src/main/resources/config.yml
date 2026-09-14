@@ -167,4 +167,4 @@ elevator:
       name: "BLOCK_PISTON_EXTEND"
       volume: 1.0
       pitch: 0.75
-  ignoreblocks: ["&CARPET","&PRESSURE_PLATE","&_SIGN","&TORCH","&BANNER","&BUTTON","&LEVER","&_DOOR"]# エレベーターブロックの上2ブロックに置いてあっても移動ができるブロック
+  ignoreblocks: ["&CARPET","&_SIGN","&TORCH","&BANNER","&BUTTON","&LEVER","&_DOOR"]# エレベーターブロックの上2ブロックに置いてあっても移動ができるブロック
