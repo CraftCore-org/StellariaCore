@@ -39,6 +39,10 @@ commands:
     aliases: [rank]
   scoreboard:
     aliases: [sb]
+  sethome:
+  home:
+  delhome:
+  homes:
 
 permissions:
   stellaria.msg:
@@ -54,4 +58,6 @@ permissions:
   stellaria.ranking:
     default: true
   stellaria.scoreboard:
+    default: true
+  stellaria.home:
     default: true

@@ -27,6 +27,10 @@ rank:
 economy:
   default-balance: 1000 # 新規プレイヤーの初期所持金
 
+home:
+  max-per-player: 5
+  cost: 0 # /sethome 1回あたりの消費コイン数（0なら無料）
+
 ranking:
   page-size: 10
 

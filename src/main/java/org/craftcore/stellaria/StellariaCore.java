@@ -19,6 +19,7 @@ import org.craftcore.stellaria.commands.ReloadCommand;
 import org.craftcore.stellaria.commands.ScoreboardCommand;
 import org.craftcore.stellaria.commands.SeenCommand;
 import org.craftcore.stellaria.commands.tpa.TpaCore;
+import org.craftcore.stellaria.commands.HomeCommand;
 import org.craftcore.stellaria.managers.*;
 import org.craftcore.stellaria.gui.GuiListener;
 import org.craftcore.stellaria.managers.ActionBarManager;
@@ -63,6 +64,7 @@ public class StellariaCore extends JavaPlugin {
     private ActionBarManager actionBarManager;
     private PlaytimeManager playtimeManager;
     private RankManager rankManager;
+    private HomeManager homeManager;
 
     @Override
     public void onEnable() {
@@ -93,9 +95,19 @@ public class StellariaCore extends JavaPlugin {
             "playtime_seconds INTEGER DEFAULT 0"
         );
 
+        DatabaseManager.createTableIfNotExists("homes",
+            "uuid TEXT",
+            "name TEXT",
+            "world TEXT",
+            "x REAL", "y REAL", "z REAL",
+            "yaw REAL", "pitch REAL",
+            "PRIMARY KEY (uuid, name)"
+        );
+
         this.afkManager = new AfkManager(this);
         this.playtimeManager = new PlaytimeManager(this);
         this.rankManager = new RankManager(this);
+        this.homeManager = new HomeManager(this);
 
         this.muteManager = new MuteManager(this);
         muteManager.loadAll();
@@ -257,6 +269,12 @@ public class StellariaCore extends JavaPlugin {
         getCommand("scoreboard").setExecutor(scoreboardCommand);
         getCommand("scoreboard").setTabCompleter(scoreboardCommand);
 
+        HomeCommand homeCommand = new HomeCommand(this);
+        for (String homeCmd : new String[]{"sethome", "home", "delhome", "homes"}) {
+            getCommand(homeCmd).setExecutor(homeCommand);
+            getCommand(homeCmd).setTabCompleter(homeCommand);
+        }
+
         this.autoBroadcastManager = new AutoBroadcastManager(this);
         autoBroadcastManager.start();
 
@@ -320,6 +338,10 @@ public class StellariaCore extends JavaPlugin {
 
     public RankManager getRankManager() {
         return this.rankManager;
+    }
+
+    public HomeManager getHomeManager() {
+        return this.homeManager;
     }
 
     /**
