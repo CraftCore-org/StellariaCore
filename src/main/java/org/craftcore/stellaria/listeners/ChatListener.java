@@ -5,6 +5,7 @@ import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -70,7 +71,7 @@ public class ChatListener implements Listener {
 
         event.renderer(ChatRenderer.viewerUnaware((source, sourceDisplayName, ignoredMessage) -> {
             Component rankPrefix = ColorUtil.component(rank.color() + "&l| ");
-            Component nameComponent = rankPrefix.append(sourceDisplayName);
+            Component nameComponent = rankPrefix.append(sourceDisplayName.decoration(TextDecoration.BOLD, false));
             nameComponent = tooltip != null
                     ? nameComponent.hoverEvent(HoverEvent.showText(tooltip))
                     : nameComponent;

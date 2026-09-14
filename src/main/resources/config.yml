@@ -33,7 +33,10 @@ ranking:
 first-join-kit:
   enabled: true
   items: # "素材名:個数" 形式（個数省略で1個）
-    - "DIAMOND_SWORD:1"
+    - "WOODEN_SWORD:1"
+    - "WOODEN_AXE:1"
+    - "WOODEN_PICKAXE:16"
+    - "WOODEN_SHOVEL:16"
     - "COOKED_BEEF:16"
     - "OAK_LOG:16"
 
@@ -137,11 +140,11 @@ mention:
 broadcast:
   auto:
     enabled: true
-    interval-minutes: 1 # 本番は15
+    interval-minutes: 15 # 本番は15
     messages: [
-      "&%a定期メッセージ1",
-      "&%b定期メッセージ2",
-      "&%c定期メッセージ3",
+      "&%b&l| Discordサーバーはこちら！&%b&l| &l|https://discord.gg/ssaREjBJXg",
+      "&%b&l| 荒らし、チートは禁止です！",
+      "&%b&l| バグや不具合を見つけたらDiscordで報告できます！",
     ] # 空だと定期放送は開始されない（例: ["&%eルールを守って楽しく遊ぼう！"]）
 
 elevator:

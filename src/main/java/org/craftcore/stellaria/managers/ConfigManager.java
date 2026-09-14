@@ -8,6 +8,8 @@ import java.io.File;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * YAML設定ファイルをまとめて管理するクラス。
@@ -21,6 +23,8 @@ public final class ConfigManager {
 
     private final StellariaCore plugin;
     private final Map<String, ConfigFile> files = new LinkedHashMap<>();
+    // 「このキーは無かった」の警告を1キーにつき1回だけ出すための記録（reloadで作り直す）。
+    private final Set<String> warnedMissingKeys = ConcurrentHashMap.newKeySet();
 
     public ConfigManager(StellariaCore plugin) {
         this.plugin = plugin;
@@ -52,15 +56,33 @@ public final class ConfigManager {
 
     /**
      * 登録済みの設定ファイルを全部ディスクから読み直す。/stellariareload コマンドから呼ばれる想定。
+     * 「キーが無い」警告も出し直せるように記録をリセットする。
      */
     public void reload() {
         files.values().forEach(ConfigFile::reload);
+        warnedMissingKeys.clear();
+    }
+
+    /**
+     * {@code fileName} に {@code path} が無ければ、コンソールに1回だけ警告を出す
+     * （tickごとに呼ばれる箇所での連続警告を防ぐため、reload()するまで同じキーは出し直さない）。
+     * jar同梱のデフォルトはファイルが新規作成された時にしかコピーされない（移行機能が無いため）ので、
+     * 既存の config.yml/messages.yml をアップデートで上書きし忘れた時にこの警告で気付ける。
+     */
+    private void warnIfMissing(String fileName, String path) {
+        if (get(fileName).get().contains(path)) {
+            return;
+        }
+        if (warnedMissingKeys.add(fileName + ":" + path)) {
+            plugin.getLogger().warning("エラー: " + fileName + " に \"" + path + "\" が見つかりません。デフォルト値を使用します。");
+        }
     }
 
     /**
      * config.yml の文字列設定値を取得する。存在しない場合は def を返す。
      */
     public String getString(String path, String def) {
+        warnIfMissing("config.yml", path);
         return get("config.yml").get().getString(path, def);
     }
 
@@ -68,6 +90,7 @@ public final class ConfigManager {
      * config.yml の整数設定値を取得する。存在しない場合は def を返す。
      */
     public int getInt(String path, int def) {
+        warnIfMissing("config.yml", path);
         return get("config.yml").get().getInt(path, def);
     }
 
@@ -75,6 +98,7 @@ public final class ConfigManager {
      * config.yml の真偽値設定を取得する。存在しない場合は def を返す。
      */
     public boolean getBoolean(String path, boolean def) {
+        warnIfMissing("config.yml", path);
         return get("config.yml").get().getBoolean(path, def);
     }
 
@@ -82,6 +106,7 @@ public final class ConfigManager {
      * config.yml の文字列リスト設定を取得する（例: scoreboard.lines）。存在しない場合は空リスト。
      */
     public List<String> getStringList(String path) {
+        warnIfMissing("config.yml", path);
         return get("config.yml").get().getStringList(path);
     }
 
@@ -90,6 +115,7 @@ public final class ConfigManager {
      * オブジェクトのリスト）。存在しない場合は空リスト。
      */
     public List<Map<?, ?>> getMapList(String path) {
+        warnIfMissing("config.yml", path);
         return get("config.yml").get().getMapList(path);
     }
 
@@ -97,6 +123,7 @@ public final class ConfigManager {
      * config.yml の小数設定を取得する（例: mention.sound.volume）。存在しない場合は def を返す。
      */
     public double getDouble(String path, double def) {
+        warnIfMissing("config.yml", path);
         return get("config.yml").get().getDouble(path, def);
     }
 
@@ -109,6 +136,7 @@ public final class ConfigManager {
      * @param placeholderPlayer メッセージ内の %player% などのプレースホルダーに使うプレイヤー
      */
     public String getMessage(String path, OfflinePlayer placeholderPlayer) {
+        warnIfMissing("messages.yml", path);
         return FormatUtil.text(placeholderPlayer, get("messages.yml").get().getString(path, ""));
     }
 
@@ -118,6 +146,7 @@ public final class ConfigManager {
      * 単に送信するだけなら {@link #getMessage(String, OfflinePlayer)} を使うこと。
      */
     public String getRawMessage(String path) {
+        warnIfMissing("messages.yml", path);
         return get("messages.yml").get().getString(path, "");
     }
 
@@ -126,6 +155,7 @@ public final class ConfigManager {
      * プレースホルダー解決・色変換は呼び出し側で {@code PlaceholderManager#resolveLines} を使うこと。
      */
     public List<String> getMessageList(String path) {
+        warnIfMissing("messages.yml", path);
         return get("messages.yml").get().getStringList(path);
     }
 }
