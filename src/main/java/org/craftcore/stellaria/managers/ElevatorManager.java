@@ -50,7 +50,7 @@ public class ElevatorManager {
         if (max == 0) return;
         Block checkBlock = elevatorBlock;
         if (!isMoveable(checkBlock)) {
-            Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.moveup_fail",""));
+            Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.move_fail",""));
             player.sendActionBar(message);
             return;
         }
@@ -89,7 +89,7 @@ public class ElevatorManager {
         if (max == 0) return;
         Block checkBlock = elevatorBlock;
         if (!isMoveable(checkBlock)) {
-            Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.movedown_fail",""));
+            Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.move_fail",""));
             player.sendActionBar(message);
             return;
         }
