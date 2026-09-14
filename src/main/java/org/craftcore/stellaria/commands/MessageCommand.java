@@ -4,20 +4,23 @@ import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.managers.MuteManager;
 import org.craftcore.stellaria.utils.DurationParser;
+import org.craftcore.stellaria.utils.TabCompleteUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 /**
  * /msg（alias tell, w, message）と /reply（alias r）を1つのCommandExecutorで捌く
  * （TpaCoreと同じ「1クラスで関連コマンドをまとめてdispatchする」方針）。
  */
-public class MessageCommand implements CommandExecutor {
+public class MessageCommand implements CommandExecutor, TabCompleter {
 
     private final StellariaCore plugin;
 
@@ -89,5 +92,16 @@ public class MessageCommand implements CommandExecutor {
             return;
         }
         plugin.getPrivateMessageManager().send(sender, target, message);
+    }
+
+    @Override
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String @NotNull [] args) {
+        if (command.getName().equalsIgnoreCase("reply")) {
+            return List.of();
+        }
+        if (args.length == 1) {
+            return TabCompleteUtil.onlinePlayerNames(args[0]);
+        }
+        return List.of();
     }
 }

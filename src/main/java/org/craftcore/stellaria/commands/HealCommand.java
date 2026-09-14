@@ -5,17 +5,20 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.utils.TabCompleteUtil;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
  * /heal コマンド。引数なしなら自分、引数ありなら指定プレイヤー（要 stellaria.heal.others）を
  * 全回復させる（HP・満腹度・隠し満腹度・炎消火）。
  */
-public class HealCommand implements CommandExecutor {
+public class HealCommand implements CommandExecutor, TabCompleter {
 
     private final StellariaCore plugin;
 
@@ -61,5 +64,13 @@ public class HealCommand implements CommandExecutor {
             target.sendMessage(plugin.getConfigManager().getMessage("heal.other_receiver", target));
         }
         return true;
+    }
+
+    @Override
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String @NotNull [] args) {
+        if (args.length == 1) {
+            return TabCompleteUtil.onlinePlayerNames(args[0]);
+        }
+        return List.of();
     }
 }

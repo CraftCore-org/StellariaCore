@@ -2,6 +2,7 @@ package org.craftcore.stellaria.utils;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 
@@ -24,8 +25,11 @@ public final class UrlHighlighter {
      * {@code text} 内のURLをクリック可能なリンク（青色＋下線）に変換したComponentを返す。
      * URL以外の部分は {@code colorize} が true なら {@link ColorUtil#component(String)} で
      * 色変換し、false ならリテラルのまま扱う（チャットの色コード権限に対応するため）。
+     *
+     * @param hoverTemplate リンクにホバーした時のツールチップ文字列（{@code %url%} をURLに置換して使う）。
+     *                      {@code null}または空文字ならホバーイベントを付けない。
      */
-    public static Component highlight(String text, boolean colorize) {
+    public static Component highlight(String text, boolean colorize, String hoverTemplate) {
         Matcher matcher = URL_PATTERN.matcher(text);
         Component result = Component.empty();
         int lastEnd = 0;
@@ -34,10 +38,15 @@ public final class UrlHighlighter {
                 result = result.append(literal(text.substring(lastEnd, matcher.start()), colorize));
             }
             String url = matcher.group();
-            result = result.append(Component.text(url)
+            Component link = Component.text(url)
                     .color(NamedTextColor.BLUE)
                     .decorate(TextDecoration.UNDERLINED)
-                    .clickEvent(ClickEvent.openUrl(url)));
+                    .clickEvent(ClickEvent.openUrl(url));
+            if (hoverTemplate != null && !hoverTemplate.isEmpty()) {
+                Component hover = ColorUtil.component(hoverTemplate.replace("%url%", url));
+                link = link.hoverEvent(HoverEvent.showText(hover));
+            }
+            result = result.append(link);
             lastEnd = matcher.end();
         }
         if (lastEnd < text.length()) {

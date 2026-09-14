@@ -98,6 +98,48 @@ msg:
 
 chat:
   click_hint: "&%7クリックでメッセージを送信"
+  url_hint: "&%7クリックで開く: &%f%url%"
 
 mention:
   click_hint: "&%7クリックで%player%にメッセージを送信"
+
+pay:
+  usage: "&%c使用方法: /pay <プレイヤー> <金額>"
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  self: "&%c自分自身に送金することはできません。"
+  invalid_amount: "&%c金額は1以上の整数で指定してください。"
+  player_not_found: "&%c%player% &%7はオンラインではありません。"
+  insufficient_balance: "&%c所持金が不足しています。"
+  sender: "&%a%player% &%7に%amount%を送金しました。"
+  receiver: "&%a%player% &%7から%amount%を受け取りました。"
+
+eco:
+  usage: "&%c使用方法: /eco <give|set|take> <プレイヤー> <金額>"
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  invalid_subcommand: "&%c不明なサブコマンドです。give/set/take のいずれかを指定してください。"
+  invalid_amount: "&%c金額は0以上の整数で指定してください。"
+  player_not_found: "&%c%player% &%7はオフラインまたは存在しません。"
+  insufficient_balance: "&%c%player% &%7の所持金が不足しています。"
+  give_sender: "&%a%player% &%7に%amount%を付与しました。"
+  give_receiver: "&%a%amount% &%7を受け取りました。"
+  set_sender: "&%a%player% &%7の所持金を%amount%に設定しました。"
+  set_receiver: "&%aあなたの所持金が%amount%に設定されました。"
+  take_sender: "&%a%player% &%7から%amount%を回収しました。"
+  take_receiver: "&%c%amount% &%7が回収されました。"
+
+balance:
+  usage: "&%c使用方法: /balance [プレイヤー|top [ページ]]"
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  no_permission_others: "&%c他人の残高を確認する権限がありません。"
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  player_not_found: "&%c%player% &%7はオフラインまたは存在しません。"
+  self: "&%7所持金: %amount%"
+  other: "&%7%player% &%7の所持金: %amount%"
+  top_header: "&%6&l--- 所持金ランキング（%page%/%max_page%） ---"
+  top_entry: "&%7#%rank% &%f%player% &%7- %amount%"
+  top_empty: "&%7該当するプレイヤーがいません。"
+
+colors:
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  header: "&%6&l--- カラーコード一覧 ---"

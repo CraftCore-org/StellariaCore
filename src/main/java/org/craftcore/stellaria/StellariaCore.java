@@ -7,7 +7,11 @@ import org.craftcore.stellaria.commands.AfkCommand;
 import org.craftcore.stellaria.commands.BroadcastCommand;
 import org.craftcore.stellaria.commands.HealCommand;
 import org.craftcore.stellaria.commands.MessageCommand;
+import org.craftcore.stellaria.commands.BalanceCommand;
+import org.craftcore.stellaria.commands.ColorsCommand;
+import org.craftcore.stellaria.commands.EcoCommand;
 import org.craftcore.stellaria.commands.MuteCommand;
+import org.craftcore.stellaria.commands.PayCommand;
 import org.craftcore.stellaria.commands.ReloadCommand;
 import org.craftcore.stellaria.commands.tpa.TpaCore;
 import org.craftcore.stellaria.managers.*;
@@ -26,6 +30,7 @@ import org.craftcore.stellaria.managers.ScoreboardManager;
 import org.craftcore.stellaria.managers.TabListManager;
 import org.craftcore.stellaria.listeners.ChatListener;
 import org.craftcore.stellaria.listeners.PlayerJoinListener;
+import org.craftcore.stellaria.listeners.MentionTabCompleteListener;
 import org.craftcore.stellaria.listeners.MuteCommandBlockListener;
 import org.craftcore.stellaria.listeners.PlayerListener;
 import org.craftcore.stellaria.listeners.PlayerQuitListener;
@@ -145,7 +150,8 @@ public class StellariaCore extends JavaPlugin {
         );
         this.belownameManager = new BelownameManager(
             placeholderManager,
-            configManager.getString("belowname.title", "")
+            configManager.getString("belowname.title", ""),
+            configManager.getString("belowname.value", "%health%")
         );
 
         long scoreboardInterval = configManager.getInt("scoreboard.update-interval-ticks", 20);
@@ -164,6 +170,7 @@ public class StellariaCore extends JavaPlugin {
         this.mentionService = new MentionService(this);
         if (configManager.getBoolean("chat.enabled", true)) {
             getServer().getPluginManager().registerEvents(new ChatListener(this, mentionService), this);
+            getServer().getPluginManager().registerEvents(new MentionTabCompleteListener(), this);
         }
 
         TpaCore tpaCore = new TpaCore(this);
@@ -175,22 +182,47 @@ public class StellariaCore extends JavaPlugin {
         getCommand("tphere").setExecutor(tpaCore);
         getCommand("tphaccept").setExecutor(tpaCore);
         getCommand("tphdeny").setExecutor(tpaCore);
+        for (String tpaCommand : new String[]{"tpa", "tpaccept", "tpdeny", "tphere", "tphaccept", "tphdeny"}) {
+            getCommand(tpaCommand).setTabCompleter(tpaCore);
+        }
 
         getCommand("stellariareload").setExecutor(new ReloadCommand(this));
 
         getCommand("afk").setExecutor(new AfkCommand(this));
-        getCommand("heal").setExecutor(new HealCommand(this));
+
+        HealCommand healCommand = new HealCommand(this);
+        getCommand("heal").setExecutor(healCommand);
+        getCommand("heal").setTabCompleter(healCommand);
+
         getCommand("broadcast").setExecutor(new BroadcastCommand(this));
 
         MuteCommand muteCommand = new MuteCommand(this);
         getCommand("mute").setExecutor(muteCommand);
         getCommand("unmute").setExecutor(muteCommand);
+        getCommand("mute").setTabCompleter(muteCommand);
+        getCommand("unmute").setTabCompleter(muteCommand);
         getServer().getPluginManager().registerEvents(new MuteCommandBlockListener(this), this);
         getServer().getPluginManager().registerEvents(new GuiListener(), this);
 
         MessageCommand messageCommand = new MessageCommand(this);
         getCommand("msg").setExecutor(messageCommand);
         getCommand("reply").setExecutor(messageCommand);
+        getCommand("msg").setTabCompleter(messageCommand);
+        getCommand("reply").setTabCompleter(messageCommand);
+
+        PayCommand payCommand = new PayCommand(this);
+        getCommand("pay").setExecutor(payCommand);
+        getCommand("pay").setTabCompleter(payCommand);
+
+        EcoCommand ecoCommand = new EcoCommand(this);
+        getCommand("eco").setExecutor(ecoCommand);
+        getCommand("eco").setTabCompleter(ecoCommand);
+
+        BalanceCommand balanceCommand = new BalanceCommand(this);
+        getCommand("balance").setExecutor(balanceCommand);
+        getCommand("balance").setTabCompleter(balanceCommand);
+
+        getCommand("colors").setExecutor(new ColorsCommand(this));
 
         this.autoBroadcastManager = new AutoBroadcastManager(this);
         autoBroadcastManager.start();
@@ -264,7 +296,10 @@ public class StellariaCore extends JavaPlugin {
             configManager.getString("tablist.footer", ""),
             configManager.getString("tablist.value", "")
         );
-        belownameManager.updateSettings(configManager.getString("belowname.title", ""));
+        belownameManager.updateSettings(
+            configManager.getString("belowname.title", ""),
+            configManager.getString("belowname.value", "%health%")
+        );
         autoBroadcastManager.restart();
     }
 }

@@ -5,7 +5,8 @@ server:
   name: "Stellaria"
 
 economy:
-  default-balance: 1000 # 新規プレイヤーの初期所持金 !NOTE: 未実装
+  default-balance: 1000 # 新規プレイヤーの初期所持金
+  balance-top-page-size: 10
 
 scoreboard:
   title: "&%b&lSTELLARIA"
@@ -26,7 +27,8 @@ tablist:
   update-interval-ticks: 20
 
 belowname:
-  title: "%afk%&%c❤"
+  title: "&%c❤"
+  value: "%afk%%health%"
   update-interval-ticks: 20
 
 chat:
@@ -56,7 +58,7 @@ teleport-effect:
 
 mention:
   enabled: true
-  format: "&%6[&%e@{name}&%6]&r"
+  format: "&%e@{name}&r"
   all:
     enabled: true
     keyword: "all"

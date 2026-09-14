@@ -25,7 +25,16 @@ commands:
     aliases: [r]
   mute:
   unmute:
+  pay:
+  eco:
+  balance:
+    aliases: [money, bal]
+  colors:
 
 permissions:
   stellaria.msg:
+    default: true
+  stellaria.pay:
+    default: true
+  stellaria.balance:
     default: true

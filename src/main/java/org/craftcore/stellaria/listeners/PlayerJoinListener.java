@@ -40,10 +40,11 @@ public class PlayerJoinListener implements Listener {
         boolean exists = DatabaseManager.exists("players", "uuid = ?", uuid);
 
         if (!exists) {
+            int defaultBalance = plugin.getConfigManager().getInt("economy.default-balance", 1000);
             DatabaseManager.insertAsync("players", Map.of(
                 "uuid", uuid,
                 "name", event.getPlayer().getName(),
-                "coins", 0
+                "coins", defaultBalance
             ));
         }
     }

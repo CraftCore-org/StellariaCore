@@ -5,18 +5,22 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.DurationParser;
+import org.craftcore.stellaria.utils.TabCompleteUtil;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * /mute と /unmute を1つのCommandExecutorで捌く（TpaCoreと同じ「関連コマンドをまとめてdispatch」方針）。
  */
-public class MuteCommand implements CommandExecutor {
+public class MuteCommand implements CommandExecutor, TabCompleter {
 
     private final StellariaCore plugin;
 
@@ -114,6 +118,7 @@ public class MuteCommand implements CommandExecutor {
 
         String staffMessage = plugin.getConfigManager().getMessage("mute.muted_staff", target)
                 .replace("%moderator%", moderatorName)
+                .replace("%level%", String.valueOf(level))
                 .replace("%reason%", reason);
         broadcastToStaff(staffMessage, sender, target);
     }
@@ -139,5 +144,24 @@ public class MuteCommand implements CommandExecutor {
                 online.sendMessage(message);
             }
         }
+    }
+
+    @Override
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String @NotNull [] args) {
+        if (command.getName().equalsIgnoreCase("unmute")) {
+            return args.length == 1 ? TabCompleteUtil.knownPlayerNames(args[0]) : List.of();
+        }
+        if (args.length == 1) {
+            List<String> candidates = new ArrayList<>(TabCompleteUtil.knownPlayerNames(args[0]));
+            candidates.addAll(TabCompleteUtil.filterStartsWith(List.of("help"), args[0]));
+            return candidates;
+        }
+        if (args.length == 2) {
+            return TabCompleteUtil.filterStartsWith(List.of("1", "2", "3"), args[1]);
+        }
+        if (args.length == 3) {
+            return TabCompleteUtil.filterStartsWith(List.of("10m", "1h", "3d", "perm"), args[2]);
+        }
+        return List.of();
     }
 }
