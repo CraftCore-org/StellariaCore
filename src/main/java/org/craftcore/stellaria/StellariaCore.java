@@ -84,6 +84,16 @@ public class StellariaCore extends JavaPlugin {
         if (configManager.getBoolean("action-bar.enabled", true)) {
             long actionBarInterval = configManager.getInt("action-bar.update-interval-ticks", 5);
             Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> actionBarManager.tick(), actionBarInterval, actionBarInterval);
+
+            if (configManager.getBoolean("action-bar.persistent.enabled", false)) {
+                Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> {
+                    String template = configManager.getString("action-bar.persistent.template", "");
+                    for (org.bukkit.entity.Player online : Bukkit.getOnlinePlayers()) {
+                        String resolved = placeholderManager.resolve(template, online);
+                        actionBarManager.setChannel(online, "persistent", org.craftcore.stellaria.utils.ColorUtil.component(resolved));
+                    }
+                }, actionBarInterval, actionBarInterval);
+            }
         }
 
         // 2. EconomyManager のインスタンス化

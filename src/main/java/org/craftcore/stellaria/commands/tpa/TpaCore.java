@@ -33,6 +33,8 @@ public class TpaCore implements CommandExecutor, Listener {
     private final static Map<UUID, UUID> tpHerePendingSender = new HashMap<>();
     // テレポート詠唱中（承認後の遅延待ち）のプレイヤーUUID -> キャンセル用ScheduledTask
     private final static Map<UUID, ScheduledTask> pendingTeleport = new HashMap<>();
+    // テレポート詠唱中のアクションバーカウントダウン用ScheduledTask
+    private final static Map<UUID, ScheduledTask> pendingCountdown = new HashMap<>();
 
     private final StellariaCore plugin;
 
@@ -47,6 +49,8 @@ public class TpaCore implements CommandExecutor, Listener {
         tpHerePendingSender.remove(player.getUniqueId());
         ScheduledTask task = pendingTeleport.remove(player.getUniqueId());
         if (task != null) task.cancel();
+        ScheduledTask countdownTask = pendingCountdown.remove(player.getUniqueId());
+        if (countdownTask != null) countdownTask.cancel();
     }
 
     /**
@@ -60,6 +64,7 @@ public class TpaCore implements CommandExecutor, Listener {
         ScheduledTask task = pendingTeleport.remove(player.getUniqueId());
         if (task != null) {
             task.cancel();
+            stopCountdown(player);
             player.sendMessage(plugin.getConfigManager().getMessage("tpa.tpa_warmup_cancelled", player));
         }
     }
@@ -116,8 +121,11 @@ public class TpaCore implements CommandExecutor, Listener {
                 plugin.getConfigManager().getMessage("tpa.tpa_warmup", mover),
                 "%seconds%", String.valueOf(delaySeconds)));
 
+        startCountdown(mover, delaySeconds);
+
         ScheduledTask task = mover.getScheduler().runDelayed(plugin, scheduledTask -> {
             pendingTeleport.remove(moverId);
+            stopCountdown(mover);
             Player freshMover = Bukkit.getPlayer(moverId);
             Player freshDestination = Bukkit.getPlayer(destinationId);
             if (freshMover == null) return;
@@ -126,9 +134,43 @@ public class TpaCore implements CommandExecutor, Listener {
                 return;
             }
             performTeleport(freshMover, freshDestination);
-        }, () -> pendingTeleport.remove(moverId), delayTicks);
+        }, () -> {
+            pendingTeleport.remove(moverId);
+            stopCountdown(mover);
+        }, delayTicks);
 
         pendingTeleport.put(moverId, task);
+    }
+
+    /** テレポート待機中、1秒ごとに残り秒数をアクションバーへ表示する。 */
+    private void startCountdown(Player mover, int totalSeconds) {
+        UUID moverId = mover.getUniqueId();
+        int[] remaining = {totalSeconds};
+
+        ScheduledTask countdownTask = mover.getScheduler().runAtFixedRate(plugin, scheduledTask -> {
+            Player freshMover = Bukkit.getPlayer(moverId);
+            if (freshMover == null || remaining[0] < 0) {
+                scheduledTask.cancel();
+                pendingCountdown.remove(moverId);
+                return;
+            }
+            String message = FormatUtil.replace(
+                    plugin.getConfigManager().getMessage("tpa.tpa_warmup_actionbar", freshMover),
+                    "%seconds%", String.valueOf(remaining[0]));
+            plugin.getActionBarManager().setChannel(freshMover, "tpa_countdown", ColorUtil.component(message));
+            remaining[0]--;
+        }, () -> pendingCountdown.remove(moverId), 0L, 20L);
+
+        pendingCountdown.put(moverId, countdownTask);
+    }
+
+    /** カウントダウンタスクを止めてアクションバー表示も消す。 */
+    private void stopCountdown(Player mover) {
+        ScheduledTask task = pendingCountdown.remove(mover.getUniqueId());
+        if (task != null) {
+            task.cancel();
+        }
+        plugin.getActionBarManager().clearChannel(mover, "tpa_countdown");
     }
 
     private void performTeleport(Player mover, Player destination) {
