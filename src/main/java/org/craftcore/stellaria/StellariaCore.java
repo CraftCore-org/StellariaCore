@@ -180,26 +180,46 @@ public class StellariaCore extends JavaPlugin {
         getCommand("tphere").setExecutor(tpaCore);
         getCommand("tphaccept").setExecutor(tpaCore);
         getCommand("tphdeny").setExecutor(tpaCore);
+        for (String tpaCommand : new String[]{"tpa", "tpaccept", "tpdeny", "tphere", "tphaccept", "tphdeny"}) {
+            getCommand(tpaCommand).setTabCompleter(tpaCore);
+        }
 
         getCommand("stellariareload").setExecutor(new ReloadCommand(this));
 
         getCommand("afk").setExecutor(new AfkCommand(this));
-        getCommand("heal").setExecutor(new HealCommand(this));
+
+        HealCommand healCommand = new HealCommand(this);
+        getCommand("heal").setExecutor(healCommand);
+        getCommand("heal").setTabCompleter(healCommand);
+
         getCommand("broadcast").setExecutor(new BroadcastCommand(this));
 
         MuteCommand muteCommand = new MuteCommand(this);
         getCommand("mute").setExecutor(muteCommand);
         getCommand("unmute").setExecutor(muteCommand);
+        getCommand("mute").setTabCompleter(muteCommand);
+        getCommand("unmute").setTabCompleter(muteCommand);
         getServer().getPluginManager().registerEvents(new MuteCommandBlockListener(this), this);
         getServer().getPluginManager().registerEvents(new GuiListener(), this);
 
         MessageCommand messageCommand = new MessageCommand(this);
         getCommand("msg").setExecutor(messageCommand);
         getCommand("reply").setExecutor(messageCommand);
+        getCommand("msg").setTabCompleter(messageCommand);
+        getCommand("reply").setTabCompleter(messageCommand);
 
-        getCommand("pay").setExecutor(new PayCommand(this));
-        getCommand("eco").setExecutor(new EcoCommand(this));
-        getCommand("balance").setExecutor(new BalanceCommand(this));
+        PayCommand payCommand = new PayCommand(this);
+        getCommand("pay").setExecutor(payCommand);
+        getCommand("pay").setTabCompleter(payCommand);
+
+        EcoCommand ecoCommand = new EcoCommand(this);
+        getCommand("eco").setExecutor(ecoCommand);
+        getCommand("eco").setTabCompleter(ecoCommand);
+
+        BalanceCommand balanceCommand = new BalanceCommand(this);
+        getCommand("balance").setExecutor(balanceCommand);
+        getCommand("balance").setTabCompleter(balanceCommand);
+
         getCommand("colors").setExecutor(new ColorsCommand(this));
 
         this.autoBroadcastManager = new AutoBroadcastManager(this);

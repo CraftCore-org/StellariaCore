@@ -5,18 +5,21 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.managers.EconomyManager;
+import org.craftcore.stellaria.utils.TabCompleteUtil;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * /balance（alias money, bal）コマンド。引数なしで自分の残高、プレイヤー指定で他人の残高
  * （要 stellaria.balance.others）、"top [page]" でランキング表示。
  */
-public class BalanceCommand implements CommandExecutor {
+public class BalanceCommand implements CommandExecutor, TabCompleter {
 
     private final StellariaCore plugin;
 
@@ -101,5 +104,15 @@ public class BalanceCommand implements CommandExecutor {
                     .replace("%amount%", economy.format(entry.coins())));
             rank++;
         }
+    }
+
+    @Override
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String @NotNull [] args) {
+        if (args.length == 1) {
+            List<String> candidates = new ArrayList<>(TabCompleteUtil.onlinePlayerNames(args[0]));
+            candidates.addAll(TabCompleteUtil.filterStartsWith(List.of("top"), args[0]));
+            return candidates;
+        }
+        return List.of();
     }
 }

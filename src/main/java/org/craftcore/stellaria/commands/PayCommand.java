@@ -4,15 +4,19 @@ import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.managers.EconomyManager;
+import org.craftcore.stellaria.utils.TabCompleteUtil;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.List;
 
 /**
  * /pay コマンド。プレイヤー間送金。EconomyManager.transfer() が1トランザクションで処理する。
  */
-public class PayCommand implements CommandExecutor {
+public class PayCommand implements CommandExecutor, TabCompleter {
 
     private final StellariaCore plugin;
 
@@ -68,5 +72,13 @@ public class PayCommand implements CommandExecutor {
         target.sendMessage(plugin.getConfigManager().getMessage("pay.receiver", player)
                 .replace("%amount%", amountText));
         return true;
+    }
+
+    @Override
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String @NotNull [] args) {
+        if (args.length == 1) {
+            return TabCompleteUtil.onlinePlayerNames(args[0]);
+        }
+        return List.of();
     }
 }

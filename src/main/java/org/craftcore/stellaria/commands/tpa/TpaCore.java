@@ -13,6 +13,7 @@ import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -21,11 +22,12 @@ import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
 import org.craftcore.stellaria.utils.ParticleUtil;
+import org.craftcore.stellaria.utils.TabCompleteUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
-public class TpaCore implements CommandExecutor, Listener {
+public class TpaCore implements CommandExecutor, Listener, TabCompleter {
     private final static Map<UUID, List<UUID>> tpRequest = new HashMap<>();
     private final static Map<UUID,List<UUID>> tpHere = new HashMap<>();
     // 送信者UUID -> 送信先UUID。送信者は未返答リクエストを同時に1件までしか持てないようにするための逆引き
@@ -366,5 +368,11 @@ public class TpaCore implements CommandExecutor, Listener {
         return false;
     }
 
-
+    @Override
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String @NotNull [] args) {
+        if (args.length == 1) {
+            return TabCompleteUtil.onlinePlayerNames(args[0]);
+        }
+        return List.of();
+    }
 }

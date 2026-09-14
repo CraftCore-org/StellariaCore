@@ -5,15 +5,19 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.managers.EconomyManager;
+import org.craftcore.stellaria.utils.TabCompleteUtil;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.List;
 
 /**
  * /eco give|set|take コマンド。管理者用の残高操作を1つのCommandExecutorで捌く
  * （TpaCore/MuteCommandと同じ「関連サブコマンドをまとめてdispatch」方針）。
  */
-public class EcoCommand implements CommandExecutor {
+public class EcoCommand implements CommandExecutor, TabCompleter {
 
     private final StellariaCore plugin;
 
@@ -86,5 +90,16 @@ public class EcoCommand implements CommandExecutor {
             target.getPlayer().sendMessage(plugin.getConfigManager().getMessage(receiverKey, target)
                     .replace("%amount%", amountText));
         }
+    }
+
+    @Override
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String @NotNull [] args) {
+        if (args.length == 1) {
+            return TabCompleteUtil.filterStartsWith(List.of("give", "set", "take"), args[0]);
+        }
+        if (args.length == 2) {
+            return TabCompleteUtil.knownPlayerNames(args[1]);
+        }
+        return List.of();
     }
 }
