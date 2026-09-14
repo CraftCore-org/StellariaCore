@@ -5,11 +5,11 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 
-public class Format {
+public class FormatUtil {
 
     private static final boolean HAS_PAPI = Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI");
 
-    private Format() {
+    private FormatUtil() {
         // ユーティリティクラスのためインスタンス化を禁止
     }
 
@@ -17,14 +17,14 @@ public class Format {
      * カラーコード変換（16進数 HEX や &% カスタムカラーも自動適用）
      */
     public static String color(String text) {
-        return Color.colorize(text); // Color.java のパース処理を使用！
+        return ColorUtil.colorize(text); // Color.java のパース処理を使用！
     }
 
     /**
      * Adventure Component 形式で取得したい場合
      */
     public static Component component(String text) {
-        return Color.component(text); // Color.java の Component 変換を使用！
+        return ColorUtil.component(text); // Color.java の Component 変換を使用！
     }
 
     /**
@@ -44,7 +44,7 @@ public class Format {
         }
 
         // 3 Color.java を使って &a や &#RRGGBB などの色コードを最終変換して返す
-        return Color.colorize(text);
+        return ColorUtil.colorize(text);
     }
 
     /**

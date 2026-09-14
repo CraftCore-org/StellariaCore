@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class Color {
+public class ColorUtil {
 
     private static final char SECTION = '§';
     private static final Pattern HEX_PATTERN = Pattern.compile("&#([0-9A-Fa-f]{6})");
@@ -47,7 +47,7 @@ public class Color {
             .hexColors()
             .build();
 
-    private Color() {
+    private ColorUtil() {
     }
 
     public static String colorize(String input) {

@@ -10,7 +10,6 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
-import org.craftcore.stellaria.utils.Format;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -36,19 +35,16 @@ public class TpaCore implements CommandExecutor {
 
         if (command.getName().equalsIgnoreCase("tpa")){
             if (args.length == 0){
-                String tpa_err_player = plugin.getConfig().getString("messages.tpa.tpa_err_player", "");
-                sender.sendMessage(Format.text((OfflinePlayer) sender,tpa_err_player));
+                sender.sendMessage(plugin.getConfigManager().getMessage("messages.tpa.tpa_err_player", (OfflinePlayer) sender));
                 return false;
             }
             Player player = Bukkit.getPlayer(args[0]);
             if (player == null){
-                String tpa_err_onl = plugin.getConfig().getString("messages.tpa.tpa_err_online", "");
-                sender.sendMessage(Format.text((OfflinePlayer) sender, tpa_err_onl));
+                sender.sendMessage(plugin.getConfigManager().getMessage("messages.tpa.tpa_err_online", (OfflinePlayer) sender));
                 return false;
             } else {
                 if (player.getName().equals(sender.getName())){
-                    String tpa_err_self = plugin.getConfig().getString("messages.tpa.tpa_err_self", "");
-                    sender.sendMessage(Format.text((OfflinePlayer) sender, tpa_err_self));
+                    sender.sendMessage(plugin.getConfigManager().getMessage("messages.tpa.tpa_err_self", (OfflinePlayer) sender));
                     return false;
                 }
                 if (!(tpRequest.containsKey(player.getUniqueId()) && tpRequest.get(player.getUniqueId()).contains(((Player) sender).getUniqueId()))){
@@ -56,10 +52,10 @@ public class TpaCore implements CommandExecutor {
                     player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_FLUTE,1,0);
                 }
 
-                String tpa_accept = Format.text((OfflinePlayer) sender,plugin.getConfig().getString("messages.tpa.tpa_accept", ""));
-                String tpa_deny = Format.text((OfflinePlayer) sender,plugin.getConfig().getString("messages.tpa.tpa_deny", ""));
-                String tpa_send = Format.text(player,plugin.getConfig().getString("messages.tpa.tpa_send", ""));
-                String tpa_receive = Format.text((OfflinePlayer) sender,plugin.getConfig().getString("messages.tpa.tpa_receive", ""));
+                String tpa_accept = plugin.getConfigManager().getMessage("messages.tpa.tpa_accept", (OfflinePlayer) sender);
+                String tpa_deny = plugin.getConfigManager().getMessage("messages.tpa.tpa_deny", (OfflinePlayer) sender);
+                String tpa_send = plugin.getConfigManager().getMessage("messages.tpa.tpa_send", player);
+                String tpa_receive = plugin.getConfigManager().getMessage("messages.tpa.tpa_receive", (OfflinePlayer) sender);
 
                 ((Player)sender).playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_FLUTE,1,1);
                 Component message = Component.text(tpa_accept).clickEvent(ClickEvent.runCommand("/tpaccept " + sender.getName()))
@@ -73,19 +69,17 @@ public class TpaCore implements CommandExecutor {
         }
         if (command.getName().equalsIgnoreCase("tpaccept")){
             if (args.length == 0){
-                String tpa_err_player = plugin.getConfig().getString("messages.tpa.tpa_err_player", "");
-                sender.sendMessage(Format.text((OfflinePlayer) sender,tpa_err_player));
+                sender.sendMessage(plugin.getConfigManager().getMessage("messages.tpa.tpa_err_player", (OfflinePlayer) sender));
                 return false;
             }
             Player player = Bukkit.getPlayer(args[0]);
             if (player == null){
-                String tpa_err_onl = plugin.getConfig().getString("messages.tpa.tpa_err_online", "");
-                sender.sendMessage(Format.text((OfflinePlayer) sender, tpa_err_onl));
+                sender.sendMessage(plugin.getConfigManager().getMessage("messages.tpa.tpa_err_online", (OfflinePlayer) sender));
                 return false;
             } else {
                 if (tpRequest.containsKey(((Player) sender).getUniqueId()) && tpRequest.get(((Player) sender).getUniqueId()).contains(player.getUniqueId())){
-                    String tpa_accept_sender = Format.text((OfflinePlayer) sender,plugin.getConfig().getString("messages.tpa.tpa_accept_sender", ""));
-                    String tpa_accept_receiver = Format.text((OfflinePlayer) sender,plugin.getConfig().getString("messages.tpa.tpa_accept_receiver", ""));
+                    String tpa_accept_sender = plugin.getConfigManager().getMessage("messages.tpa.tpa_accept_sender", (OfflinePlayer) sender);
+                    String tpa_accept_receiver = plugin.getConfigManager().getMessage("messages.tpa.tpa_accept_receiver", (OfflinePlayer) sender);
                     sender.sendMessage(tpa_accept_receiver);
                     player.sendMessage(tpa_accept_sender);
                     player.teleport(((Player) sender).getLocation());
@@ -94,36 +88,32 @@ public class TpaCore implements CommandExecutor {
                     tpRequest.get(((Player) sender).getUniqueId()).remove(player.getUniqueId());
                     return true;
                 } else {
-                    String tpa_err_notreceived = Format.text(player,plugin.getConfig().getString("messages.tpa.tpa_err_notreceived", ""));
-                    sender.sendMessage(tpa_err_notreceived);
+                    sender.sendMessage(plugin.getConfigManager().getMessage("messages.tpa.tpa_err_notreceived", player));
                     return false;
                 }
             }
         }
         if (command.getName().equalsIgnoreCase("tpdeny")){
             if (args.length == 0){
-                String tpa_err_player = plugin.getConfig().getString("messages.tpa.tpa_err_player", "");
-                sender.sendMessage(Format.text((OfflinePlayer) sender,tpa_err_player));
+                sender.sendMessage(plugin.getConfigManager().getMessage("messages.tpa.tpa_err_player", (OfflinePlayer) sender));
                 return false;
             }
             Player player = Bukkit.getPlayer(args[0]);
             if (player == null){
-                String tpa_err_onl = plugin.getConfig().getString("messages.tpa.tpa_err_online", "");
-                sender.sendMessage(Format.text((OfflinePlayer) sender, tpa_err_onl));
+                sender.sendMessage(plugin.getConfigManager().getMessage("messages.tpa.tpa_err_online", (OfflinePlayer) sender));
                 return false;
             } else {
                 if (tpRequest.containsKey(((Player) sender).getUniqueId()) && tpRequest.get(((Player) sender).getUniqueId()).contains(player.getUniqueId())){
                     ((Player)sender).playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS,1,1);
                     player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS,1,1);
-                    String tpa_deny_sender = Format.text((OfflinePlayer) sender,plugin.getConfig().getString("messages.tpa.tpa_deny_sender", ""));
-                    String tpa_deny_receiver = Format.text((OfflinePlayer) sender,plugin.getConfig().getString("messages.tpa.tpa_deny_receiver", ""));
+                    String tpa_deny_sender = plugin.getConfigManager().getMessage("messages.tpa.tpa_deny_sender", (OfflinePlayer) sender);
+                    String tpa_deny_receiver = plugin.getConfigManager().getMessage("messages.tpa.tpa_deny_receiver", (OfflinePlayer) sender);
                     sender.sendMessage(tpa_deny_receiver);
                     player.sendMessage(tpa_deny_sender);
                     tpRequest.get(((Player) sender).getUniqueId()).remove(player.getUniqueId());
                     return true;
                 } else {
-                    String tpa_err_notreceived = Format.text(player,plugin.getConfig().getString("messages.tpa.tpa_err_notreceived", ""));
-                    sender.sendMessage(tpa_err_notreceived);
+                    sender.sendMessage(plugin.getConfigManager().getMessage("messages.tpa.tpa_err_notreceived", player));
                     return false;
                 }
             }
@@ -131,29 +121,26 @@ public class TpaCore implements CommandExecutor {
 
         if (command.getName().equalsIgnoreCase("tphere")){
             if (args.length == 0){
-                String tphere_err_player = plugin.getConfig().getString("messages.tpa.tphere_err_player", "");
-                sender.sendMessage(Format.text((OfflinePlayer) sender, tphere_err_player));
+                sender.sendMessage(plugin.getConfigManager().getMessage("messages.tpa.tphere_err_player", (OfflinePlayer) sender));
                 return false;
             }
             Player player = Bukkit.getPlayer(args[0]);
             if (player == null){
-                String tphere_err_onl = plugin.getConfig().getString("messages.tpa.tphere_err_online", "");
-                sender.sendMessage(Format.text((OfflinePlayer) sender, tphere_err_onl));
+                sender.sendMessage(plugin.getConfigManager().getMessage("messages.tpa.tphere_err_online", (OfflinePlayer) sender));
                 return false;
             } else {
                 if (player.getName().equals(sender.getName())){
-                    String tphere_err_self = plugin.getConfig().getString("messages.tpa.tphere_err_self", "");
-                    sender.sendMessage(tphere_err_self);
+                    sender.sendMessage(plugin.getConfigManager().getMessage("messages.tpa.tphere_err_self", (OfflinePlayer) sender));
                     return false;
                 }
                 if (!(tpHere.containsKey(player.getUniqueId()) && tpHere.get(player.getUniqueId()).contains(((Player) sender).getUniqueId()))) {
                     tpHere.computeIfAbsent(player.getUniqueId(), k -> new ArrayList<>()).add(((Player) sender).getUniqueId());
                     player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_FLUTE,1,0);
                 }
-                String tphere_accept = Format.text((OfflinePlayer) sender,plugin.getConfig().getString("messages.tpa.tpa_accept", ""));
-                String tphere_deny = Format.text((OfflinePlayer) sender,plugin.getConfig().getString("messages.tpa.tpa_deny", ""));
-                String tphere_send = Format.text(player,plugin.getConfig().getString("messages.tpa.tphere_send", ""));
-                String tphere_receive = Format.text((OfflinePlayer) sender,plugin.getConfig().getString("messages.tpa.tphere_receive", ""));
+                String tphere_accept = plugin.getConfigManager().getMessage("messages.tpa.tpa_accept", (OfflinePlayer) sender);
+                String tphere_deny = plugin.getConfigManager().getMessage("messages.tpa.tpa_deny", (OfflinePlayer) sender);
+                String tphere_send = plugin.getConfigManager().getMessage("messages.tpa.tphere_send", player);
+                String tphere_receive = plugin.getConfigManager().getMessage("messages.tpa.tphere_receive", (OfflinePlayer) sender);
 
 
                 ((Player)sender).playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_FLUTE,1,1);
@@ -168,19 +155,17 @@ public class TpaCore implements CommandExecutor {
         }
         if (command.getName().equalsIgnoreCase("tphaccept")){
             if (args.length == 0){
-                String tphere_err_player = plugin.getConfig().getString("messages.tpa.tphere_err_player", "");
-                sender.sendMessage(Format.text((OfflinePlayer) sender, tphere_err_player));
+                sender.sendMessage(plugin.getConfigManager().getMessage("messages.tpa.tphere_err_player", (OfflinePlayer) sender));
                 return false;
             }
             Player player = Bukkit.getPlayer(args[0]);
             if (player == null){
-                String tphere_err_onl = plugin.getConfig().getString("messages.tpa.tphere_err_online", "");
-                sender.sendMessage(Format.text((OfflinePlayer) sender, tphere_err_onl));
+                sender.sendMessage(plugin.getConfigManager().getMessage("messages.tpa.tphere_err_online", (OfflinePlayer) sender));
                 return false;
             } else {
                 if (tpHere.containsKey(((Player) sender).getUniqueId()) && tpHere.get(((Player) sender).getUniqueId()).contains(player.getUniqueId())){
-                    String tphere_accept_sender = Format.text((OfflinePlayer) sender,plugin.getConfig().getString("messages.tpa.tphere_accept_sender", ""));
-                    String tphere_accept_receiver = Format.text((OfflinePlayer) sender,plugin.getConfig().getString("messages.tpa.tphere_accept_receiver", ""));
+                    String tphere_accept_sender = plugin.getConfigManager().getMessage("messages.tpa.tphere_accept_sender", (OfflinePlayer) sender);
+                    String tphere_accept_receiver = plugin.getConfigManager().getMessage("messages.tpa.tphere_accept_receiver", (OfflinePlayer) sender);
                     sender.sendMessage(tphere_accept_receiver);
                     player.sendMessage(tphere_accept_sender);
                     ((Player)sender).teleport(player.getLocation());
@@ -189,36 +174,32 @@ public class TpaCore implements CommandExecutor {
                     tpHere.get(((Player) sender).getUniqueId()).remove(player.getUniqueId());
                     return true;
                 } else {
-                    String tphere_err_notreceived = Format.text(player,plugin.getConfig().getString("messages.tpa.tphere_err_notreceived", ""));
-                    sender.sendMessage(tphere_err_notreceived);
+                    sender.sendMessage(plugin.getConfigManager().getMessage("messages.tpa.tphere_err_notreceived", player));
                     return false;
                 }
             }
         }
         if (command.getName().equalsIgnoreCase("tphdeny")){
             if (args.length == 0){
-                String tphere_err_player = plugin.getConfig().getString("messages.tpa.tphere_err_player", "");
-                sender.sendMessage(Format.text((OfflinePlayer) sender, tphere_err_player));
+                sender.sendMessage(plugin.getConfigManager().getMessage("messages.tpa.tphere_err_player", (OfflinePlayer) sender));
                 return false;
             }
             Player player = Bukkit.getPlayer(args[0]);
             if (player == null){
-                String tphere_err_onl = plugin.getConfig().getString("messages.tpa.tphere_err_online", "");
-                sender.sendMessage(Format.text((OfflinePlayer) sender, tphere_err_onl));
+                sender.sendMessage(plugin.getConfigManager().getMessage("messages.tpa.tphere_err_online", (OfflinePlayer) sender));
                 return false;
             } else {
                 if (tpHere.containsKey(((Player) sender).getUniqueId()) && tpHere.get(((Player) sender).getUniqueId()).contains(player.getUniqueId())){
                     ((Player)sender).playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS,1,1);
                     player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS,1,1);
-                    String tphere_deny_sender = Format.text((OfflinePlayer) sender,plugin.getConfig().getString("messages.tpa.tphere_deny_sender", ""));
-                    String tphere_deny_receiver = Format.text((OfflinePlayer) sender,plugin.getConfig().getString("messages.tpa.tphere_deny_receiver", ""));
+                    String tphere_deny_sender = plugin.getConfigManager().getMessage("messages.tpa.tphere_deny_sender", (OfflinePlayer) sender);
+                    String tphere_deny_receiver = plugin.getConfigManager().getMessage("messages.tpa.tphere_deny_receiver", (OfflinePlayer) sender);
                     sender.sendMessage(tphere_deny_receiver);
                     player.sendMessage(tphere_deny_sender);
                     tpHere.get(((Player) sender).getUniqueId()).remove(player.getUniqueId());
                     return true;
                 } else {
-                    String tphere_err_notreceived = Format.text(player,plugin.getConfig().getString("messages.tpa.tphere_err_notreceived", ""));
-                    sender.sendMessage(tphere_err_notreceived);
+                    sender.sendMessage(plugin.getConfigManager().getMessage("messages.tpa.tphere_err_notreceived", player));
                     return false;
                 }
             }

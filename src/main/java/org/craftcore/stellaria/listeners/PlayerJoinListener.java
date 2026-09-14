@@ -6,8 +6,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.managers.EconomyManager;
-import org.craftcore.stellaria.utils.Database;
-import org.craftcore.stellaria.utils.Format;
+import org.craftcore.stellaria.managers.DatabaseManager;
+import org.craftcore.stellaria.utils.FormatUtil;
 
 import java.util.Map;
 
@@ -25,11 +25,11 @@ public class PlayerJoinListener implements Listener {
         Player player = event.getPlayer();
 
         // config.yml から元の文字列を取得
-        String rawMsg = plugin.getConfig().getString("messages.join", "");
+        String rawMsg = plugin.getConfigManager().getString("messages.join", "");
 
         if (!rawMsg.isEmpty()) {
             // Format を使ってプレースホルダー置き換え
-            event.setJoinMessage(Format.text(player, rawMsg));
+            event.setJoinMessage(FormatUtil.text(player, rawMsg));
         } else {
             // 空メッセージの場合はメッセージ自体を非表示にする
             event.setJoinMessage(null);
@@ -39,10 +39,10 @@ public class PlayerJoinListener implements Listener {
 
         double balance = eco.getBalance(player);
         // すでにレコードがあるかチェック
-        boolean exists = Database.exists("players", "uuid = ?", uuid);
+        boolean exists = DatabaseManager.exists("players", "uuid = ?", uuid);
 
         if (!exists) {
-            Database.insertAsync("players", Map.of(
+            DatabaseManager.insertAsync("players", Map.of(
                 "uuid", uuid,
                 "name", event.getPlayer().getName(),
                 "coins", 0
