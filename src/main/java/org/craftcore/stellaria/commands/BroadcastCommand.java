@@ -37,7 +37,7 @@ public class BroadcastCommand implements CommandExecutor {
 
         String rawMessage = String.join(" ", args);
         boolean colorAllowed = sender.hasPermission("stellaria.broadcast.color");
-        Component messageBody = colorAllowed ? ColorUtil.component(rawMessage) : Component.text(rawMessage);
+        Component messageBody = plugin.getMentionService().highlightBroadcast(rawMessage, colorAllowed, true);
 
         String template = plugin.getConfigManager().getRawMessage("broadcast.format");
         Bukkit.broadcast(splice(template, messageBody));

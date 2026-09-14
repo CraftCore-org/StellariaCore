@@ -1,6 +1,7 @@
 package org.craftcore.stellaria.managers;
 
 import io.papermc.paper.scoreboard.numbers.NumberFormat;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.scoreboard.Criteria;
@@ -24,12 +25,14 @@ public class TabListManager {
     private static final String VALUE_OBJECTIVE_NAME = "stellaria_tlv";
 
     private final PlaceholderManager placeholders;
+    private final RankManager rankManager;
     private volatile String headerTemplate;
     private volatile String footerTemplate;
     private volatile String valueTemplate;
 
-    public TabListManager(PlaceholderManager placeholders, String headerTemplate, String footerTemplate, String valueTemplate) {
+    public TabListManager(PlaceholderManager placeholders, RankManager rankManager, String headerTemplate, String footerTemplate, String valueTemplate) {
         this.placeholders = placeholders;
+        this.rankManager = rankManager;
         this.headerTemplate = headerTemplate;
         this.footerTemplate = footerTemplate;
         this.valueTemplate = valueTemplate;
@@ -45,6 +48,10 @@ public class TabListManager {
     public void tick() {
         Collection<? extends Player> online = Bukkit.getOnlinePlayers();
 
+        for (Player target : online) {
+            applyPlayerListName(target);
+        }
+
         for (Player viewer : online) {
             viewer.setPlayerListHeaderFooter(
                     placeholders.resolve(headerTemplate, viewer),
@@ -56,6 +63,17 @@ public class TabListManager {
                 applyValue(objective, target);
             }
         }
+    }
+
+    /** タブリストの名前欄に、ランクタグがあれば色付きで前置きする。ランク無しなら本来の表示名に戻す。 */
+    private void applyPlayerListName(Player target) {
+        RankManager.RankInfo rank = rankManager.getRank(target);
+        if (rank.tablistTag().isEmpty()) {
+            target.playerListName(null);
+            return;
+        }
+        Component tag = ColorUtil.component(rank.color() + rank.tablistTag() + " ");
+        target.playerListName(tag.append(Component.text(target.getName())));
     }
 
     private Objective ensureValueObjective(Scoreboard board) {

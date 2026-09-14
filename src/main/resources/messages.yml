@@ -43,10 +43,10 @@ tpa:
 afk:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   no_permission: "&%cこのコマンドを実行する権限がありません。"
-  became: "&%e%player% &%7がAFK（離席中）になりました。"
-  returned: "&%e%player% &%7がAFKから復帰しました。"
-  became_actionbar: "&e離席中です"
-  returned_actionbar: "&aお帰りなさい"
+  became: "&%e%player% &%7が&%c離席中&%7になりました。"
+  returned: "&%e%player% &%7が&%c離席中&%7から復帰しました。"
+  became_actionbar: "&%e&%c離席中&%7です"
+  returned_actionbar: "&%aおかえりなさい"
 
 heal:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
@@ -98,7 +98,7 @@ msg:
 
 chat:
   click_hint: "&%7クリックでメッセージを送信"
-  url_hint: "&%7クリックで開く: &%f%url%"
+  url_hint: "&%7クリックで開く&%7: &%b%url%"
 
 mention:
   click_hint: "&%7クリックで%player%にメッセージを送信"
@@ -129,17 +129,58 @@ eco:
   take_receiver: "&%c%amount% &%7が回収されました。"
 
 balance:
-  usage: "&%c使用方法: /balance [プレイヤー|top [ページ]]"
+  usage: "&%c使用方法: /balance [プレイヤー]"
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   no_permission_others: "&%c他人の残高を確認する権限がありません。"
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   player_not_found: "&%c%player% &%7はオフラインまたは存在しません。"
   self: "&%7所持金: %amount%"
   other: "&%7%player% &%7の所持金: %amount%"
-  top_header: "&%6&l--- 所持金ランキング（%page%/%max_page%） ---"
-  top_entry: "&%7#%rank% &%f%player% &%7- %amount%"
-  top_empty: "&%7該当するプレイヤーがいません。"
 
 colors:
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   header: "&%6&l--- カラーコード一覧 ---"
+
+discord:
+  message: "&%9&l| &%fDiscordサーバーはこちら&%7: &%b%link%"
+
+playtime:
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  no_permission_others: "&%c他人のプレイ時間を確認する権限がありません。"
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  player_not_found: "&%c%player% &%7はオフラインまたは存在しません。"
+  self: "&%7累計プレイ時間: &%f%time%"
+  other: "&%7%player% &%7の累計プレイ時間: &%f%time%"
+
+seen:
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  no_permission_others: "&%c他人の最終ログインを確認する権限がありません。"
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  player_not_found: "&%c%player% &%7はオフラインまたは存在しません。"
+  unknown: "&%c%player% &%7の最終ログイン記録がありません。"
+  online_now_self: "&%aあなたは現在オンラインです。"
+  online_now_other: "&%a%player% &%7は現在オンラインです。"
+  offline_self: "&%7最終ログイン: &%f%time%前"
+  offline_other: "&%7%player% &%7の最終ログイン: &%f%time%前"
+
+ranking:
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  usage: "&%c使用方法: /ranking <money|playtime> [ページ]"
+  invalid_type: "&%c不明な種類です。money または playtime を指定してください。"
+  empty: "&%7該当するプレイヤーがいません。"
+  money_header: "&%6&l--- 所持金ランキング ---"
+  money_entry: "&%7#%rank% &%f%player% &%7- %value%"
+  playtime_header: "&%6&l--- プレイ時間ランキング ---"
+  playtime_entry: "&%7#%rank% &%f%player% &%7- %value%"
+  prev_arrow: "&%f◀"
+  next_arrow: "&%f▶"
+  prev_arrow_disabled: "&%8◀"
+  next_arrow_disabled: "&%8▶"
+  page_indicator: "&%7%page%&%8/&%7%max_page%"
+
+scoreboard:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  usage: "&%c使用方法: /scoreboard [show|hide]"
+  hidden: "&%7スコアボードを非表示にしました。"
+  shown: "&%aスコアボードを表示しました。"

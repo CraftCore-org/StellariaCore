@@ -6,6 +6,7 @@ description: Feature plugin for Stellaria MC
 api-version: 1.21
 
 depend: [Citizens, packetevents, Vault, PlaceholderAPI]
+softdepend: [LuckPerms]
 
 commands:
   tpa:
@@ -30,6 +31,14 @@ commands:
   balance:
     aliases: [money, bal]
   colors:
+  discord:
+    aliases: [dc]
+  playtime:
+  seen:
+  ranking:
+    aliases: [rank]
+  scoreboard:
+    aliases: [sb]
 
 permissions:
   stellaria.msg:
@@ -37,4 +46,12 @@ permissions:
   stellaria.pay:
     default: true
   stellaria.balance:
+    default: true
+  stellaria.playtime:
+    default: true
+  stellaria.seen:
+    default: true
+  stellaria.ranking:
+    default: true
+  stellaria.scoreboard:
     default: true

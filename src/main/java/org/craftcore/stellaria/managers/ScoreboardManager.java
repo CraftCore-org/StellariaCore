@@ -14,6 +14,7 @@ import org.craftcore.stellaria.utils.BoardUtil;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -35,6 +36,7 @@ public class ScoreboardManager {
     private volatile List<String> lineTemplates;
     private volatile boolean hideNumbers;
     private final Map<UUID, List<String>> lastRenderedLines = new ConcurrentHashMap<>();
+    private final Set<UUID> hiddenPlayers = ConcurrentHashMap.newKeySet();
 
     public ScoreboardManager(PlaceholderManager placeholders, String titleTemplate, List<String> lineTemplates, boolean hideNumbers) {
         this.placeholders = placeholders;
@@ -58,12 +60,38 @@ public class ScoreboardManager {
     }
 
     /** プレイヤーが退出した時に呼ぶと、次に同じ名前で入ってきたプレイヤーが誤って前回の内容を
-     *  引き継いだ扱いにならずに済む（差分比較用キャッシュの掃除）。 */
+     *  引き継いだ扱いにならずに済む（差分比較用キャッシュの掃除）。/scoreboardでの非表示指定も
+     *  セッション限定なので、ここで一緒にリセットする（再ログインすると表示に戻る）。 */
     public void forget(Player player) {
         lastRenderedLines.remove(player.getUniqueId());
+        hiddenPlayers.remove(player.getUniqueId());
+    }
+
+    /** /scoreboard コマンドから呼ばれる。非表示にすると即座にobjectiveを消し、表示に戻すと即座に再描画する。 */
+    public void setHidden(Player player, boolean hidden) {
+        UUID uuid = player.getUniqueId();
+        if (hidden) {
+            hiddenPlayers.add(uuid);
+        } else {
+            hiddenPlayers.remove(uuid);
+        }
+        lastRenderedLines.remove(uuid);
+        render(player);
+    }
+
+    public boolean isHidden(UUID uuid) {
+        return hiddenPlayers.contains(uuid);
     }
 
     private void render(Player player) {
+        if (hiddenPlayers.contains(player.getUniqueId())) {
+            Objective existing = BoardUtil.ensurePersonalBoard(player).getObjective(OBJECTIVE_NAME);
+            if (existing != null) {
+                existing.unregister();
+            }
+            return;
+        }
+
         List<String> lines = new ArrayList<>();
         for (String template : lineTemplates) {
             lines.add(placeholders.resolve(template, player));

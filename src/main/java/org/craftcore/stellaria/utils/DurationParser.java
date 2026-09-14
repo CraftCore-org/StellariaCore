@@ -60,4 +60,28 @@ public final class DurationParser {
             return remainingSeconds + "秒";
         }
     }
+
+    /**
+     * 秒数を上位2つの単位で人間可読に整形する（プレイ時間・経過時間の表示用）。
+     * 例: {@code 187265} -> {@code "2日4時間"}、{@code 3725} -> {@code "1時間2分"}、
+     * {@code 65} -> {@code "1分5秒"}、{@code 5} -> {@code "5秒"}。
+     * {@link #formatRemaining(long)}（残り時間、単位1つだけ）とは別物。
+     */
+    public static String formatDuration(long totalSeconds) {
+        long seconds = Math.max(0, totalSeconds);
+        long days = seconds / 86400;
+        long hours = (seconds % 86400) / 3600;
+        long minutes = (seconds % 3600) / 60;
+        long secs = seconds % 60;
+
+        if (days > 0) {
+            return days + "日" + hours + "時間";
+        } else if (hours > 0) {
+            return hours + "時間" + minutes + "分";
+        } else if (minutes > 0) {
+            return minutes + "分" + secs + "秒";
+        } else {
+            return secs + "秒";
+        }
+    }
 }

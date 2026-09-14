@@ -38,6 +38,22 @@ public class MentionService {
      *                        （送信者が自分のメッセージに色を使う権限を持っているかに対応）
      */
     public Component highlight(String plainMessage, Player sender, boolean colorizeLiteral) {
+        return highlightInternal(plainMessage, colorizeLiteral, sender, true);
+    }
+
+    /**
+     * /broadcast・定期放送など、特定の送信プレイヤーが存在しないシステムメッセージ向け。
+     * {@code @all}は権限チェックせず常に有効（staffが書いた/config化した文言である前提のため）。
+     *
+     * @param notifySound メンションされた相手に通知音を鳴らすかどうか。1回だけ送信する
+     *                    {@code /broadcast}ならtrueでよいが、オンライン人数分ループして
+     *                    個別送信する定期放送でtrueにすると同じ相手に何度も音が鳴ってしまうので注意。
+     */
+    public Component highlightBroadcast(String plainMessage, boolean colorizeLiteral, boolean notifySound) {
+        return highlightInternal(plainMessage, colorizeLiteral, null, notifySound);
+    }
+
+    private Component highlightInternal(String plainMessage, boolean colorizeLiteral, Player sender, boolean notifySound) {
         ConfigManager config = plugin.getConfigManager();
         String urlHint = config.getMessage("chat.url_hint", sender);
         if (!config.getBoolean("mention.enabled", true)) {
@@ -55,7 +71,8 @@ public class MentionService {
         int lastEnd = 0;
         while (matcher.find()) {
             String token = matcher.group(1);
-            boolean isAll = allEnabled && token.equalsIgnoreCase(allKeyword) && sender.hasPermission(allPermission);
+            boolean allPermitted = sender == null || sender.hasPermission(allPermission);
+            boolean isAll = allEnabled && token.equalsIgnoreCase(allKeyword) && allPermitted;
             Player target = isAll ? null : findOnlinePlayer(token);
             if (!isAll && target == null) {
                 continue; // 認識できないメンションではないので、"@token" をリテラルのまま残す
@@ -85,8 +102,12 @@ public class MentionService {
             result = result.append(literal(plainMessage.substring(lastEnd), colorizeLiteral, urlHint));
         }
 
-        mentioned.remove(sender);
-        playSound(mentioned);
+        if (sender != null) {
+            mentioned.remove(sender);
+        }
+        if (notifySound) {
+            playSound(mentioned);
+        }
         return result;
     }
 

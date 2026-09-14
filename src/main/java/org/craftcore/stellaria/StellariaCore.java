@@ -9,10 +9,15 @@ import org.craftcore.stellaria.commands.HealCommand;
 import org.craftcore.stellaria.commands.MessageCommand;
 import org.craftcore.stellaria.commands.BalanceCommand;
 import org.craftcore.stellaria.commands.ColorsCommand;
+import org.craftcore.stellaria.commands.DiscordCommand;
 import org.craftcore.stellaria.commands.EcoCommand;
 import org.craftcore.stellaria.commands.MuteCommand;
 import org.craftcore.stellaria.commands.PayCommand;
+import org.craftcore.stellaria.commands.PlaytimeCommand;
+import org.craftcore.stellaria.commands.RankingCommand;
 import org.craftcore.stellaria.commands.ReloadCommand;
+import org.craftcore.stellaria.commands.ScoreboardCommand;
+import org.craftcore.stellaria.commands.SeenCommand;
 import org.craftcore.stellaria.commands.tpa.TpaCore;
 import org.craftcore.stellaria.managers.*;
 import org.craftcore.stellaria.gui.GuiListener;
@@ -56,6 +61,8 @@ public class StellariaCore extends JavaPlugin {
     private MuteManager muteManager;
     private PrivateMessageManager privateMessageManager;
     private ActionBarManager actionBarManager;
+    private PlaytimeManager playtimeManager;
+    private RankManager rankManager;
 
     @Override
     public void onEnable() {
@@ -80,8 +87,15 @@ public class StellariaCore extends JavaPlugin {
             "muted_by TEXT",
             "muted_at INTEGER"
         );
+        DatabaseManager.createTableIfNotExists("player_stats",
+            "uuid TEXT PRIMARY KEY",
+            "last_login INTEGER DEFAULT 0",
+            "playtime_seconds INTEGER DEFAULT 0"
+        );
 
         this.afkManager = new AfkManager(this);
+        this.playtimeManager = new PlaytimeManager(this);
+        this.rankManager = new RankManager(this);
 
         this.muteManager = new MuteManager(this);
         muteManager.loadAll();
@@ -144,6 +158,7 @@ public class StellariaCore extends JavaPlugin {
         );
         this.tabListManager = new TabListManager(
             placeholderManager,
+            rankManager,
             configManager.getString("tablist.header", ""),
             configManager.getString("tablist.footer", ""),
             configManager.getString("tablist.value", "")
@@ -224,6 +239,24 @@ public class StellariaCore extends JavaPlugin {
 
         getCommand("colors").setExecutor(new ColorsCommand(this));
 
+        getCommand("discord").setExecutor(new DiscordCommand(this));
+
+        PlaytimeCommand playtimeCommand = new PlaytimeCommand(this);
+        getCommand("playtime").setExecutor(playtimeCommand);
+        getCommand("playtime").setTabCompleter(playtimeCommand);
+
+        SeenCommand seenCommand = new SeenCommand(this);
+        getCommand("seen").setExecutor(seenCommand);
+        getCommand("seen").setTabCompleter(seenCommand);
+
+        RankingCommand rankingCommand = new RankingCommand(this);
+        getCommand("ranking").setExecutor(rankingCommand);
+        getCommand("ranking").setTabCompleter(rankingCommand);
+
+        ScoreboardCommand scoreboardCommand = new ScoreboardCommand(this);
+        getCommand("scoreboard").setExecutor(scoreboardCommand);
+        getCommand("scoreboard").setTabCompleter(scoreboardCommand);
+
         this.autoBroadcastManager = new AutoBroadcastManager(this);
         autoBroadcastManager.start();
 
@@ -281,6 +314,14 @@ public class StellariaCore extends JavaPlugin {
         return this.actionBarManager;
     }
 
+    public PlaytimeManager getPlaytimeManager() {
+        return this.playtimeManager;
+    }
+
+    public RankManager getRankManager() {
+        return this.rankManager;
+    }
+
     /**
      * config.yml の scoreboard/tablist/belowname 設定を読み直して各Managerに反映する。
      * ConfigManager#reload() で config.yml 自体を読み直した後に呼ぶ想定（ReloadCommand参照）。
@@ -301,5 +342,6 @@ public class StellariaCore extends JavaPlugin {
             configManager.getString("belowname.value", "%health%")
         );
         autoBroadcastManager.restart();
+        rankManager.reload();
     }
 }
