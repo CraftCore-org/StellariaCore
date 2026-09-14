@@ -50,7 +50,7 @@ public class ElevatorManager {
         if (max == 0) return;
         Block checkBlock = elevatorBlock;
         if (!isMoveable(checkBlock)) {
-            Component message = Component.text(FormatUtil.color(plugin.getConfigManager().getString("elevator.message.moveup_fail","")));
+            Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.moveup_fail",""));
             player.sendActionBar(message);
             return;
         }
@@ -60,7 +60,7 @@ public class ElevatorManager {
                 if (!isMoveable(checkBlock)) { break; }
                 Location location = new Location(player.getWorld(),player.getX(),checkBlock.getY() + 1,player.getZ(),player.getYaw(),player.getPitch());
                 player.teleport(location);
-                Component message = Component.text(FormatUtil.color(plugin.getConfigManager().getString("elevator.message.moveup_success","")));
+                Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.moveup_success",""));
                 player.sendActionBar(message);
                 String soundName = plugin.getConfigManager().getString("elevator.sound.moveup.name", "BLOCK_PISTON_EXTEND");
                 Sound sound;
@@ -76,7 +76,7 @@ public class ElevatorManager {
                 return;
             }
         }
-        Component message = Component.text(FormatUtil.color(plugin.getConfigManager().getString("elevator.message.moveup_fail","")));
+        Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.moveup_fail",""));
         player.sendActionBar(message);
     }
 
@@ -87,7 +87,7 @@ public class ElevatorManager {
         if (max == 0) return;
         Block checkBlock = elevatorBlock;
         if (!isMoveable(checkBlock)) {
-            Component message = Component.text(FormatUtil.color(plugin.getConfigManager().getString("elevator.message.movedown_fail","")));
+            Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.movedown_fail",""));
             player.sendActionBar(message);
             return;
         }
@@ -97,7 +97,7 @@ public class ElevatorManager {
                 if (!isMoveable(checkBlock)) { break; }
                 Location location = new Location(player.getWorld(),player.getX(),checkBlock.getY() + 1,player.getZ(),player.getYaw(),player.getPitch());
                 player.teleport(location);
-                Component message = Component.text(FormatUtil.color(plugin.getConfigManager().getString("elevator.message.movedown_success","")));
+                Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.movedown_success",""));
                 player.sendActionBar(message);
                 String soundName = plugin.getConfigManager().getString("elevator.sound.movedown.name", "BLOCK_PISTON_EXTEND");
                 Sound sound;
@@ -113,7 +113,7 @@ public class ElevatorManager {
                 return;
             }
         }
-        Component message = Component.text(FormatUtil.color(plugin.getConfigManager().getString("elevator.message.movedown_fail","")));
+        Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.movedown_fail",""));
         player.sendActionBar(message);
 
     }

@@ -65,9 +65,9 @@ public class EconomyManager extends AbstractEconomy {
     public double getBalance(OfflinePlayer player) {
         if (player == null) return 0;
         String uuid = player.getUniqueId().toString();
-        Integer coins = DatabaseManager.queryOne(
+        Long coins = DatabaseManager.queryOne(
             "SELECT coins FROM players WHERE uuid = ?",
-            rs -> rs.getInt("coins"),
+            rs -> rs.getLong("coins"),
             uuid
         );
         return (coins != null) ? coins : 0;
@@ -126,7 +126,7 @@ public class EconomyManager extends AbstractEconomy {
             return new EconomyResponse(0, current, EconomyResponse.ResponseType.FAILURE, "残高が足りません");
         }
 
-        int newBalance = (int) (current - amount);
+        long newBalance = (long) (current - amount);
         DatabaseManager.updateAsync("players", java.util.Map.of("coins", newBalance), "uuid = ?", player.getUniqueId().toString());
 
         return new EconomyResponse(amount, newBalance, EconomyResponse.ResponseType.SUCCESS, null);
@@ -161,7 +161,7 @@ public class EconomyManager extends AbstractEconomy {
         }
 
         double current = getBalance(player);
-        int newBalance = (int) (current + amount);
+        long newBalance = (long) (current + amount);
         DatabaseManager.updateAsync("players", java.util.Map.of("coins", newBalance), "uuid = ?", player.getUniqueId().toString());
 
         return new EconomyResponse(amount, newBalance, EconomyResponse.ResponseType.SUCCESS, null);
@@ -191,7 +191,7 @@ public class EconomyManager extends AbstractEconomy {
         if (player == null || amount < 0) {
             return false;
         }
-        int newBalance = (int) amount;
+        long newBalance = (long) amount;
         DatabaseManager.updateAsync("players", java.util.Map.of("coins", newBalance), "uuid = ?", player.getUniqueId().toString());
         return true;
     }
@@ -208,8 +208,8 @@ public class EconomyManager extends AbstractEconomy {
         if (currentFrom < amount) {
             return false;
         }
-        int newFromBalance = (int) (currentFrom - amount);
-        int newToBalance = (int) (getBalance(to) + amount);
+        long newFromBalance = (long) (currentFrom - amount);
+        long newToBalance = (long) (getBalance(to) + amount);
         DatabaseManager.transaction(conn -> {
             DatabaseManager.execute("UPDATE players SET coins = ? WHERE uuid = ?", newFromBalance, from.getUniqueId().toString());
             DatabaseManager.execute("UPDATE players SET coins = ? WHERE uuid = ?", newToBalance, to.getUniqueId().toString());
@@ -218,14 +218,14 @@ public class EconomyManager extends AbstractEconomy {
     }
 
     /** /balance top のランキング1行分。 */
-    public record BalanceEntry(String name, int coins) {
+    public record BalanceEntry(String name, long coins) {
     }
 
     /** 残高降順で limit 件、offset 件スキップして取得する（/balance top のページング用）。 */
     public List<BalanceEntry> getTopBalances(int limit, int offset) {
         return DatabaseManager.query(
             "SELECT name, coins FROM players ORDER BY coins DESC LIMIT ? OFFSET ?",
-            rs -> new BalanceEntry(rs.getString("name"), rs.getInt("coins")),
+            rs -> new BalanceEntry(rs.getString("name"), rs.getLong("coins")),
             limit, offset
         );
     }

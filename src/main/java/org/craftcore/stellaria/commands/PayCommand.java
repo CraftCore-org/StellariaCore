@@ -49,9 +49,9 @@ public class PayCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        int amount;
+        long amount;
         try {
-            amount = Integer.parseInt(args[1]);
+            amount = Long.parseLong(args[1]);
             if (amount <= 0) {
                 throw new NumberFormatException();
             }

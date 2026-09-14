@@ -48,9 +48,9 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        int amount;
+        long amount;
         try {
-            amount = Integer.parseInt(args[2]);
+            amount = Long.parseLong(args[2]);
             boolean valid = subCommand.equals("set") ? amount >= 0 : amount > 0;
             if (!valid) {
                 throw new NumberFormatException();
@@ -82,7 +82,7 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    private void notify(CommandSender sender, OfflinePlayer target, String senderKey, String receiverKey, int amount) {
+    private void notify(CommandSender sender, OfflinePlayer target, String senderKey, String receiverKey, long amount) {
         String amountText = plugin.getEconomyManager().format(amount);
         sender.sendMessage(plugin.getConfigManager().getMessage(senderKey, target)
                 .replace("%amount%", amountText));
