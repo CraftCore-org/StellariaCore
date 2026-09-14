@@ -157,6 +157,7 @@ public class StellariaCore extends JavaPlugin {
         );
         this.tabListManager = new TabListManager(
             placeholderManager,
+            rankManager,
             configManager.getString("tablist.header", ""),
             configManager.getString("tablist.footer", ""),
             configManager.getString("tablist.value", "")
