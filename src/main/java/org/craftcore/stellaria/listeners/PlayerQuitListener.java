@@ -26,6 +26,7 @@ public class PlayerQuitListener implements Listener {
         }
 
         plugin.getPlaytimeManager().onQuit(player);
+        plugin.getScoreboardManager().forget(player);
     }
 }
 

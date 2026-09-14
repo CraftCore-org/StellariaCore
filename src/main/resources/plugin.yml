@@ -37,6 +37,8 @@ commands:
   seen:
   ranking:
     aliases: [rank]
+  scoreboard:
+    aliases: [sb]
 
 permissions:
   stellaria.msg:
@@ -50,4 +52,6 @@ permissions:
   stellaria.seen:
     default: true
   stellaria.ranking:
+    default: true
+  stellaria.scoreboard:
     default: true

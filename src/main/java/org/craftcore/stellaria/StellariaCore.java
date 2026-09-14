@@ -16,6 +16,7 @@ import org.craftcore.stellaria.commands.PayCommand;
 import org.craftcore.stellaria.commands.PlaytimeCommand;
 import org.craftcore.stellaria.commands.RankingCommand;
 import org.craftcore.stellaria.commands.ReloadCommand;
+import org.craftcore.stellaria.commands.ScoreboardCommand;
 import org.craftcore.stellaria.commands.SeenCommand;
 import org.craftcore.stellaria.commands.tpa.TpaCore;
 import org.craftcore.stellaria.managers.*;
@@ -251,6 +252,10 @@ public class StellariaCore extends JavaPlugin {
         RankingCommand rankingCommand = new RankingCommand(this);
         getCommand("ranking").setExecutor(rankingCommand);
         getCommand("ranking").setTabCompleter(rankingCommand);
+
+        ScoreboardCommand scoreboardCommand = new ScoreboardCommand(this);
+        getCommand("scoreboard").setExecutor(scoreboardCommand);
+        getCommand("scoreboard").setTabCompleter(scoreboardCommand);
 
         this.autoBroadcastManager = new AutoBroadcastManager(this);
         autoBroadcastManager.start();

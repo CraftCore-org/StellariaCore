@@ -43,9 +43,9 @@ tpa:
 afk:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   no_permission: "&%cこのコマンドを実行する権限がありません。"
-  became: "&%e%player% &%7が離席中になりました。"
-  returned: "&%e%player% &%7が離席中から復帰しました。"
-  became_actionbar: "&%e離席中です"
+  became: "&%e%player% &%7が&%c離席中&%7になりました。"
+  returned: "&%e%player% &%7が&%c離席中&%7から復帰しました。"
+  became_actionbar: "&%e&%c離席中&%7です"
   returned_actionbar: "&%aおかえりなさい"
 
 heal:
@@ -98,7 +98,7 @@ msg:
 
 chat:
   click_hint: "&%7クリックでメッセージを送信"
-  url_hint: "&%7クリックで開く: &%f%url%"
+  url_hint: "&%7クリックで開く&%7: &%b%url%"
 
 mention:
   click_hint: "&%7クリックで%player%にメッセージを送信"
@@ -177,3 +177,10 @@ ranking:
   prev_arrow_disabled: "&%8◀"
   next_arrow_disabled: "&%8▶"
   page_indicator: "&%7%page%&%8/&%7%max_page%"
+
+scoreboard:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  usage: "&%c使用方法: /scoreboard [show|hide]"
+  hidden: "&%7スコアボードを非表示にしました。"
+  shown: "&%aスコアボードを表示しました。"
