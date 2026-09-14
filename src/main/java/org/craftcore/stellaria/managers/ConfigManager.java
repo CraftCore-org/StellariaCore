@@ -103,4 +103,12 @@ public final class ConfigManager {
     public String getMessage(String path, OfflinePlayer placeholderPlayer) {
         return FormatUtil.text(placeholderPlayer, get("messages.yml").get().getString(path, ""));
     }
+
+    /**
+     * messages.yml の文字列リストを未加工のまま取得する（例: tpa.tpa_accept_tooltip）。
+     * プレースホルダー解決・色変換は呼び出し側で {@code PlaceholderManager#resolveLines} を使うこと。
+     */
+    public List<String> getMessageList(String path) {
+        return get("messages.yml").get().getStringList(path);
+    }
 }

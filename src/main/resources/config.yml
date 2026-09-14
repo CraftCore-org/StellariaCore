@@ -36,6 +36,11 @@ chat:
   color-codes:
     enabled: true
     permission: "stellaria.chat.color"
+  tooltip:
+    enabled: true
+    lines:
+      - "&%7Ping: &%f%ping%ms"
+      - "&%7所持金: &%e%money%"
 
 mention:
   enabled: true
