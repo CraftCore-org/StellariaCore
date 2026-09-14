@@ -57,3 +57,43 @@ broadcast:
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   format: "&%6&l[お知らせ] &r%message%"
   usage: "&%c使用方法: /broadcast <メッセージ>"
+
+mute:
+  usage: "&%c使用方法: /mute <プレイヤー> <レベル1-3> <期間 10m|1h|3d|perm> <理由>"
+  help:
+    - "&%e&l| &%7ミュートのレベル一覧:"
+    - "&%7Lv1: &%f公開チャット送信禁止"
+    - "&%7Lv2: &%fLv1 + PM送信禁止"
+    - "&%7Lv3: &%fLv2 + 一部コマンド実行禁止"
+  invalid_level: "&%cレベルは1〜3で指定してください。"
+  invalid_duration: "&%c期間の指定が正しくありません。例: 10m, 1h, 3d, perm"
+  player_not_found: "&%c%player% &%7はオフラインまたは存在しません。"
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  muted_target: "&%cあなたはミュートされました。（レベル%level%、理由: %reason%、期限: %expires%）"
+  muted_sender: "&%a%player% &%7をミュートしました。（レベル%level%、期限: %expires%）"
+  muted_staff: "&%7[ミュート] &%f%moderator% &%7が &%f%player% &%7をミュートしました。（レベル%level%、理由: %reason%）"
+  not_muted: "&%c%player% &%7はミュートされていません。"
+  unmuted_target: "&%aミュートが解除されました。"
+  unmuted_sender: "&%a%player% &%7のミュートを解除しました。"
+  unmuted_staff: "&%7[ミュート解除] &%f%moderator% &%7が &%f%player% &%7のミュートを解除しました。"
+  blocked_chat: "&%cミュート中のため発言できません。（残り: %remaining%、理由: %reason%）"
+  blocked_pm: "&%cミュート中のためメッセージを送信できません。（残り: %remaining%、理由: %reason%）"
+  blocked_command: "&%cミュート中のためこのコマンドは使用できません。（残り: %remaining%、理由: %reason%）"
+
+msg:
+  usage: "&%c使用方法: /msg <プレイヤー> <メッセージ>"
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  self: "&%c自分自身にメッセージを送ることはできません。"
+  player_not_found: "&%c%player% &%7はオンラインではありません。"
+  reply_no_target: "&%c返信できる相手がいません。"
+  format_sender: "&%d[あなた -> %target%] &f%message%"
+  format_receiver: "&%d[%sender% -> あなた] &f%message%"
+  click_hint: "&%7クリックで返信"
+
+chat:
+  click_hint: "&%7クリックでメッセージを送信"
+
+mention:
+  click_hint: "&%7クリックで%player%にメッセージを送信"

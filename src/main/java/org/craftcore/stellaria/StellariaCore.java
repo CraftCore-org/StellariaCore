@@ -56,6 +56,14 @@ public class StellariaCore extends JavaPlugin {
             "name TEXT",
             "coins INTEGER DEFAULT 0"
         );
+        DatabaseManager.createTableIfNotExists("mutes",
+            "uuid TEXT PRIMARY KEY",
+            "level INTEGER",
+            "expires_at INTEGER",
+            "reason TEXT",
+            "muted_by TEXT",
+            "muted_at INTEGER"
+        );
 
         this.afkManager = new AfkManager(this);
 
