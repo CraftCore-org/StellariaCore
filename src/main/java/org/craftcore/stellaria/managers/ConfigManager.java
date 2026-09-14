@@ -86,6 +86,14 @@ public final class ConfigManager {
     }
 
     /**
+     * config.yml のマップリスト設定を取得する（例: rank.groups のような、複数キーを持つ
+     * オブジェクトのリスト）。存在しない場合は空リスト。
+     */
+    public List<Map<?, ?>> getMapList(String path) {
+        return get("config.yml").get().getMapList(path);
+    }
+
+    /**
      * config.yml の小数設定を取得する（例: mention.sound.volume）。存在しない場合は def を返す。
      */
     public double getDouble(String path, double def) {

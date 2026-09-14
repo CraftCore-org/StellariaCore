@@ -6,6 +6,24 @@ server:
 discord:
   invite: "https://discord.gg/xxxxx" # /discord で案内するサーバー招待リンク
 
+rank:
+  enabled: true
+  default:
+    color: "&%7"
+  groups: # 上に書いた方が優先。luckperms-group はLuckPerms側の実グループ名
+    - luckperms-group: "admin"
+      color: "&%e"
+      tablist-tag: "ᴀᴅᴍɪɴ"
+      display-name: "管理者"
+    - luckperms-group: "mod"
+      color: "&%b"
+      tablist-tag: "sᴛᴀꜰꜰ"
+      display-name: "スタッフ"
+    - luckperms-group: "booster"
+      color: "&%d"
+      tablist-tag: "ʙᴏᴏsᴛᴇʀ"
+      display-name: "ブースター"
+
 economy:
   default-balance: 1000 # 新規プレイヤーの初期所持金
 
@@ -59,7 +77,7 @@ afk:
 
 chat:
   enabled: true
-  format: "{placeholder}{sender}&%7: &%f{message}"
+  format: "{placeholder}{sender}&%9: &%f{message}"
   placeholder: ""
   click-to-message: true
   color-codes:
