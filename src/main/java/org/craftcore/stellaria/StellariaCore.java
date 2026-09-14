@@ -61,7 +61,7 @@ public class StellariaCore extends JavaPlugin {
         // getServer().getPluginManager().registerEvents(new PlayerListener(), this);
         getServer().getPluginManager().registerEvents(new PlayerListener(), this);
 
-        TpaCore tpaCore = new TpaCore();
+        TpaCore tpaCore = new TpaCore(this);
 
         getCommand("tpa").setExecutor(tpaCore);
         getCommand("tpaccept").setExecutor(tpaCore);
