@@ -81,5 +81,10 @@ public class AfkManager {
         String path = afk ? "afk.became" : "afk.returned";
         String message = plugin.getConfigManager().getMessage(path, player);
         Bukkit.broadcast(ColorUtil.component(message));
+
+        String actionBarPath = afk ? "afk.became_actionbar" : "afk.returned_actionbar";
+        String actionBarMessage = plugin.getConfigManager().getMessage(actionBarPath, player);
+        long durationTicks = plugin.getConfigManager().getInt("afk.actionbar-flash-seconds", 3) * 20L;
+        plugin.getActionBarManager().flash(player, "afk_flash", ColorUtil.component(actionBarMessage), durationTicks);
     }
 }
