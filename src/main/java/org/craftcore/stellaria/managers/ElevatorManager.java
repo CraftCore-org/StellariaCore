@@ -16,7 +16,6 @@ import java.util.List;
 public class ElevatorManager {
 
     private final StellariaCore plugin;
-
     public ElevatorManager(StellariaCore plugin) { this.plugin = plugin; }
 
     private boolean isMoveable(Block block){
