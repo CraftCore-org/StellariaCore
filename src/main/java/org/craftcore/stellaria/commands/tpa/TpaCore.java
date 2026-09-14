@@ -4,13 +4,18 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import org.bukkit.Bukkit;
+import org.bukkit.Color;
+import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.utils.ColorUtil;
+import org.craftcore.stellaria.utils.ParticleUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -38,8 +43,28 @@ public class TpaCore implements CommandExecutor {
      */
     private Component button(String text, String command, String tooltipPath, Player viewer) {
         Component tooltip = plugin.getPlaceholderManager().resolveLines(plugin.getConfigManager().getMessageList(tooltipPath), viewer);
-        Component btn = Component.text(text).clickEvent(ClickEvent.runCommand(command));
+        Component btn = ColorUtil.component(text).clickEvent(ClickEvent.runCommand(command));
         return tooltip != null ? btn.hoverEvent(HoverEvent.showText(tooltip)) : btn;
+    }
+
+    /**
+     * テレポート成功時、着地点に{@code config.yml}の{@code teleport-effect.*}で指定した円パーティクルを出す。
+     * {@code particle}が{@code DUST}の時だけ{@code color}/{@code size}を読んで色付きで描画する。
+     */
+    private void playTeleportEffect(Location location) {
+        if (!plugin.getConfigManager().getBoolean("teleport-effect.enabled", true)) return;
+
+        Particle particle = Particle.valueOf(plugin.getConfigManager().getString("teleport-effect.particle", "DUST"));
+        double radius = plugin.getConfigManager().getDouble("teleport-effect.radius", 1.0);
+        int points = plugin.getConfigManager().getInt("teleport-effect.points", 30);
+
+        if (particle == Particle.DUST) {
+            Color color = ParticleUtil.parseColor(plugin.getConfigManager().getString("teleport-effect.color", "#FFFFFF"));
+            float size = (float) plugin.getConfigManager().getDouble("teleport-effect.size", 1.0);
+            ParticleUtil.spawnCircle(location, radius, points, color, size);
+        } else {
+            ParticleUtil.spawnCircle(location, radius, points, particle);
+        }
     }
 
     @Override
@@ -96,6 +121,7 @@ public class TpaCore implements CommandExecutor {
                     sender.sendMessage(tpa_accept_receiver);
                     player.sendMessage(tpa_accept_sender);
                     player.teleport(((Player) sender).getLocation());
+                    playTeleportEffect(player.getLocation());
                     ((Player)sender).playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME,1,1);
                     player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME,1,1);
                     tpRequest.get(((Player) sender).getUniqueId()).remove(player.getUniqueId());
@@ -182,6 +208,7 @@ public class TpaCore implements CommandExecutor {
                     sender.sendMessage(tphere_accept_receiver);
                     player.sendMessage(tphere_accept_sender);
                     ((Player)sender).teleport(player.getLocation());
+                    playTeleportEffect(player.getLocation());
                     ((Player)sender).playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME,1,1);
                     player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME,1,1);
                     tpHere.get(((Player) sender).getUniqueId()).remove(player.getUniqueId());

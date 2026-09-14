@@ -42,6 +42,14 @@ chat:
       - "&%7Ping: &%f%ping%ms"
       - "&%7所持金: &%e%money%"
 
+teleport-effect:
+  enabled: true
+  particle: "DUST" # Bukkitの Particle enum名。DUSTの時だけ color/size が使われる
+  color: "#55FFFF"
+  size: 1.0
+  radius: 1.0
+  points: 30
+
 mention:
   enabled: true
   format: "&%6[&%e@{name}&%6]&r"
