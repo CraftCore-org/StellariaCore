@@ -81,7 +81,7 @@ public class StellariaCore extends JavaPlugin {
 
         // Register listeners
         // getServer().getPluginManager().registerEvents(new PlayerListener(), this);
-        getServer().getPluginManager().registerEvents(new PlayerListener(), this);
+        getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
 
         // 6. Scoreboard/Tablist/Belowname のインスタンス化とtick開始
         this.placeholderManager = new PlaceholderManager(this);
