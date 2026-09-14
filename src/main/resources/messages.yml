@@ -31,3 +31,22 @@ tpa:
   tphere_err_online: "&%c&l| &%7指定されたプレイヤーはオンラインではありません。"
   tphere_err_notreceived: "&%c&l| &%7指定されたプレイヤーから&%d呼び出し&%7リクエストは届いていません。"
   tphere_err_self: "&%c&l| &%7自分自身に&%d呼び出し&%7リクエストを送ることはできません。"
+
+afk:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  became: "&%e%player% &%7がAFK（離席中）になりました。"
+  returned: "&%e%player% &%7がAFKから復帰しました。"
+
+heal:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  self: "&%a体力と満腹度を回復しました。"
+  other_sender: "&%a%player% &%7の体力と満腹度を回復しました。"
+  other_receiver: "&%a体力と満腹度が回復されました。"
+  player_not_found: "&%c%player% &%7はオンラインではありません。"
+
+broadcast:
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  format: "&%6&l[お知らせ] &r%message%"
+  usage: "&%c使用方法: /broadcast <メッセージ>"

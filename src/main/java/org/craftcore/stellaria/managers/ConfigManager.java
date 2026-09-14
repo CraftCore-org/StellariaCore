@@ -105,6 +105,15 @@ public final class ConfigManager {
     }
 
     /**
+     * messages.yml の文字列を未加工のまま取得する（%player%/PAPI/色変換をしない）。
+     * BroadcastCommand が %message% の位置にColorEventを持つComponentを差し込むために使う。
+     * 単に送信するだけなら {@link #getMessage(String, OfflinePlayer)} を使うこと。
+     */
+    public String getRawMessage(String path) {
+        return get("messages.yml").get().getString(path, "");
+    }
+
+    /**
      * messages.yml の文字列リストを未加工のまま取得する（例: tpa.tpa_accept_tooltip）。
      * プレースホルダー解決・色変換は呼び出し側で {@code PlaceholderManager#resolveLines} を使うこと。
      */
