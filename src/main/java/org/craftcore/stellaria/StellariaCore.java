@@ -10,6 +10,7 @@ import org.craftcore.stellaria.commands.MessageCommand;
 import org.craftcore.stellaria.commands.MuteCommand;
 import org.craftcore.stellaria.commands.ReloadCommand;
 import org.craftcore.stellaria.commands.tpa.TpaCore;
+import org.craftcore.stellaria.gui.GuiListener;
 import org.craftcore.stellaria.managers.ActionBarManager;
 import org.craftcore.stellaria.managers.AfkManager;
 import org.craftcore.stellaria.managers.AutoBroadcastManager;
@@ -183,6 +184,7 @@ public class StellariaCore extends JavaPlugin {
         getCommand("mute").setExecutor(muteCommand);
         getCommand("unmute").setExecutor(muteCommand);
         getServer().getPluginManager().registerEvents(new MuteCommandBlockListener(this), this);
+        getServer().getPluginManager().registerEvents(new GuiListener(), this);
 
         MessageCommand messageCommand = new MessageCommand(this);
         getCommand("msg").setExecutor(messageCommand);
