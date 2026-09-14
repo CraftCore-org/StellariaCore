@@ -161,7 +161,7 @@ public class TpaCore implements CommandExecutor, Listener, TabCompleter {
                     "%seconds%", String.valueOf(remaining[0]));
             plugin.getActionBarManager().setChannel(freshMover, "tpa_countdown", ColorUtil.component(message));
             remaining[0]--;
-        }, () -> pendingCountdown.remove(moverId), 0L, 20L);
+        }, () -> pendingCountdown.remove(moverId), 1L, 20L);
 
         pendingCountdown.put(moverId, countdownTask);
     }
