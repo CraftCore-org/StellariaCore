@@ -114,6 +114,7 @@ public class MuteCommand implements CommandExecutor {
 
         String staffMessage = plugin.getConfigManager().getMessage("mute.muted_staff", target)
                 .replace("%moderator%", moderatorName)
+                .replace("%level%", String.valueOf(level))
                 .replace("%reason%", reason);
         broadcastToStaff(staffMessage, sender, target);
     }
