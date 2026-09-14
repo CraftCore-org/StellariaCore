@@ -15,3 +15,7 @@ commands:
   tphaccept:
   tphdeny:
   stellariareload:
+  afk:
+  heal:
+  broadcast:
+    aliases: [bc]

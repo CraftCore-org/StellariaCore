@@ -22,11 +22,11 @@ scoreboard:
 tablist:
   header: "\n&%d%player%さん\n&%5すてらりあへようこそ\n"
   footer: "\n&%5stellaria.craftcore.org\n     &%ddiscord.gg/ssaREjBJXg     \n"
-  value: "&%7%ping%ms"
+  value: "%afk%&%7%ping%ms"
   update-interval-ticks: 20
 
 belowname:
-  title: "&%c❤"
+  title: "%afk%&%c❤"
   update-interval-ticks: 20
 
 chat:
@@ -65,3 +65,14 @@ mention:
     name: "ENTITY_EXPERIENCE_ORB_PICKUP"
     volume: 1.0
     pitch: 1.0
+
+afk:
+  enabled: true
+  timeout-seconds: 300
+  tag: "&%7[AFK] &r"
+
+broadcast:
+  auto:
+    enabled: false
+    interval-minutes: 5
+    messages: []

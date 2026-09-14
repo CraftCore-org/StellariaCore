@@ -62,6 +62,7 @@ public class PlaceholderManager {
         double balance = plugin.getEconomyManager().getBalance(player);
 
         return template
+                .replace("%afk%", resolveAfkTag(player))
                 .replace("%online%", String.valueOf(Bukkit.getOnlinePlayers().size()))
                 .replace("%max_online%", String.valueOf(Bukkit.getMaxPlayers()))
                 .replace("%tps%", String.format(Locale.ROOT, "%.1f", Math.min(20.0, Bukkit.getTPS()[0])))
@@ -78,6 +79,13 @@ public class PlaceholderManager {
                 // マイクラのハート表示（10ハート=満タン）に合わせて、生のHP(0〜20)を2で割った値にする
                 .replace("%health%", trimTrailingZero(player.getHealth() / 2.0))
                 .replace("%max_health%", trimTrailingZero(player.getMaxHealth() / 2.0));
+    }
+
+    private String resolveAfkTag(Player player) {
+        if (!plugin.getAfkManager().isAfk(player.getUniqueId())) {
+            return "";
+        }
+        return plugin.getConfigManager().getString("afk.tag", "&%7[AFK] &r");
     }
 
     private String trimTrailingZero(double value) {

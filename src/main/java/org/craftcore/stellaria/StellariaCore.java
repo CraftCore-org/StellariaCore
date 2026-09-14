@@ -3,8 +3,13 @@ package org.craftcore.stellaria;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.craftcore.stellaria.commands.AfkCommand;
+import org.craftcore.stellaria.commands.BroadcastCommand;
+import org.craftcore.stellaria.commands.HealCommand;
 import org.craftcore.stellaria.commands.ReloadCommand;
 import org.craftcore.stellaria.commands.tpa.TpaCore;
+import org.craftcore.stellaria.managers.AfkManager;
+import org.craftcore.stellaria.managers.AutoBroadcastManager;
 import org.craftcore.stellaria.managers.BelownameManager;
 import org.craftcore.stellaria.managers.ConfigManager;
 import org.craftcore.stellaria.managers.EconomyManager;
@@ -33,6 +38,8 @@ public class StellariaCore extends JavaPlugin {
     private TabListManager tabListManager;
     private BelownameManager belownameManager;
     private MentionService mentionService;
+    private AfkManager afkManager;
+    private AutoBroadcastManager autoBroadcastManager;
 
     @Override
     public void onEnable() {
@@ -49,6 +56,8 @@ public class StellariaCore extends JavaPlugin {
             "name TEXT",
             "coins INTEGER DEFAULT 0"
         );
+
+        this.afkManager = new AfkManager(this);
 
         // 2. EconomyManager のインスタンス化
         this.economyManager = new EconomyManager(this);
@@ -77,7 +86,7 @@ public class StellariaCore extends JavaPlugin {
 
         // Register listeners
         // getServer().getPluginManager().registerEvents(new PlayerListener(), this);
-        getServer().getPluginManager().registerEvents(new PlayerListener(), this);
+        getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
 
         // 6. Scoreboard/Tablist/Belowname のインスタンス化とtick開始
         this.placeholderManager = new PlaceholderManager(this);
@@ -107,6 +116,10 @@ public class StellariaCore extends JavaPlugin {
         Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> tabListManager.tick(), tabListInterval, tabListInterval);
         Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> belownameManager.tick(), belownameInterval, belownameInterval);
 
+        if (configManager.getBoolean("afk.enabled", true)) {
+            Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> afkManager.tick(), 200L, 200L);
+        }
+
         // 7. チャットフォーマット・メンション
         this.mentionService = new MentionService(this);
         if (configManager.getBoolean("chat.enabled", true)) {
@@ -124,6 +137,13 @@ public class StellariaCore extends JavaPlugin {
         getCommand("tphdeny").setExecutor(tpaCore);
 
         getCommand("stellariareload").setExecutor(new ReloadCommand(this));
+
+        getCommand("afk").setExecutor(new AfkCommand(this));
+        getCommand("heal").setExecutor(new HealCommand(this));
+        getCommand("broadcast").setExecutor(new BroadcastCommand(this));
+
+        this.autoBroadcastManager = new AutoBroadcastManager(this);
+        autoBroadcastManager.start();
 
         ConsoleUtil.printLogo(getPluginMeta().getVersion());
     }
@@ -163,6 +183,10 @@ public class StellariaCore extends JavaPlugin {
         return this.mentionService;
     }
 
+    public AfkManager getAfkManager() {
+        return this.afkManager;
+    }
+
     /**
      * config.yml の scoreboard/tablist/belowname 設定を読み直して各Managerに反映する。
      * ConfigManager#reload() で config.yml 自体を読み直した後に呼ぶ想定（ReloadCommand参照）。
@@ -179,5 +203,6 @@ public class StellariaCore extends JavaPlugin {
             configManager.getString("tablist.value", "")
         );
         belownameManager.updateSettings(configManager.getString("belowname.title", ""));
+        autoBroadcastManager.restart();
     }
 }
