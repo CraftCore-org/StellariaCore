@@ -14,6 +14,7 @@ import org.craftcore.stellaria.managers.BelownameManager;
 import org.craftcore.stellaria.managers.ConfigManager;
 import org.craftcore.stellaria.managers.EconomyManager;
 import org.craftcore.stellaria.managers.MentionService;
+import org.craftcore.stellaria.managers.MuteManager;
 import org.craftcore.stellaria.managers.PlaceholderManager;
 import org.craftcore.stellaria.managers.ScoreboardManager;
 import org.craftcore.stellaria.managers.TabListManager;
@@ -40,6 +41,7 @@ public class StellariaCore extends JavaPlugin {
     private MentionService mentionService;
     private AfkManager afkManager;
     private AutoBroadcastManager autoBroadcastManager;
+    private MuteManager muteManager;
 
     @Override
     public void onEnable() {
@@ -66,6 +68,9 @@ public class StellariaCore extends JavaPlugin {
         );
 
         this.afkManager = new AfkManager(this);
+
+        this.muteManager = new MuteManager(this);
+        muteManager.loadAll();
 
         // 2. EconomyManager のインスタンス化
         this.economyManager = new EconomyManager(this);
@@ -193,6 +198,10 @@ public class StellariaCore extends JavaPlugin {
 
     public AfkManager getAfkManager() {
         return this.afkManager;
+    }
+
+    public MuteManager getMuteManager() {
+        return this.muteManager;
     }
 
     /**
