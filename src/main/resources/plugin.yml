@@ -43,6 +43,10 @@ commands:
   home:
   delhome:
   homes:
+  setwarp:
+  warp:
+  delwarp:
+  warps:
 
 permissions:
   stellaria.msg:
@@ -60,4 +64,6 @@ permissions:
   stellaria.scoreboard:
     default: true
   stellaria.home:
+    default: true
+  stellaria.warp:
     default: true

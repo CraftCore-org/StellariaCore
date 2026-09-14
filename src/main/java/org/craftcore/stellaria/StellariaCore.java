@@ -20,6 +20,7 @@ import org.craftcore.stellaria.commands.ScoreboardCommand;
 import org.craftcore.stellaria.commands.SeenCommand;
 import org.craftcore.stellaria.commands.tpa.TpaCore;
 import org.craftcore.stellaria.commands.HomeCommand;
+import org.craftcore.stellaria.commands.WarpCommand;
 import org.craftcore.stellaria.managers.*;
 import org.craftcore.stellaria.gui.GuiListener;
 import org.craftcore.stellaria.managers.ActionBarManager;
@@ -65,6 +66,7 @@ public class StellariaCore extends JavaPlugin {
     private PlaytimeManager playtimeManager;
     private RankManager rankManager;
     private HomeManager homeManager;
+    private WarpManager warpManager;
 
     @Override
     public void onEnable() {
@@ -104,10 +106,19 @@ public class StellariaCore extends JavaPlugin {
             "PRIMARY KEY (uuid, name)"
         );
 
+        DatabaseManager.createTableIfNotExists("warps",
+            "name TEXT PRIMARY KEY",
+            "owner_uuid TEXT",
+            "world TEXT",
+            "x REAL", "y REAL", "z REAL",
+            "yaw REAL", "pitch REAL"
+        );
+
         this.afkManager = new AfkManager(this);
         this.playtimeManager = new PlaytimeManager(this);
         this.rankManager = new RankManager(this);
         this.homeManager = new HomeManager(this);
+        this.warpManager = new WarpManager(this);
 
         this.muteManager = new MuteManager(this);
         muteManager.loadAll();
@@ -275,6 +286,12 @@ public class StellariaCore extends JavaPlugin {
             getCommand(homeCmd).setTabCompleter(homeCommand);
         }
 
+        WarpCommand warpCommand = new WarpCommand(this);
+        for (String warpCmd : new String[]{"setwarp", "warp", "delwarp", "warps"}) {
+            getCommand(warpCmd).setExecutor(warpCommand);
+            getCommand(warpCmd).setTabCompleter(warpCommand);
+        }
+
         this.autoBroadcastManager = new AutoBroadcastManager(this);
         autoBroadcastManager.start();
 
@@ -342,6 +359,10 @@ public class StellariaCore extends JavaPlugin {
 
     public HomeManager getHomeManager() {
         return this.homeManager;
+    }
+
+    public WarpManager getWarpManager() {
+        return this.warpManager;
     }
 
     /**
