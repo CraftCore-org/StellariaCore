@@ -1,6 +1,8 @@
 package org.craftcore.stellaria.commands;
 
+import org.bukkit.Color;
 import org.bukkit.Location;
+import org.bukkit.Particle;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -9,6 +11,7 @@ import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.managers.HomeManager;
 import org.craftcore.stellaria.utils.FormatUtil;
+import org.craftcore.stellaria.utils.ParticleUtil;
 import org.craftcore.stellaria.utils.TabCompleteUtil;
 import org.craftcore.stellaria.utils.TeleportSafetyUtil;
 import org.jetbrains.annotations.NotNull;
@@ -87,8 +90,30 @@ public class HomeCommand implements CommandExecutor, TabCompleter {
             return;
         }
         TeleportSafetyUtil.Result result = TeleportSafetyUtil.attempt(player, destination, PENDING_CONFIRM);
-        if (result == TeleportSafetyUtil.Result.WARNED) {
+        if (result == TeleportSafetyUtil.Result.TELEPORTED) {
+            playTeleportEffect(destination);
+        } else {
             player.sendMessage(plugin.getConfigManager().getMessage("home.unsafe_warning", player));
+        }
+    }
+
+    /**
+     * テレポート成功時、着地点に config.yml の home.teleport-effect.* で指定した円パーティクルを出す。
+     * TpaCore#playTeleportEffect と同じロジックを home 専用の色（デフォルトはオレンジ）で使う。
+     */
+    private void playTeleportEffect(Location location) {
+        if (!plugin.getConfigManager().getBoolean("home.teleport-effect.enabled", true)) return;
+
+        Particle particle = Particle.valueOf(plugin.getConfigManager().getString("home.teleport-effect.particle", "DUST"));
+        double radius = plugin.getConfigManager().getDouble("home.teleport-effect.radius", 1.0);
+        int points = plugin.getConfigManager().getInt("home.teleport-effect.points", 30);
+
+        if (particle == Particle.DUST) {
+            Color color = ParticleUtil.parseColor(plugin.getConfigManager().getString("home.teleport-effect.color", "#FFAA00"));
+            float size = (float) plugin.getConfigManager().getDouble("home.teleport-effect.size", 1.0);
+            ParticleUtil.spawnCircle(location, radius, points, color, size);
+        } else {
+            ParticleUtil.spawnCircle(location, radius, points, particle);
         }
     }
 

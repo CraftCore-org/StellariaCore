@@ -30,10 +30,24 @@ economy:
 home:
   max-per-player: 5
   cost: 0 # /sethome 1回あたりの消費コイン数（0なら無料）
+  teleport-effect:
+    enabled: true
+    particle: "DUST" # Bukkitの Particle enum名。DUSTの時だけ color/size が使われる
+    color: "#FFAA00" # オレンジ
+    size: 1.0
+    radius: 1.0
+    points: 30
 
 warp:
   max-per-player: 5
   cost: 0 # /setwarp 1回あたりの消費コイン数（0なら無料）
+  teleport-effect:
+    enabled: true
+    particle: "DUST" # Bukkitの Particle enum名。DUSTの時だけ color/size が使われる
+    color: "#55FF55" # グリーン
+    size: 1.0
+    radius: 1.0
+    points: 30
 
 ranking:
   page-size: 10
