@@ -1,0 +1,63 @@
+package org.craftcore.stellaria.utils;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * "10m"/"1h"/"3d"/"perm" のような相対時間文字列をパースするユーティリティ。
+ * ミュートコマンドの期限指定・残り時間表示で使う。単位の複合指定（"1h30m"等）は非対応。
+ */
+public final class DurationParser {
+
+    private static final Pattern PATTERN = Pattern.compile("^(\\d+)([smhd])$", Pattern.CASE_INSENSITIVE);
+
+    private DurationParser() {
+    }
+
+    /**
+     * 期間文字列を秒数に変換する。"perm"/"permanent" は永久を表す -1 を返す。
+     *
+     * @throws IllegalArgumentException 形式が不正な場合
+     */
+    public static long parseSeconds(String input) {
+        if (input == null) {
+            throw new IllegalArgumentException("期間が指定されていません");
+        }
+        String trimmed = input.trim();
+        if (trimmed.equalsIgnoreCase("perm") || trimmed.equalsIgnoreCase("permanent")) {
+            return -1;
+        }
+        Matcher matcher = PATTERN.matcher(trimmed);
+        if (!matcher.matches()) {
+            throw new IllegalArgumentException("期間の形式が不正です: " + input);
+        }
+        long value = Long.parseLong(matcher.group(1));
+        return switch (matcher.group(2).toLowerCase()) {
+            case "s" -> value;
+            case "m" -> value * 60;
+            case "h" -> value * 3600;
+            case "d" -> value * 86400;
+            default -> throw new IllegalArgumentException("期間の形式が不正です: " + input);
+        };
+    }
+
+    /**
+     * 有効期限（epoch millis、永久は負の値）から、現在時刻までの残り時間を最大の単位1つで整形する。
+     * 例: "3日" "5時間" "12分" "45秒"。既に期限切れなら "0秒"。
+     */
+    public static String formatRemaining(long expiresAtMillis) {
+        if (expiresAtMillis < 0) {
+            return "永久";
+        }
+        long remainingSeconds = Math.max(0, (expiresAtMillis - System.currentTimeMillis()) / 1000L);
+        if (remainingSeconds >= 86400) {
+            return (remainingSeconds / 86400) + "日";
+        } else if (remainingSeconds >= 3600) {
+            return (remainingSeconds / 3600) + "時間";
+        } else if (remainingSeconds >= 60) {
+            return (remainingSeconds / 60) + "分";
+        } else {
+            return remainingSeconds + "秒";
+        }
+    }
+}

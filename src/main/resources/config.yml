@@ -33,6 +33,7 @@ chat:
   enabled: true
   format: "{placeholder}{sender}&%7: &%f{message}"
   placeholder: ""
+  click-to-message: true
   color-codes:
     enabled: true
     permission: "stellaria.chat.color"
@@ -76,3 +77,24 @@ broadcast:
     enabled: false
     interval-minutes: 5
     messages: []
+
+mute:
+  level3-command-blacklist:
+    - "msg"
+    - "tell"
+    - "w"
+    - "message"
+    - "reply"
+    - "r"
+    - "mute"
+    - "unmute"
+
+message:
+  color-codes:
+    enabled: true
+    permission: "stellaria.chat.color"
+  sound:
+    enabled: true
+    name: "ENTITY_EXPERIENCE_ORB_PICKUP"
+    volume: 1.0
+    pitch: 1.0

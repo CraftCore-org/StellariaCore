@@ -19,3 +19,13 @@ commands:
   heal:
   broadcast:
     aliases: [bc]
+  msg:
+    aliases: [tell, w, message]
+  reply:
+    aliases: [r]
+  mute:
+  unmute:
+
+permissions:
+  stellaria.msg:
+    default: true
