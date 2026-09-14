@@ -1,0 +1,95 @@
+package org.craftcore.stellaria.managers;
+
+import net.kyori.adventure.text.Component;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.utils.ColorUtil;
+
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * 複数の機能が同時にアクションバー表示を要求しても、1行に連結して共存表示するためのマネージャー。
+ * プレイヤーごとに「チャンネルID -> 表示内容」を保持し（{@link LinkedHashMap} なので挿入順=表示順、
+ * 既存キーの更新は順序を変えない）、{@link #tick()} のたびに期限切れチャンネルを削除してから
+ * {@code action-bar.separator} で連結して送信する。
+ */
+public class ActionBarManager {
+
+    private record ChannelEntry(Component content, long expiresAtMillis) {
+        boolean isExpired(long now) {
+            return expiresAtMillis >= 0 && now >= expiresAtMillis;
+        }
+    }
+
+    private final StellariaCore plugin;
+    private final Map<UUID, LinkedHashMap<String, ChannelEntry>> channels = new HashMap<>();
+
+    public ActionBarManager(StellariaCore plugin) {
+        this.plugin = plugin;
+    }
+
+    /** 無期限で表示し続けるチャンネルを設定/更新する（常設ステータス・TPAカウントダウンなど）。 */
+    public void setChannel(Player player, String channelId, Component content) {
+        if (!plugin.getConfigManager().getBoolean("action-bar.enabled", true)) {
+            return;
+        }
+        channelsFor(player).put(channelId, new ChannelEntry(content, -1));
+    }
+
+    /** durationTicks 後に自動的に消えるチャンネルを設定する（AFK通知などの一時フラッシュ）。 */
+    public void flash(Player player, String channelId, Component content, long durationTicks) {
+        if (!plugin.getConfigManager().getBoolean("action-bar.enabled", true)) {
+            return;
+        }
+        long expiresAt = System.currentTimeMillis() + (durationTicks * 50L); // 1 tick = 50ms
+        channelsFor(player).put(channelId, new ChannelEntry(content, expiresAt));
+    }
+
+    /** チャンネルを即座に消す（TPAキャンセル時など）。 */
+    public void clearChannel(Player player, String channelId) {
+        LinkedHashMap<String, ChannelEntry> playerChannels = channels.get(player.getUniqueId());
+        if (playerChannels != null) {
+            playerChannels.remove(channelId);
+        }
+    }
+
+    /** プレイヤー退出時に呼ぶ。保持しているチャンネル情報を全て破棄する（メモリリーク防止）。 */
+    public void removePlayer(UUID uuid) {
+        channels.remove(uuid);
+    }
+
+    /** action-bar.update-interval-ticks ごとにグローバルリージョンスケジューラから呼ばれる想定。 */
+    public void tick() {
+        long now = System.currentTimeMillis();
+        String separatorTemplate = plugin.getConfigManager().getString("action-bar.separator", " | ");
+        Component separator = ColorUtil.component(separatorTemplate);
+
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            LinkedHashMap<String, ChannelEntry> playerChannels = channels.get(player.getUniqueId());
+            if (playerChannels == null || playerChannels.isEmpty()) {
+                continue;
+            }
+            playerChannels.entrySet().removeIf(entry -> entry.getValue().isExpired(now));
+            if (playerChannels.isEmpty()) {
+                continue;
+            }
+            player.sendActionBar(join(playerChannels.values(), separator));
+        }
+    }
+
+    private LinkedHashMap<String, ChannelEntry> channelsFor(Player player) {
+        return channels.computeIfAbsent(player.getUniqueId(), k -> new LinkedHashMap<>());
+    }
+
+    private Component join(Iterable<ChannelEntry> entries, Component separator) {
+        Component result = null;
+        for (ChannelEntry entry : entries) {
+            result = result == null ? entry.content() : result.append(separator).append(entry.content());
+        }
+        return result != null ? result : Component.empty();
+    }
+}

@@ -1,5 +1,5 @@
 main: org.craftcore.stellaria.StellariaCore
-version: 1.0.2
+version: ${version}
 name: StellariaCore
 author: Nyaffle, shu4700
 description: Feature plugin for Stellaria MC
@@ -15,3 +15,17 @@ commands:
   tphaccept:
   tphdeny:
   stellariareload:
+  afk:
+  heal:
+  broadcast:
+    aliases: [bc]
+  msg:
+    aliases: [tell, w, message]
+  reply:
+    aliases: [r]
+  mute:
+  unmute:
+
+permissions:
+  stellaria.msg:
+    default: true

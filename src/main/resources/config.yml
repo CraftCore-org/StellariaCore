@@ -22,17 +22,18 @@ scoreboard:
 tablist:
   header: "\n&%d%player%さん\n&%5すてらりあへようこそ\n"
   footer: "\n&%5stellaria.craftcore.org\n     &%ddiscord.gg/ssaREjBJXg     \n"
-  value: "&%7%ping%ms"
+  value: "%afk%&%7%ping%ms"
   update-interval-ticks: 20
 
 belowname:
-  title: "&%c❤"
+  title: "%afk%&%c❤"
   update-interval-ticks: 20
 
 chat:
   enabled: true
   format: "{placeholder}{sender}&%7: &%f{message}"
   placeholder: ""
+  click-to-message: true
   color-codes:
     enabled: true
     permission: "stellaria.chat.color"
@@ -41,6 +42,17 @@ chat:
     lines:
       - "&%7Ping: &%f%ping%ms"
       - "&%7所持金: &%e%money%"
+
+tpa:
+  teleport-delay-seconds: 5 # 承認後、実際にテレポートするまでの詠唱時間。0以下で即時テレポート。ダメージを受けるとキャンセルされる
+
+teleport-effect:
+  enabled: true
+  particle: "DUST" # Bukkitの Particle enum名。DUSTの時だけ color/size が使われる
+  color: "#55FFFF"
+  size: 1.0
+  radius: 1.0
+  points: 30
 
 mention:
   enabled: true

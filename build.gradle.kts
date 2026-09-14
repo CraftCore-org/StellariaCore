@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "org.craftcore.stellaria"
-version = "1.0.7"
+version = "1.0.13"
 
 repositories {
     mavenCentral()
@@ -38,6 +38,7 @@ tasks.processResources {
     val props = mapOf("version" to version)
     inputs.properties(props)
     filteringCharset = "UTF-8"
+
     filesMatching("plugin.yml") {
         expand(props)
     }
@@ -46,7 +47,7 @@ tasks.processResources {
 tasks.named("build") {
     doLast {
         copy {
-            from("build/libs")
+            from(tasks.shadowJar.get().archiveFile)
             into("run/plugins")
         }
     }
