@@ -1,33 +1,103 @@
 # StellariaCore メッセージファイル
 
-join: " &%a> &%7%player% さんがログインしました。" # プレイヤー参加時のメッセージ
-quit: "&%c< &%7%player% さんがログアウトしました。" # プレイヤー参加時のメッセージ
+join: "&%a> &%f%player%&%7 さんがログインしました。"
+quit: "&%c< &%f%player%&%7 さんがログアウトしました。"
 
 tpa:
   tpa_accept: "&%a[許可]"
   tpa_deny: "&%c[拒否]"
   tpa_accept_tooltip:
-    - "&%7クリックしてテレポートリクエストを許可します"
+    - "&%7クリックしてリクエストを&%a許可&%7します"
   tpa_deny_tooltip:
-    - "&%7クリックしてテレポートリクエストを拒否します"
-  tpa_send: "&%e&l| &%7%player%&%7にテレポートリクエストを送信しました。" # tpa送信時のメッセージ
-  tpa_receive: "&%e&l| &%7%player%&%7からテレポートリクエストが届きました。" # tpa受信時のメッセージ
-  tpa_accept_sender: "&%a&l| &%7%player%&%7がテレポートリクエストを許可しました。" # tpa許可時の送信側のメッセージ
-  tpa_accept_receiver: "&%a&l| &%7テレポートリクエストを許可しました。"
-  tpa_deny_sender: "&%c&l| &%7%player%&%7がテレポートリクエストを拒否しました。"
-  tpa_deny_receiver: "&%c&l| &%7テレポートリクエストを拒否しました。"
+    - "&%7クリックしてリクエストを&%c拒否&%7します"
+  tpa_send: "&%e&l| &%f%player%&%7に&%gテレポートリクエスト&%7を送信しました。"
+  tpa_receive: "&%e&l| &%f%player%&%7から&%gテレポートリクエスト&%7が届きました。"
+  tpa_accept_sender: "&%a&l| &%f%player%&%7が&%gテレポートリクエスト&%7を&%a許可&%7しました。"
+  tpa_accept_receiver: "&%a&l| &%7&%gテレポートリクエスト&%7を&%a許可&%7しました。"
+  tpa_deny_sender: "&%c&l| &%f%player%&%7が&%gテレポートリクエスト&%7を&%c拒否&%7しました。"
+  tpa_deny_receiver: "&%c&l| &%7&%gテレポートリクエスト&%7を&%c拒否&%7しました。"
   tpa_err_player: "&%c&l| &%7プレイヤーを指定してください。"
   tpa_err_online: "&%c&l| &%7指定されたプレイヤーはオンラインではありません。"
-  tpa_err_notreceived: "&%c&l| &%7指定されたプレイヤーからテレポートリクエストは届いていません。"
-  tpa_err_self: "&%c&l| &%7自分自身にテレポートリクエストを送ることはできません。"
+  tpa_err_notreceived: "&%c&l| &%7指定されたプレイヤーから&%gテレポートリクエスト&%7は届いていません。"
+  tpa_err_self: "&%c&l| &%7自分自身に&%gテレポートリクエスト&%7を送ることはできません。"
+  tpa_err_pending: "&%c&l| &%7既に&%gテレポートリクエスト&%7を送信中です。相手の返答をお待ちください。"
 
-  tphere_send: "&%e&l| &%7%player%&%7に呼び出しリクエストを送信しました。"
-  tphere_receive: "&%e&l| &%7%player%&%7から呼び出しリクエストが届きました。"
-  tphere_accept_sender: "&%a&l| &%7%player%&%7が呼び出しリクエストを許可しました。"
-  tphere_accept_receiver: "&%a&l| &%7呼び出しリクエストを許可しました。"
-  tphere_deny_sender: "&%c&l| &%7%player%&%7が呼び出しリクエストを拒否しました。"
-  tphere_deny_receiver: "&%c&l| &%7呼び出しリクエストを拒否しました。"
-  tphere_err_player: "&%c&l| &%7呼び出しリクエストを送るプレイヤーを指定してください。"
+  # 承認後のテレポート詠唱（tpa/tphere共通）
+  tpa_warmup: "&%e&l| &%7%seconds%秒後にテレポートします。ダメージを受けるとキャンセルされます。"
+  tpa_warmup_actionbar: "&e%seconds%秒後にテレポートします"
+  tpa_warmup_cancelled: "&%c&l| &%7ダメージを受けたため、テレポートをキャンセルしました。"
+  tpa_warmup_target_offline: "&%c&l| &%7相手がオフラインになったため、テレポートをキャンセルしました。"
+
+  tphere_send: "&%e&l| &%f%player%&%7に&%d呼び出し&%7リクエストを送信しました。"
+  tphere_receive: "&%e&l| &%f%player%&%7から&%d呼び出し&%7リクエストが届きました。"
+  tphere_accept_sender: "&%a&l| &%f%player%&%7が&%d呼び出し&%7リクエストを許可しました。"
+  tphere_accept_receiver: "&%a&l| &%7&%d呼び出し&%7リクエストを許可しました。"
+  tphere_deny_sender: "&%c&l| &%f%player%&%7が&%d呼び出し&%7リクエストを&%c拒否&%7しました。"
+  tphere_deny_receiver: "&%c&l| &%7&%d呼び出し&%7リクエストを&%c拒否&%7しました。"
+  tphere_err_player: "&%c&l| &%7&%d呼び出し&%7リクエストを送るプレイヤーを指定してください。"
   tphere_err_online: "&%c&l| &%7指定されたプレイヤーはオンラインではありません。"
-  tphere_err_notreceived: "&%c&l| &%7指定されたプレイヤーから呼び出しリクエストは届いていません。"
-  tphere_err_self: "&%c&l| &%7自分自身に呼び出しリクエストを送ることはできません。"
+  tphere_err_notreceived: "&%c&l| &%7指定されたプレイヤーから&%d呼び出し&%7リクエストは届いていません。"
+  tphere_err_self: "&%c&l| &%7自分自身に&%d呼び出し&%7リクエストを送ることはできません。"
+  tphere_err_pending: "&%c&l| &%7既に&%d呼び出し&%7リクエストを送信中です。相手の返答をお待ちください。"
+
+afk:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  became: "&%e%player% &%7がAFK（離席中）になりました。"
+  returned: "&%e%player% &%7がAFKから復帰しました。"
+  became_actionbar: "&e離席中です"
+  returned_actionbar: "&aお帰りなさい"
+
+heal:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  self: "&%a体力と満腹度を回復しました。"
+  other_sender: "&%a%player% &%7の体力と満腹度を回復しました。"
+  other_receiver: "&%a体力と満腹度が回復されました。"
+  player_not_found: "&%c%player% &%7はオンラインではありません。"
+
+broadcast:
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  format: "&%6&l[お知らせ] &r%message%"
+  usage: "&%c使用方法: /broadcast <メッセージ>"
+
+mute:
+  usage: "&%c次のコマンドでヘルプを確認: /mute help"
+  help:
+    - "&%d&l| 使用方法: <プレイヤー> <レベル1-3> <期間 10m|1h|3d|perm> <理由>"
+    - "&%e&l| &%7ミュートのレベル一覧:"
+    - "&%7Lv1: &%f公開チャット送信禁止"
+    - "&%7Lv2: &%fLv1 + PM送信禁止"
+    - "&%7Lv3: &%fLv2 + 一部コマンド実行禁止"
+  invalid_level: "&%cレベルは1〜3で指定してください。"
+  invalid_duration: "&%c期間の指定が正しくありません。例: 10m, 1h, 3d, perm"
+  player_not_found: "&%c%player% &%7はオフラインまたは存在しません。"
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  muted_target: "&%cあなたはミュートされました。（レベル%level%、理由: %reason%、期限: %expires%）"
+  muted_sender: "&%a%player% &%7をミュートしました。（レベル%level%、期限: %expires%）"
+  muted_staff: "&%7[ミュート] &%f%moderator% &%7が &%f%player% &%7をミュートしました。（レベル%level%、理由: %reason%）"
+  not_muted: "&%c%player% &%7はミュートされていません。"
+  unmuted_target: "&%aミュートが解除されました。"
+  unmuted_sender: "&%a%player% &%7のミュートを解除しました。"
+  unmuted_staff: "&%7[ミュート解除] &%f%moderator% &%7が &%f%player% &%7のミュートを解除しました。"
+  blocked_chat: "&%cミュート中のため発言できません。（残り: %remaining%、理由: %reason%）"
+  blocked_pm: "&%cミュート中のためメッセージを送信できません。（残り: %remaining%、理由: %reason%）"
+  blocked_command: "&%cミュート中のためこのコマンドは使用できません。（残り: %remaining%、理由: %reason%）"
+
+msg:
+  usage: "&%c使用方法: /msg <プレイヤー> <メッセージ>"
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  self: "&%c自分自身にメッセージを送ることはできません。"
+  player_not_found: "&%c%player% &%7はオンラインではありません。"
+  reply_no_target: "&%c返信できる相手がいません。"
+  format_sender: "&%7[&%fあなた &%7-> &%g%target%&%7] &f%message%"
+  format_receiver: "&%7[&%g%sender% &%7-> &%fあなた&%7] &f%message%"
+  click_hint: "&%7クリックで返信"
+
+chat:
+  click_hint: "&%7クリックでメッセージを送信"
+
+mention:
+  click_hint: "&%7クリックで%player%にメッセージを送信"

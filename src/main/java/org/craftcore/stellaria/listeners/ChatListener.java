@@ -3,6 +3,7 @@ package org.craftcore.stellaria.listeners;
 import io.papermc.paper.chat.ChatRenderer;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
@@ -11,7 +12,9 @@ import org.bukkit.event.Listener;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.managers.ConfigManager;
 import org.craftcore.stellaria.managers.MentionService;
+import org.craftcore.stellaria.managers.MuteManager;
 import org.craftcore.stellaria.utils.ColorUtil;
+import org.craftcore.stellaria.utils.DurationParser;
 
 /**
  * チャットメッセージのフォーマットを適用するリスナー。
@@ -23,7 +26,8 @@ import org.craftcore.stellaria.utils.ColorUtil;
  * で解決する。
  *
  * orelia-serverutil の {@code ChatModule} を移植したもの（他プラグイン向けのProvider
- * 拡張ポイントは含まない）。
+ * 拡張ポイントは含まない）。送信前に {@code MuteManager} でLv1以上のミュートをチェックし、
+ * ミュート中ならイベントをキャンセルする。
  */
 public class ChatListener implements Listener {
 
@@ -40,28 +44,52 @@ public class ChatListener implements Listener {
         ConfigManager config = plugin.getConfigManager();
         Player sender = event.getPlayer();
 
+        MuteManager.MuteRecord muteRecord = plugin.getMuteManager()
+                .getRestrictingRecord(sender.getUniqueId(), MuteManager.MuteScope.CHAT);
+        if (muteRecord != null) {
+            event.setCancelled(true);
+            String blockedMessage = config.getMessage("mute.blocked_chat", sender)
+                    .replace("%remaining%", DurationParser.formatRemaining(muteRecord.expiresAt()))
+                    .replace("%reason%", muteRecord.reason());
+            // AsyncChatEvent はメインスレッド外で発火することがあるので、送信はプレイヤーごとの
+            // エンティティスケジューラ経由で行う（Folia環境でも安全に動くように）。
+            sender.getScheduler().run(plugin, task -> sender.sendMessage(blockedMessage), null);
+            return;
+        }
+
         String format = config.getString("chat.format", "{placeholder}{sender}&%7: &%f{message}");
         String placeholderTemplate = config.getString("chat.placeholder", "");
         Component placeholder = ColorUtil.component(plugin.getPlaceholderManager().resolve(placeholderTemplate, sender));
 
         String plainMessage = PlainTextComponentSerializer.plainText().serialize(event.message());
         Component message = mentionService.highlight(plainMessage, sender, colorCodesPermitted(config, sender));
-        Component tooltip = buildTooltip(config, sender);
+        boolean clickToMessage = config.getBoolean("chat.click-to-message", true);
+        Component tooltip = buildTooltip(config, sender, clickToMessage);
 
         event.renderer(ChatRenderer.viewerUnaware((source, sourceDisplayName, ignoredMessage) -> {
             Component nameComponent = tooltip != null
                     ? sourceDisplayName.hoverEvent(HoverEvent.showText(tooltip))
                     : sourceDisplayName;
+            if (clickToMessage) {
+                nameComponent = nameComponent.clickEvent(ClickEvent.suggestCommand("/msg " + sender.getName() + " "));
+            }
             return render(format, nameComponent, placeholder, message);
         }));
     }
 
-    /** 送信者名にホバーした時に出すツールチップ（{@code chat.tooltip.*}）。無効なら null。 */
-    private Component buildTooltip(ConfigManager config, Player sender) {
-        if (!config.getBoolean("chat.tooltip.enabled", true)) {
-            return null;
+    /**
+     * 送信者名にホバーした時に出すツールチップ（{@code chat.tooltip.*} + クリック案内）。
+     * ツールチップもクリック案内も無ければ null。
+     */
+    private Component buildTooltip(ConfigManager config, Player sender, boolean clickToMessage) {
+        Component linesTooltip = config.getBoolean("chat.tooltip.enabled", true)
+                ? plugin.getPlaceholderManager().resolveLines(config.getStringList("chat.tooltip.lines"), sender)
+                : null;
+        if (!clickToMessage) {
+            return linesTooltip;
         }
-        return plugin.getPlaceholderManager().resolveLines(config.getStringList("chat.tooltip.lines"), sender);
+        Component hint = ColorUtil.component(config.getMessage("chat.click_hint", sender));
+        return linesTooltip != null ? linesTooltip.append(Component.newline()).append(hint) : hint;
     }
 
     /**

@@ -39,3 +39,49 @@ public class PlayerListener implements Listener {
         }
     }
 }
+package org.craftcore.stellaria.listeners;
+
+import org.bukkit.event.Listener;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.commands.tpa.TpaCore;
+
+public class PlayerListener implements Listener {
+
+    private final StellariaCore plugin;
+
+    public PlayerListener(StellariaCore plugin) {
+        this.plugin = plugin;
+    }
+
+    // タブリストのヘッダー/フッター更新は TabListManager が毎tick自動で行うようになったので、
+    // Join時にここで手動更新する必要は無くなった（旧 TabList.updateAllPlayersTablist()）。
+    @EventHandler
+    public void onPlayerLeave(PlayerQuitEvent event){
+        TpaCore.resetPlayerTeleportRequests(event.getPlayer());
+        plugin.getAfkManager().removePlayer(event.getPlayer().getUniqueId());
+        plugin.getActionBarManager().removePlayer(event.getPlayer().getUniqueId());
+    }
+
+    @EventHandler
+    public void onMove(PlayerMoveEvent event) {
+        if (!plugin.getConfigManager().getBoolean("afk.enabled", true)) {
+            return;
+        }
+        // 位置が実際に変わった場合のみ活動とみなす（視点変更だけでは復帰させない）
+        if (event.hasChangedPosition()) {
+            plugin.getAfkManager().updateActivity(event.getPlayer());
+        }
+    }
+
+    @EventHandler
+    public void onInteract(PlayerInteractEvent event) {
+        if (!plugin.getConfigManager().getBoolean("afk.enabled", true)) {
+            return;
+        }
+        plugin.getAfkManager().updateActivity(event.getPlayer());
+    }
+}
