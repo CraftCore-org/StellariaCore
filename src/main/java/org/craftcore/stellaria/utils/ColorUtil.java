@@ -36,7 +36,7 @@ public class ColorUtil {
             Map.entry('b', "8BC7E0"), // aqua
             Map.entry('c', "E67777"), // light red
             Map.entry('d', "EB81EB"), // pink
-            Map.entry('e', "E3D05B"), // yellow
+            Map.entry('e', "FAE143"), // yellow
             Map.entry('f', "FFFFFF"), // white
             Map.entry('g', "E6A667"), // orange
             Map.entry('h', "A8733E") // brown

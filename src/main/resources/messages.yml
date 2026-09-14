@@ -1,33 +1,33 @@
 # StellariaCore メッセージファイル
 
-join: " &%a> &%7%player% さんがログインしました。" # プレイヤー参加時のメッセージ
-quit: "&%c< &%7%player% さんがログアウトしました。" # プレイヤー参加時のメッセージ
+join: "&%a> &%f%player%&%7 さんがログインしました。"
+quit: "&%c< &%f%player%&%7 さんがログアウトしました。"
 
 tpa:
   tpa_accept: "&%a[許可]"
   tpa_deny: "&%c[拒否]"
   tpa_accept_tooltip:
-    - "&%7クリックしてテレポートリクエストを許可します"
+    - "&%7クリックしてリクエストを&%a許可&%7します"
   tpa_deny_tooltip:
-    - "&%7クリックしてテレポートリクエストを拒否します"
-  tpa_send: "&%e&l| &%7%player%&%7にテレポートリクエストを送信しました。" # tpa送信時のメッセージ
-  tpa_receive: "&%e&l| &%7%player%&%7からテレポートリクエストが届きました。" # tpa受信時のメッセージ
-  tpa_accept_sender: "&%a&l| &%7%player%&%7がテレポートリクエストを許可しました。" # tpa許可時の送信側のメッセージ
-  tpa_accept_receiver: "&%a&l| &%7テレポートリクエストを許可しました。"
-  tpa_deny_sender: "&%c&l| &%7%player%&%7がテレポートリクエストを拒否しました。"
-  tpa_deny_receiver: "&%c&l| &%7テレポートリクエストを拒否しました。"
+    - "&%7クリックしてリクエストを&%c拒否&%7します"
+  tpa_send: "&%e&l| &%f%player%&%7に&%gテレポートリクエスト&%7を送信しました。"
+  tpa_receive: "&%e&l| &%f%player%&%7から&%gテレポートリクエスト&%7が届きました。"
+  tpa_accept_sender: "&%a&l| &%f%player%&%7が&%gテレポートリクエスト&%7を&%a許可&%7しました。"
+  tpa_accept_receiver: "&%a&l| &%7&%gテレポートリクエスト&%7を&%a許可&%7しました。"
+  tpa_deny_sender: "&%c&l| &%f%player%&%7が&%gテレポートリクエスト&%7を&%c拒否&%7しました。"
+  tpa_deny_receiver: "&%c&l| &%7&%gテレポートリクエスト&%7を&%c拒否&%7しました。"
   tpa_err_player: "&%c&l| &%7プレイヤーを指定してください。"
   tpa_err_online: "&%c&l| &%7指定されたプレイヤーはオンラインではありません。"
-  tpa_err_notreceived: "&%c&l| &%7指定されたプレイヤーからテレポートリクエストは届いていません。"
-  tpa_err_self: "&%c&l| &%7自分自身にテレポートリクエストを送ることはできません。"
+  tpa_err_notreceived: "&%c&l| &%7指定されたプレイヤーから&%gテレポートリクエスト&%7は届いていません。"
+  tpa_err_self: "&%c&l| &%7自分自身に&%gテレポートリクエスト&%7を送ることはできません。"
 
-  tphere_send: "&%e&l| &%7%player%&%7に呼び出しリクエストを送信しました。"
-  tphere_receive: "&%e&l| &%7%player%&%7から呼び出しリクエストが届きました。"
-  tphere_accept_sender: "&%a&l| &%7%player%&%7が呼び出しリクエストを許可しました。"
-  tphere_accept_receiver: "&%a&l| &%7呼び出しリクエストを許可しました。"
-  tphere_deny_sender: "&%c&l| &%7%player%&%7が呼び出しリクエストを拒否しました。"
-  tphere_deny_receiver: "&%c&l| &%7呼び出しリクエストを拒否しました。"
-  tphere_err_player: "&%c&l| &%7呼び出しリクエストを送るプレイヤーを指定してください。"
+  tphere_send: "&%e&l| &%f%player%&%7に&%d呼び出し&%7リクエストを送信しました。"
+  tphere_receive: "&%e&l| &%f%player%&%7から&%d呼び出し&%7リクエストが届きました。"
+  tphere_accept_sender: "&%a&l| &%f%player%&%7が&%d呼び出し&%7リクエストを許可しました。"
+  tphere_accept_receiver: "&%a&l| &%7&%d呼び出し&%7リクエストを許可しました。"
+  tphere_deny_sender: "&%c&l| &%f%player%&%7が&%d呼び出し&%7リクエストを&%c拒否&%7しました。"
+  tphere_deny_receiver: "&%c&l| &%7&%d呼び出し&%7リクエストを&%c拒否&%7しました。"
+  tphere_err_player: "&%c&l| &%7&%d呼び出し&%7リクエストを送るプレイヤーを指定してください。"
   tphere_err_online: "&%c&l| &%7指定されたプレイヤーはオンラインではありません。"
-  tphere_err_notreceived: "&%c&l| &%7指定されたプレイヤーから呼び出しリクエストは届いていません。"
-  tphere_err_self: "&%c&l| &%7自分自身に呼び出しリクエストを送ることはできません。"
+  tphere_err_notreceived: "&%c&l| &%7指定されたプレイヤーから&%d呼び出し&%7リクエストは届いていません。"
+  tphere_err_self: "&%c&l| &%7自分自身に&%d呼び出し&%7リクエストを送ることはできません。"
