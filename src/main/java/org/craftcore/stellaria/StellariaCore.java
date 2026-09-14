@@ -5,6 +5,7 @@ import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.craftcore.stellaria.commands.ReloadCommand;
 import org.craftcore.stellaria.commands.tpa.TpaCore;
+import org.craftcore.stellaria.managers.AfkManager;
 import org.craftcore.stellaria.managers.BelownameManager;
 import org.craftcore.stellaria.managers.ConfigManager;
 import org.craftcore.stellaria.managers.EconomyManager;
@@ -33,6 +34,7 @@ public class StellariaCore extends JavaPlugin {
     private TabListManager tabListManager;
     private BelownameManager belownameManager;
     private MentionService mentionService;
+    private AfkManager afkManager;
 
     @Override
     public void onEnable() {
@@ -49,6 +51,8 @@ public class StellariaCore extends JavaPlugin {
             "name TEXT",
             "coins INTEGER DEFAULT 0"
         );
+
+        this.afkManager = new AfkManager(this);
 
         // 2. EconomyManager のインスタンス化
         this.economyManager = new EconomyManager(this);
@@ -107,6 +111,10 @@ public class StellariaCore extends JavaPlugin {
         Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> tabListManager.tick(), tabListInterval, tabListInterval);
         Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> belownameManager.tick(), belownameInterval, belownameInterval);
 
+        if (configManager.getBoolean("afk.enabled", true)) {
+            Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> afkManager.tick(), 200L, 200L);
+        }
+
         // 7. チャットフォーマット・メンション
         this.mentionService = new MentionService(this);
         if (configManager.getBoolean("chat.enabled", true)) {
@@ -160,6 +168,10 @@ public class StellariaCore extends JavaPlugin {
 
     public MentionService getMentionService() {
         return this.mentionService;
+    }
+
+    public AfkManager getAfkManager() {
+        return this.afkManager;
     }
 
     /**
