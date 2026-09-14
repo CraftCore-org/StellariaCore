@@ -1,35 +1,49 @@
 # StellariaCore 設定ファイル
 
 server:
-  prefix: "&%b[Stellaria] &r" # メッセージのPrefix !NOTE: 未実装
-  name: "Stellaria"
+  prefix: "&%9&l| すてらりあ &r" # メッセージのPrefix !NOTE: 未実装
 
 economy:
   default-balance: 1000 # 新規プレイヤーの初期所持金
   balance-top-page-size: 10
 
+action-bar:
+  enabled: true
+  update-interval-ticks: 5
+  separator: " | " # 複数機能が同時にアクションバーを使うときの連結セパレータ
+  persistent:
+    enabled: false # 常時表示する固定テンプレートを使うかどうか
+    template: ""
+
 scoreboard:
-  title: "&%b&lSTELLARIA"
+  title: "&%9&lすてらりあ"
   update-interval-ticks: 20
   hide-numbers: true
   lines:
-    - "&%7%server%"
-    - "&%7オンライン: &%f%online%/%max_online%"
-    - "&%7Ping: &%f%ping%ms"
-    - "&%7ワールド: &%f%world%"
-    - "&%7座標: &%f%x%, %y%, %z%"
-    - "&%7所持金: &%e%money%"
+    - ""
+    - " &%bオンライン&%7: &%f%online%&%7/&%f%max_online%"
+    - " &%bワールド&%7: &%f%world%"
+    - " &%b座標&%7: &%f%x%&%7,&%f %y%&%7,&%f %z%"
+    - " &%b所持金&%7: &%e%money%"
+    - ""
+
 
 tablist:
-  header: "\n&%d%player%さん\n&%5すてらりあへようこそ\n"
-  footer: "\n&%5stellaria.craftcore.org\n     &%ddiscord.gg/ssaREjBJXg     \n"
-  value: "%afk%&%7%ping%ms"
+  header: "\n&%b%player%さん\n&%9すてらりあ &bへようこそ！\n"
+  footer: "\n&%b%online%&%7/&%9%max_online%\n"
+  value: "%afk%&%a%ping%ms"
   update-interval-ticks: 20
 
 belowname:
-  title: "&%c❤"
-  value: "%afk%%health%"
+  title: ""
+  value: "%afk% &%c❤ &%7%health%"
   update-interval-ticks: 20
+
+afk:
+  enabled: true
+  timeout-seconds: 300 # 何秒操作が無ければAFK扱いにするか
+  actionbar-flash-seconds: 3 # AFK復帰通知をアクションバーに表示する秒数
+  tag: "&c[&%cAFK&c] &r" # %afk% プレースホルダーの中身
 
 chat:
   enabled: true
@@ -42,8 +56,21 @@ chat:
   tooltip:
     enabled: true
     lines:
-      - "&%7Ping: &%f%ping%ms"
-      - "&%7所持金: &%e%money%"
+#      - "&%7Ping: &%f%ping%ms"
+#      - "&%7所持金: &%e%money%"
+
+message:
+  color-codes:
+    enabled: true
+    permission: "stellaria.chat.color"
+  sound:
+    enabled: true
+    name: "ENTITY_EXPERIENCE_ORB_PICKUP"
+    volume: 1.0
+    pitch: 1.0
+
+mute:
+  level3-command-blacklist: ["msg","tell","w","reply","r","tpa","tphere"] # Lv3ミュート中に禁止するコマンド名（例: ["msg","tell","w","reply","r"]）
 
 tpa:
   teleport-delay-seconds: 5 # 承認後、実際にテレポートするまでの詠唱時間。0以下で即時テレポート。ダメージを受けるとキャンセルされる
@@ -69,6 +96,16 @@ mention:
     volume: 1.0
     pitch: 1.0
 
+broadcast:
+  auto:
+    enabled: true
+    interval-minutes: 1 # 本番は15
+    messages: [
+      "&%a定期メッセージ1",
+      "&%b定期メッセージ2",
+      "&%c定期メッセージ3",
+    ] # 空だと定期放送は開始されない（例: ["&%eルールを守って楽しく遊ぼう！"]）
+
 elevator:
   blocks:
     IRON_BLOCK:
@@ -79,9 +116,9 @@ elevator:
       max: 50
   message:
     moveup_success: "&7↑"
-    moveup_fail: "&c↑"
+    moveup_fail: "&%c↑"
     movedown_success: "&7↓"
-    movedown_fail: "&c↓"
+    movedown_fail: "&%c↓"
   sound:
     moveup:
       name: "BLOCK_PISTON_EXTEND"

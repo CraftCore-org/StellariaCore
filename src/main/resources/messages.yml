@@ -58,7 +58,7 @@ heal:
 
 broadcast:
   no_permission: "&%cこのコマンドを実行する権限がありません。"
-  format: "&%6&l[お知らせ] &r%message%"
+  format: "&9[&%9お知らせ&9] &r%message%"
   usage: "&%c使用方法: /broadcast <メッセージ>"
 
 mute:
