@@ -10,6 +10,8 @@ import org.craftcore.stellaria.commands.MessageCommand;
 import org.craftcore.stellaria.commands.MuteCommand;
 import org.craftcore.stellaria.commands.ReloadCommand;
 import org.craftcore.stellaria.commands.tpa.TpaCore;
+import org.craftcore.stellaria.gui.GuiListener;
+import org.craftcore.stellaria.managers.ActionBarManager;
 import org.craftcore.stellaria.managers.AfkManager;
 import org.craftcore.stellaria.managers.AutoBroadcastManager;
 import org.craftcore.stellaria.managers.BelownameManager;
@@ -47,6 +49,7 @@ public class StellariaCore extends JavaPlugin {
     private AutoBroadcastManager autoBroadcastManager;
     private MuteManager muteManager;
     private PrivateMessageManager privateMessageManager;
+    private ActionBarManager actionBarManager;
 
     @Override
     public void onEnable() {
@@ -77,6 +80,22 @@ public class StellariaCore extends JavaPlugin {
         this.muteManager = new MuteManager(this);
         muteManager.loadAll();
         this.privateMessageManager = new PrivateMessageManager(this);
+
+        this.actionBarManager = new ActionBarManager(this);
+        if (configManager.getBoolean("action-bar.enabled", true)) {
+            long actionBarInterval = configManager.getInt("action-bar.update-interval-ticks", 5);
+            Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> actionBarManager.tick(), actionBarInterval, actionBarInterval);
+
+            if (configManager.getBoolean("action-bar.persistent.enabled", false)) {
+                Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> {
+                    String template = configManager.getString("action-bar.persistent.template", "");
+                    for (org.bukkit.entity.Player online : Bukkit.getOnlinePlayers()) {
+                        String resolved = placeholderManager.resolve(template, online);
+                        actionBarManager.setChannel(online, "persistent", org.craftcore.stellaria.utils.ColorUtil.component(resolved));
+                    }
+                }, actionBarInterval, actionBarInterval);
+            }
+        }
 
         // 2. EconomyManager のインスタンス化
         this.economyManager = new EconomyManager(this);
@@ -165,6 +184,7 @@ public class StellariaCore extends JavaPlugin {
         getCommand("mute").setExecutor(muteCommand);
         getCommand("unmute").setExecutor(muteCommand);
         getServer().getPluginManager().registerEvents(new MuteCommandBlockListener(this), this);
+        getServer().getPluginManager().registerEvents(new GuiListener(), this);
 
         MessageCommand messageCommand = new MessageCommand(this);
         getCommand("msg").setExecutor(messageCommand);
@@ -221,6 +241,10 @@ public class StellariaCore extends JavaPlugin {
 
     public PrivateMessageManager getPrivateMessageManager() {
         return this.privateMessageManager;
+    }
+
+    public ActionBarManager getActionBarManager() {
+        return this.actionBarManager;
     }
 
     /**

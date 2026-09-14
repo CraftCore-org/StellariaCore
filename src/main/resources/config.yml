@@ -71,6 +71,7 @@ afk:
   enabled: true
   timeout-seconds: 300
   tag: "&%7[AFK] &r"
+  actionbar-flash-seconds: 3
 
 broadcast:
   auto:
@@ -98,3 +99,11 @@ message:
     name: "ENTITY_EXPERIENCE_ORB_PICKUP"
     volume: 1.0
     pitch: 1.0
+
+action-bar:
+  enabled: true
+  update-interval-ticks: 5
+  separator: "&%7 | &r"
+  persistent:
+    enabled: false
+    template: ""

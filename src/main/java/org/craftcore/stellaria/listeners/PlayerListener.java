@@ -22,6 +22,7 @@ public class PlayerListener implements Listener {
     public void onPlayerLeave(PlayerQuitEvent event){
         TpaCore.resetPlayerTeleportRequests(event.getPlayer());
         plugin.getAfkManager().removePlayer(event.getPlayer().getUniqueId());
+        plugin.getActionBarManager().removePlayer(event.getPlayer().getUniqueId());
     }
 
     @EventHandler
