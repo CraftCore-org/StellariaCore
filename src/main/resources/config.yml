@@ -1,10 +1,11 @@
 # StellariaCore 設定ファイル
 
 server:
+  name: "Stellaria"
   prefix: "&%9&l| すてらりあ &r" # メッセージのPrefix !NOTE: 未実装
 
 discord:
-  invite: "https://discord.gg/xxxxx" # /discord で案内するサーバー招待リンク
+  invite: "https://discord.gg/ssaREjBJXg" # /discord で案内するサーバー招待リンク
 
 rank:
   enabled: true
@@ -15,7 +16,7 @@ rank:
       color: "&%e"
       tablist-tag: "ᴀᴅᴍɪɴ"
       display-name: "管理者"
-    - luckperms-group: "mod"
+    - luckperms-group: "staff"
       color: "&%b"
       tablist-tag: "sᴛᴀꜰꜰ"
       display-name: "スタッフ"
@@ -35,8 +36,8 @@ first-join-kit:
   items: # "素材名:個数" 形式（個数省略で1個）
     - "WOODEN_SWORD:1"
     - "WOODEN_AXE:1"
-    - "WOODEN_PICKAXE:16"
-    - "WOODEN_SHOVEL:16"
+    - "WOODEN_PICKAXE:1"
+    - "WOODEN_SHOVEL:1"
     - "COOKED_BEEF:16"
     - "OAK_LOG:16"
 
@@ -142,9 +143,9 @@ broadcast:
     enabled: true
     interval-minutes: 15 # 本番は15
     messages: [
-      "&%b&l| Discordサーバーはこちら！&%b&l| &l|https://discord.gg/ssaREjBJXg",
-      "&%b&l| 荒らし、チートは禁止です！",
-      "&%b&l| バグや不具合を見つけたらDiscordで報告できます！",
+      "&%b&l| &r&%bDiscordサーバーはこちら！\n&%b&l| &r&%bhttps://discord.gg/ssaREjBJXg",
+      "&%b&l| &r&%b荒らし、チートは禁止です！",
+      "&%b&l| &r&%bバグや不具合を見つけたらDiscordで報告できます！",
     ] # 空だと定期放送は開始されない（例: ["&%eルールを守って楽しく遊ぼう！"]）
 
 elevator:
