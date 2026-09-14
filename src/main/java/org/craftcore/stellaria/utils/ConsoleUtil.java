@@ -2,7 +2,7 @@ package org.craftcore.stellaria.utils;
 
 import org.bukkit.Bukkit;
 
-public class Console {
+public class ConsoleUtil {
     private static final String[] LOGO = {
         " §b   §b+  §9▒▒    §b+       §9+         ",
         " §b     §9▄██▄  §9* §d┏┓   ┓┓ §b*  §d• §b+   ",

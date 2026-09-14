@@ -2,32 +2,37 @@ package org.craftcore.stellaria;
 
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.craftcore.stellaria.commands.ReloadCommand;
 import org.craftcore.stellaria.commands.tpa.TpaCore;
+import org.craftcore.stellaria.managers.ConfigManager;
 import org.craftcore.stellaria.managers.EconomyManager;
-import org.craftcore.stellaria.managers.PluginManager;
 import org.craftcore.stellaria.listeners.PlayerJoinListener;
 import org.craftcore.stellaria.listeners.PlayerListener;
-import org.bukkit.Bukkit;
+import org.craftcore.stellaria.listeners.PlayerQuitListener;
 
 
-import org.craftcore.stellaria.utils.Console;
-import org.craftcore.stellaria.utils.Database;
+import org.craftcore.stellaria.utils.ConsoleUtil;
+import org.craftcore.stellaria.managers.DatabaseManager;
 
 import net.milkbowl.vault.economy.Economy;
 
 
 public class StellariaCore extends JavaPlugin {
-    
+
     private EconomyManager economyManager;
+    private ConfigManager configManager;
 
     @Override
     public void onEnable() {
-        
+
         saveDefaultConfig();
 
+        // 0. config.yml の読み込み管理
+        this.configManager = new ConfigManager(this);
+
         // 1. データベースの接続とテーブル作成
-        Database.connect(this, "database.db");
-        Database.createTableIfNotExists("players",
+        DatabaseManager.connect(this, "database.db");
+        DatabaseManager.createTableIfNotExists("players",
             "uuid TEXT PRIMARY KEY",
             "name TEXT",
             "coins INTEGER DEFAULT 0"
@@ -52,6 +57,7 @@ public class StellariaCore extends JavaPlugin {
 
         // 4. イベントリスナー登録
         getServer().getPluginManager().registerEvents(new PlayerJoinListener(this), this);
+        getServer().getPluginManager().registerEvents(new PlayerQuitListener(this), this);
 
         // 5. 起動ロゴ表示
         // Initialize managers
@@ -70,17 +76,23 @@ public class StellariaCore extends JavaPlugin {
         getCommand("tphaccept").setExecutor(tpaCore);
         getCommand("tphdeny").setExecutor(tpaCore);
 
-        Console.printLogo(getPluginMeta().getVersion());
+        getCommand("stellariareload").setExecutor(new ReloadCommand(this));
+
+        ConsoleUtil.printLogo(getPluginMeta().getVersion());
     }
 
     @Override
     public void onDisable() {
         // プラグイン停止時は Vault から自動解除されるため、DB切断だけでOK
-        Database.disconnect();
-        Console.printDisabledMessage();
+        DatabaseManager.disconnect();
+        ConsoleUtil.printDisabledMessage();
     }
     
     public EconomyManager getEconomyManager() {
         return this.economyManager;
+    }
+
+    public ConfigManager getConfigManager() {
+        return this.configManager;
     }
 }
