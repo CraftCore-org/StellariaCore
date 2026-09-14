@@ -156,6 +156,7 @@ elevator:
     DIAMOND_BLOCK:
       max: 50
   message:
+    move_fail: "&%cこのエレベーターブロックには障害物があります"
     moveup_success: "&7↑"
     moveup_fail: "&%c行先のエレベーターブロックの上に障害物があります"
     movedown_success: "&7↓"
