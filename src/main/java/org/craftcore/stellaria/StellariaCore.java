@@ -89,7 +89,7 @@ public class StellariaCore extends JavaPlugin {
         );
         DatabaseManager.createTableIfNotExists("player_stats",
             "uuid TEXT PRIMARY KEY",
-            "last_login INTEGER DEFAULT 0",
+            "last_logout INTEGER DEFAULT 0",
             "playtime_seconds INTEGER DEFAULT 0"
         );
 

@@ -160,8 +160,8 @@ seen:
   unknown: "&%c%player% &%7の最終ログイン記録がありません。"
   online_now_self: "&%aあなたは現在オンラインです。"
   online_now_other: "&%a%player% &%7は現在オンラインです。"
-  offline_self: "&%7最終ログイン: &%f%time%前"
-  offline_other: "&%7%player% &%7の最終ログイン: &%f%time%前"
+  offline_self: "&%7最終ログアウト: &%f%time%前"
+  offline_other: "&%7%player% &%7の最終ログアウト: &%f%time%前"
 
 ranking:
   no_permission: "&%cこのコマンドを実行する権限がありません。"

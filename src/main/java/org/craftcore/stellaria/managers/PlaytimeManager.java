@@ -9,9 +9,12 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * 最終ログイン日時・累計プレイ時間を player_stats テーブルに記録する。
+ * 最終ログアウト日時・累計プレイ時間を player_stats テーブルに記録する。
  * セッション開始時刻はメモリ保持し、ログアウト時に累計へ加算して永続化する
  * （サーバーが異常終了した場合、そのセッション分は失われる）。
+ * 「最終ログイン」ではなく「最終ログアウト」で記録する点に注意——ログイン時刻だけ覚えていても、
+ * オフラインのプレイヤーが「いつ最後にプレイしていたか」を知りたい/scoreの用途には使えない
+ * （ログイン中はずっと同じ時刻のままになってしまうため）。
  */
 public class PlaytimeManager {
 
@@ -22,20 +25,19 @@ public class PlaytimeManager {
         this.plugin = plugin;
     }
 
-    /** ログイン時に呼ぶ。セッション開始時刻を記録し、last_login を更新する（累計プレイ時間は維持）。 */
+    /** ログイン時に呼ぶ。セッション開始時刻を記録するだけ（last_logoutは触らない）。
+     * まだレコードが無い初回ログインのプレイヤー分だけ、0件の行を用意しておく。 */
     public void onJoin(Player player) {
         UUID uuid = player.getUniqueId();
-        long now = System.currentTimeMillis();
-        sessionStart.put(uuid, now);
+        sessionStart.put(uuid, System.currentTimeMillis());
 
-        long currentPlaytime = getStoredPlaytimeSeconds(uuid);
         DatabaseManager.executeAsync(
-            "INSERT OR REPLACE INTO player_stats (uuid, last_login, playtime_seconds) VALUES (?, ?, ?)",
-            uuid.toString(), now, currentPlaytime
+            "INSERT OR IGNORE INTO player_stats (uuid, last_logout, playtime_seconds) VALUES (?, 0, 0)",
+            uuid.toString()
         );
     }
 
-    /** ログアウト時に呼ぶ。セッション経過時間を累計プレイ時間に加算して永続化する。 */
+    /** ログアウト時に呼ぶ。セッション経過時間を累計プレイ時間に加算し、last_logoutを今の時刻にして永続化する。 */
     public void onQuit(Player player) {
         UUID uuid = player.getUniqueId();
         Long start = sessionStart.remove(uuid);
@@ -45,8 +47,8 @@ public class PlaytimeManager {
         long elapsedSeconds = Math.max(0, (System.currentTimeMillis() - start) / 1000L);
         long newPlaytime = getStoredPlaytimeSeconds(uuid) + elapsedSeconds;
         DatabaseManager.executeAsync(
-            "UPDATE player_stats SET playtime_seconds = ? WHERE uuid = ?",
-            newPlaytime, uuid.toString()
+            "UPDATE player_stats SET playtime_seconds = ?, last_logout = ? WHERE uuid = ?",
+            newPlaytime, System.currentTimeMillis(), uuid.toString()
         );
     }
 
@@ -60,11 +62,11 @@ public class PlaytimeManager {
         return stored + Math.max(0, (System.currentTimeMillis() - start) / 1000L);
     }
 
-    /** 最終ログイン日時（epoch millis）。記録が無ければ0。 */
-    public long getLastLogin(UUID uuid) {
+    /** 最終ログアウト日時（epoch millis）。記録が無い/まだ一度もログアウトしていなければ0。 */
+    public long getLastLogout(UUID uuid) {
         Long value = DatabaseManager.queryOne(
-            "SELECT last_login FROM player_stats WHERE uuid = ?",
-            rs -> rs.getLong("last_login"),
+            "SELECT last_logout FROM player_stats WHERE uuid = ?",
+            rs -> rs.getLong("last_logout"),
             uuid.toString()
         );
         return value != null ? value : 0;
