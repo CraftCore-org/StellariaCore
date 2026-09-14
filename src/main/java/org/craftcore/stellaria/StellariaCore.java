@@ -61,6 +61,7 @@ public class StellariaCore extends JavaPlugin {
     private PrivateMessageManager privateMessageManager;
     private ActionBarManager actionBarManager;
     private PlaytimeManager playtimeManager;
+    private RankManager rankManager;
 
     @Override
     public void onEnable() {
@@ -93,6 +94,7 @@ public class StellariaCore extends JavaPlugin {
 
         this.afkManager = new AfkManager(this);
         this.playtimeManager = new PlaytimeManager(this);
+        this.rankManager = new RankManager(this);
 
         this.muteManager = new MuteManager(this);
         muteManager.loadAll();
@@ -310,6 +312,10 @@ public class StellariaCore extends JavaPlugin {
         return this.playtimeManager;
     }
 
+    public RankManager getRankManager() {
+        return this.rankManager;
+    }
+
     /**
      * config.yml の scoreboard/tablist/belowname 設定を読み直して各Managerに反映する。
      * ConfigManager#reload() で config.yml 自体を読み直した後に呼ぶ想定（ReloadCommand参照）。
@@ -330,5 +336,6 @@ public class StellariaCore extends JavaPlugin {
             configManager.getString("belowname.value", "%health%")
         );
         autoBroadcastManager.restart();
+        rankManager.reload();
     }
 }
