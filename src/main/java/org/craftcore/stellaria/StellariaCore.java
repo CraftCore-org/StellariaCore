@@ -10,6 +10,7 @@ import org.craftcore.stellaria.commands.MessageCommand;
 import org.craftcore.stellaria.commands.MuteCommand;
 import org.craftcore.stellaria.commands.ReloadCommand;
 import org.craftcore.stellaria.commands.tpa.TpaCore;
+import org.craftcore.stellaria.managers.*;
 import org.craftcore.stellaria.gui.GuiListener;
 import org.craftcore.stellaria.managers.ActionBarManager;
 import org.craftcore.stellaria.managers.AfkManager;
@@ -31,7 +32,6 @@ import org.craftcore.stellaria.listeners.PlayerQuitListener;
 
 
 import org.craftcore.stellaria.utils.ConsoleUtil;
-import org.craftcore.stellaria.managers.DatabaseManager;
 
 import net.milkbowl.vault.economy.Economy;
 
@@ -45,6 +45,7 @@ public class StellariaCore extends JavaPlugin {
     private TabListManager tabListManager;
     private BelownameManager belownameManager;
     private MentionService mentionService;
+    private ElevatorManager elevatorManager;
     private AfkManager afkManager;
     private AutoBroadcastManager autoBroadcastManager;
     private MuteManager muteManager;
@@ -124,7 +125,8 @@ public class StellariaCore extends JavaPlugin {
 
         // Register listeners
         // getServer().getPluginManager().registerEvents(new PlayerListener(), this);
-        getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
+        this.elevatorManager = new ElevatorManager(this);
+        getServer().getPluginManager().registerEvents(new PlayerListener(this, elevatorManager), this);
 
         // 6. Scoreboard/Tablist/Belowname のインスタンス化とtick開始
         this.placeholderManager = new PlaceholderManager(this);

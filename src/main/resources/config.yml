@@ -67,43 +67,26 @@ mention:
     volume: 1.0
     pitch: 1.0
 
-afk:
-  enabled: true
-  timeout-seconds: 300
-  tag: "&%7[AFK] &r"
-  actionbar-flash-seconds: 3
-
-broadcast:
-  auto:
-    enabled: false
-    interval-minutes: 5
-    messages: []
-
-mute:
-  level3-command-blacklist:
-    - "msg"
-    - "tell"
-    - "w"
-    - "message"
-    - "reply"
-    - "r"
-    - "mute"
-    - "unmute"
-
-message:
-  color-codes:
-    enabled: true
-    permission: "stellaria.chat.color"
+elevator:
+  blocks:
+    IRON_BLOCK:
+      max: 10
+    GOLD_BLOCK:
+      max: 15
+    DIAMOND_BLOCK:
+      max: 50
+  message:
+    moveup_success: "&7↑"
+    moveup_fail: "&c↑"
+    movedown_success: "&7↓"
+    movedown_fail: "&c↓"
   sound:
-    enabled: true
-    name: "ENTITY_EXPERIENCE_ORB_PICKUP"
-    volume: 1.0
-    pitch: 1.0
-
-action-bar:
-  enabled: true
-  update-interval-ticks: 5
-  separator: "&%7 | &r"
-  persistent:
-    enabled: false
-    template: ""
+    moveup:
+      name: "BLOCK_PISTON_EXTEND"
+      volume: 1.0
+      pitch: 1.0
+    movedown:
+      name: "BLOCK_PISTON_EXTEND"
+      volume: 1.0
+      pitch: 0.75
+  ignoreblocks: ["&CARPET","&PRESSURE_PLATE","&_SIGN","&TORCH","&BANNER","&BUTTON","&LEVER","&_DOOR"]# エレベーターブロックの上2ブロックに置いてあっても移動ができるブロック
