@@ -85,12 +85,20 @@ public final class ConfigManager {
         warnIfMissing("config.yml", path);
         return get("config.yml").get().getString(path, def);
     }
+    public String getString(String path, String def, Boolean ignoreWarn) {
+        if (!ignoreWarn) warnIfMissing("config.yml", path);
+        return get("config.yml").get().getString(path, def);
+    }
 
     /**
      * config.yml の整数設定値を取得する。存在しない場合は def を返す。
      */
     public int getInt(String path, int def) {
         warnIfMissing("config.yml", path);
+        return get("config.yml").get().getInt(path, def);
+    }
+    public int getInt(String path, int def, Boolean ignoreWarn) {
+        if (!ignoreWarn) warnIfMissing("config.yml", path);
         return get("config.yml").get().getInt(path, def);
     }
 
@@ -101,12 +109,20 @@ public final class ConfigManager {
         warnIfMissing("config.yml", path);
         return get("config.yml").get().getBoolean(path, def);
     }
+    public boolean getBoolean(String path, boolean def,Boolean ignoreWarn) {
+        if (!ignoreWarn) warnIfMissing("config.yml", path);
+        return get("config.yml").get().getBoolean(path, def);
+    }
 
     /**
      * config.yml の文字列リスト設定を取得する（例: scoreboard.lines）。存在しない場合は空リスト。
      */
     public List<String> getStringList(String path) {
         warnIfMissing("config.yml", path);
+        return get("config.yml").get().getStringList(path);
+    }
+    public List<String> getStringList(String path, Boolean ignoreWarn) {
+        if (!ignoreWarn) warnIfMissing("config.yml", path);
         return get("config.yml").get().getStringList(path);
     }
 
@@ -118,6 +134,10 @@ public final class ConfigManager {
         warnIfMissing("config.yml", path);
         return get("config.yml").get().getMapList(path);
     }
+    public List<Map<?, ?>> getMapList(String path, Boolean ignoreWarn) {
+        if (!ignoreWarn) warnIfMissing("config.yml", path);
+        return get("config.yml").get().getMapList(path);
+    }
 
     /**
      * config.yml の小数設定を取得する（例: mention.sound.volume）。存在しない場合は def を返す。
@@ -126,17 +146,26 @@ public final class ConfigManager {
         warnIfMissing("config.yml", path);
         return get("config.yml").get().getDouble(path, def);
     }
+    public double getDouble(String path, double def, Boolean ignoreWarn) {
+        if (!ignoreWarn) warnIfMissing("config.yml", path);
+        return get("config.yml").get().getDouble(path, def);
+    }
 
-    /**
-     * messages.yml のメッセージを取得する。
-     * {@link FormatUtil#text(OfflinePlayer, String)} を通すので、%player% 置換・PlaceholderAPI・
-     * カラーコード変換（&#RRGGBB や &% カスタムパレット含む）まで全部乗った状態の文字列が返る。
-     *
-     * @param path             messages.yml 上のパス
-     * @param placeholderPlayer メッセージ内の %player% などのプレースホルダーに使うプレイヤー
-     */
+        /**
+         * messages.yml のメッセージを取得する。
+         * {@link FormatUtil#text(OfflinePlayer, String)} を通すので、%player% 置換・PlaceholderAPI・
+         * カラーコード変換（&#RRGGBB や &% カスタムパレット含む）まで全部乗った状態の文字列が返る。
+         *
+         * @param path             messages.yml 上のパス
+         * @param placeholderPlayer メッセージ内の %player% などのプレースホルダーに使うプレイヤー
+         */
+
     public String getMessage(String path, OfflinePlayer placeholderPlayer) {
         warnIfMissing("messages.yml", path);
+        return FormatUtil.text(placeholderPlayer, get("messages.yml").get().getString(path, ""));
+    }
+    public String getMessage(String path, OfflinePlayer placeholderPlayer, Boolean ignoreWarn) {
+        if (!ignoreWarn) warnIfMissing("config.yml", path);
         return FormatUtil.text(placeholderPlayer, get("messages.yml").get().getString(path, ""));
     }
 
@@ -149,6 +178,10 @@ public final class ConfigManager {
         warnIfMissing("messages.yml", path);
         return get("messages.yml").get().getString(path, "");
     }
+    public String getRawMessage(String path,Boolean ignoreWarn) {
+        if (!ignoreWarn) warnIfMissing("config.yml", path);
+        return get("messages.yml").get().getString(path, "");
+    }
 
     /**
      * messages.yml の文字列リストを未加工のまま取得する（例: tpa.tpa_accept_tooltip）。
@@ -156,6 +189,10 @@ public final class ConfigManager {
      */
     public List<String> getMessageList(String path) {
         warnIfMissing("messages.yml", path);
+        return get("messages.yml").get().getStringList(path);
+    }
+    public List<String> getMessageList(String path, Boolean ignoreWarn) {
+        if (!ignoreWarn) warnIfMissing("config.yml", path);
         return get("messages.yml").get().getStringList(path);
     }
 }
