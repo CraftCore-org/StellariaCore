@@ -24,6 +24,7 @@ tpa:
 
   # 承認後のテレポート詠唱（tpa/tphere共通）
   tpa_warmup: "&%e&l| &%7%seconds%秒後にテレポートします。ダメージを受けるとキャンセルされます。"
+  tpa_warmup_actionbar: "&e%seconds%秒後にテレポートします"
   tpa_warmup_cancelled: "&%c&l| &%7ダメージを受けたため、テレポートをキャンセルしました。"
   tpa_warmup_target_offline: "&%c&l| &%7相手がオフラインになったため、テレポートをキャンセルしました。"
 
@@ -44,6 +45,8 @@ afk:
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   became: "&%e%player% &%7がAFK（離席中）になりました。"
   returned: "&%e%player% &%7がAFKから復帰しました。"
+  became_actionbar: "&e離席中です"
+  returned_actionbar: "&aお帰りなさい"
 
 heal:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
@@ -88,8 +91,8 @@ msg:
   self: "&%c自分自身にメッセージを送ることはできません。"
   player_not_found: "&%c%player% &%7はオンラインではありません。"
   reply_no_target: "&%c返信できる相手がいません。"
-  format_sender: "&%d[あなた -> %target%] &f%message%"
-  format_receiver: "&%d[%sender% -> あなた] &f%message%"
+  format_sender: "&%7[&%fあなた &%7-> &%g%target%&%7] &f%message%"
+  format_receiver: "&%7[&%g%sender% &%7-> &%fあなた&%7] &f%message%"
   click_hint: "&%7クリックで返信"
 
 chat:
