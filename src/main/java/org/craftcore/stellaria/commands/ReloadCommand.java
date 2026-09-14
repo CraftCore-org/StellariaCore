@@ -25,7 +25,8 @@ public class ReloadCommand implements CommandExecutor {
         }
 
         plugin.getConfigManager().reload();
-        sender.sendMessage("§a§l| §7config.yml を再読み込みしました。");
+        plugin.reloadFeatureManagers();
+        sender.sendMessage("§a§l| §7設定ファイルを再読み込みしました。");
         return true;
     }
 }
