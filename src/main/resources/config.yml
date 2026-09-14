@@ -5,7 +5,8 @@ server:
   name: "Stellaria"
 
 economy:
-  default-balance: 1000 # 新規プレイヤーの初期所持金 !NOTE: 未実装
+  default-balance: 1000 # 新規プレイヤーの初期所持金
+  balance-top-page-size: 10
 
 scoreboard:
   title: "&%b&lSTELLARIA"

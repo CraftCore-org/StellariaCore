@@ -183,6 +183,60 @@ public class EconomyManager extends AbstractEconomy {
     }
 
     // -------------------------------------------------------------
+    // 独自拡張（Vault標準APIに無い操作）
+    // -------------------------------------------------------------
+
+    /** 残高を指定額に設定する（Vaultの標準APIには無い操作）。マイナス指定は禁止。 */
+    public boolean setBalance(OfflinePlayer player, double amount) {
+        if (player == null || amount < 0) {
+            return false;
+        }
+        int newBalance = (int) amount;
+        DatabaseManager.updateAsync("players", java.util.Map.of("coins", newBalance), "uuid = ?", player.getUniqueId().toString());
+        return true;
+    }
+
+    /**
+     * from -> to へ amount を送金する。DatabaseManager.transaction() で2件のUPDATEを
+     * 1トランザクションにまとめる。from の残高が不足していれば何もせず false を返す。
+     */
+    public boolean transfer(OfflinePlayer from, OfflinePlayer to, double amount) {
+        if (from == null || to == null || amount <= 0) {
+            return false;
+        }
+        double currentFrom = getBalance(from);
+        if (currentFrom < amount) {
+            return false;
+        }
+        int newFromBalance = (int) (currentFrom - amount);
+        int newToBalance = (int) (getBalance(to) + amount);
+        DatabaseManager.transaction(conn -> {
+            DatabaseManager.execute("UPDATE players SET coins = ? WHERE uuid = ?", newFromBalance, from.getUniqueId().toString());
+            DatabaseManager.execute("UPDATE players SET coins = ? WHERE uuid = ?", newToBalance, to.getUniqueId().toString());
+        });
+        return true;
+    }
+
+    /** /balance top のランキング1行分。 */
+    public record BalanceEntry(String name, int coins) {
+    }
+
+    /** 残高降順で limit 件、offset 件スキップして取得する（/balance top のページング用）。 */
+    public List<BalanceEntry> getTopBalances(int limit, int offset) {
+        return DatabaseManager.query(
+            "SELECT name, coins FROM players ORDER BY coins DESC LIMIT ? OFFSET ?",
+            rs -> new BalanceEntry(rs.getString("name"), rs.getInt("coins")),
+            limit, offset
+        );
+    }
+
+    /** players テーブルの総レコード数（/balance top のページ数計算用）。 */
+    public int getPlayerCount() {
+        Integer count = DatabaseManager.queryOne("SELECT COUNT(*) as cnt FROM players", rs -> rs.getInt("cnt"));
+        return count != null ? count : 0;
+    }
+
+    // -------------------------------------------------------------
     // アカウント作成・確認
     // -------------------------------------------------------------
 
