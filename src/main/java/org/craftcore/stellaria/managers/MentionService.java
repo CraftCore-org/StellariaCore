@@ -39,11 +39,12 @@ public class MentionService {
      */
     public Component highlight(String plainMessage, Player sender, boolean colorizeLiteral) {
         ConfigManager config = plugin.getConfigManager();
+        String urlHint = config.getMessage("chat.url_hint", sender);
         if (!config.getBoolean("mention.enabled", true)) {
-            return literal(plainMessage, colorizeLiteral);
+            return literal(plainMessage, colorizeLiteral, urlHint);
         }
 
-        String format = config.getString("mention.format", "&%6[&%e@{name}&%6]&r");
+        String format = config.getString("mention.format", "&%e@{name}&r");
         boolean allEnabled = config.getBoolean("mention.all.enabled", true);
         String allKeyword = config.getString("mention.all.keyword", "all");
         String allPermission = config.getString("mention.all.permission", "stellaria.chat.mention.all");
@@ -61,7 +62,7 @@ public class MentionService {
             }
 
             if (matcher.start() > lastEnd) {
-                result = result.append(literal(plainMessage.substring(lastEnd, matcher.start()), colorizeLiteral));
+                result = result.append(literal(plainMessage.substring(lastEnd, matcher.start()), colorizeLiteral, urlHint));
             }
             String displayName = isAll ? allKeyword : target.getName();
             Component mentionComponent = ColorUtil.component(format.replace("{name}", displayName));
@@ -81,7 +82,7 @@ public class MentionService {
             }
         }
         if (lastEnd < plainMessage.length()) {
-            result = result.append(literal(plainMessage.substring(lastEnd), colorizeLiteral));
+            result = result.append(literal(plainMessage.substring(lastEnd), colorizeLiteral, urlHint));
         }
 
         mentioned.remove(sender);
@@ -89,9 +90,9 @@ public class MentionService {
         return result;
     }
 
-    /** メンションではない部分のテキスト。URLがあればリンク化しつつ、残りは色変換する。 */
-    private Component literal(String text, boolean colorize) {
-        return UrlHighlighter.highlight(text, colorize);
+    /** メンションではない部分のテキスト。URLがあればリンク化（ホバー付き）しつつ、残りは色変換する。 */
+    private Component literal(String text, boolean colorize, String urlHint) {
+        return UrlHighlighter.highlight(text, colorize, urlHint);
     }
 
     private Player findOnlinePlayer(String name) {

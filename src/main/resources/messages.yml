@@ -98,6 +98,7 @@ msg:
 
 chat:
   click_hint: "&%7クリックでメッセージを送信"
+  url_hint: "&%7クリックで開く: &%f%url%"
 
 mention:
   click_hint: "&%7クリックで%player%にメッセージを送信"
