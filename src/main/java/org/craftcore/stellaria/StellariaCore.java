@@ -6,6 +6,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.craftcore.stellaria.commands.AfkCommand;
 import org.craftcore.stellaria.commands.BroadcastCommand;
 import org.craftcore.stellaria.commands.HealCommand;
+import org.craftcore.stellaria.commands.MuteCommand;
 import org.craftcore.stellaria.commands.ReloadCommand;
 import org.craftcore.stellaria.commands.tpa.TpaCore;
 import org.craftcore.stellaria.managers.AfkManager;
@@ -20,6 +21,7 @@ import org.craftcore.stellaria.managers.ScoreboardManager;
 import org.craftcore.stellaria.managers.TabListManager;
 import org.craftcore.stellaria.listeners.ChatListener;
 import org.craftcore.stellaria.listeners.PlayerJoinListener;
+import org.craftcore.stellaria.listeners.MuteCommandBlockListener;
 import org.craftcore.stellaria.listeners.PlayerListener;
 import org.craftcore.stellaria.listeners.PlayerQuitListener;
 
@@ -154,6 +156,11 @@ public class StellariaCore extends JavaPlugin {
         getCommand("afk").setExecutor(new AfkCommand(this));
         getCommand("heal").setExecutor(new HealCommand(this));
         getCommand("broadcast").setExecutor(new BroadcastCommand(this));
+
+        MuteCommand muteCommand = new MuteCommand(this);
+        getCommand("mute").setExecutor(muteCommand);
+        getCommand("unmute").setExecutor(muteCommand);
+        getServer().getPluginManager().registerEvents(new MuteCommandBlockListener(this), this);
 
         this.autoBroadcastManager = new AutoBroadcastManager(this);
         autoBroadcastManager.start();
