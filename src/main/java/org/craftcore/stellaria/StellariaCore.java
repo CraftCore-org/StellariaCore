@@ -9,6 +9,7 @@ import org.craftcore.stellaria.commands.HealCommand;
 import org.craftcore.stellaria.commands.ReloadCommand;
 import org.craftcore.stellaria.commands.tpa.TpaCore;
 import org.craftcore.stellaria.managers.AfkManager;
+import org.craftcore.stellaria.managers.AutoBroadcastManager;
 import org.craftcore.stellaria.managers.BelownameManager;
 import org.craftcore.stellaria.managers.ConfigManager;
 import org.craftcore.stellaria.managers.EconomyManager;
@@ -38,6 +39,7 @@ public class StellariaCore extends JavaPlugin {
     private BelownameManager belownameManager;
     private MentionService mentionService;
     private AfkManager afkManager;
+    private AutoBroadcastManager autoBroadcastManager;
 
     @Override
     public void onEnable() {
@@ -139,6 +141,9 @@ public class StellariaCore extends JavaPlugin {
         getCommand("heal").setExecutor(new HealCommand(this));
         getCommand("broadcast").setExecutor(new BroadcastCommand(this));
 
+        this.autoBroadcastManager = new AutoBroadcastManager(this);
+        autoBroadcastManager.start();
+
         ConsoleUtil.printLogo(getPluginMeta().getVersion());
     }
 
@@ -197,5 +202,6 @@ public class StellariaCore extends JavaPlugin {
             configManager.getString("tablist.value", "")
         );
         belownameManager.updateSettings(configManager.getString("belowname.title", ""));
+        autoBroadcastManager.restart();
     }
 }
