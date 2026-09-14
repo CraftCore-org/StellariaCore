@@ -54,3 +54,28 @@ mention:
     name: "ENTITY_EXPERIENCE_ORB_PICKUP"
     volume: 1.0
     pitch: 1.0
+
+elevator:
+  blocks:
+    IRON_BLOCK:
+      max: 10
+    GOLD_BLOCK:
+      max: 15
+    DIAMOND_BLOCK:
+      max: 50
+  message:
+    moveup_success: "&7↑"
+    moveup_fail: "&c↑"
+    movedown_success: "&7↓"
+    movedown_fail: "&c↓"
+  sound:
+    moveup:
+      name: "BLOCK_PISTON_EXTEND"
+      volume: 1.0
+      pitch: 1.0
+    movedown:
+      name: "BLOCK_PISTON_EXTEND"
+      volume: 1.0
+      pitch: 0.75
+  ignoreblocks: ["&CARPET","&PRESSURE_PLATE","&_SIGN","&TORCH","&BANNER","&BUTTON","&LEVER","&_DOOR"]# エレベーターブロックの上2ブロックに置いてあっても移動ができるブロック
+

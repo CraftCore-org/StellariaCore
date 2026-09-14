@@ -5,13 +5,7 @@ import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.craftcore.stellaria.commands.ReloadCommand;
 import org.craftcore.stellaria.commands.tpa.TpaCore;
-import org.craftcore.stellaria.managers.BelownameManager;
-import org.craftcore.stellaria.managers.ConfigManager;
-import org.craftcore.stellaria.managers.EconomyManager;
-import org.craftcore.stellaria.managers.MentionService;
-import org.craftcore.stellaria.managers.PlaceholderManager;
-import org.craftcore.stellaria.managers.ScoreboardManager;
-import org.craftcore.stellaria.managers.TabListManager;
+import org.craftcore.stellaria.managers.*;
 import org.craftcore.stellaria.listeners.ChatListener;
 import org.craftcore.stellaria.listeners.PlayerJoinListener;
 import org.craftcore.stellaria.listeners.PlayerListener;
@@ -19,7 +13,6 @@ import org.craftcore.stellaria.listeners.PlayerQuitListener;
 
 
 import org.craftcore.stellaria.utils.ConsoleUtil;
-import org.craftcore.stellaria.managers.DatabaseManager;
 
 import net.milkbowl.vault.economy.Economy;
 
@@ -33,6 +26,7 @@ public class StellariaCore extends JavaPlugin {
     private TabListManager tabListManager;
     private BelownameManager belownameManager;
     private MentionService mentionService;
+    private ElevatorManager elevatorManager;
 
     @Override
     public void onEnable() {
@@ -77,7 +71,8 @@ public class StellariaCore extends JavaPlugin {
 
         // Register listeners
         // getServer().getPluginManager().registerEvents(new PlayerListener(), this);
-        getServer().getPluginManager().registerEvents(new PlayerListener(), this);
+        this.elevatorManager = new ElevatorManager(this);
+        getServer().getPluginManager().registerEvents(new PlayerListener(this, elevatorManager), this);
 
         // 6. Scoreboard/Tablist/Belowname のインスタンス化とtick開始
         this.placeholderManager = new PlaceholderManager(this);
