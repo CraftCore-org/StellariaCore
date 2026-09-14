@@ -3,9 +3,21 @@
 server:
   prefix: "&%9&l| すてらりあ &r" # メッセージのPrefix !NOTE: 未実装
 
+discord:
+  invite: "https://discord.gg/xxxxx" # /discord で案内するサーバー招待リンク
+
 economy:
   default-balance: 1000 # 新規プレイヤーの初期所持金
-  balance-top-page-size: 10
+
+ranking:
+  page-size: 10
+
+first-join-kit:
+  enabled: true
+  items: # "素材名:個数" 形式（個数省略で1個）
+    - "DIAMOND_SWORD:1"
+    - "COOKED_BEEF:16"
+    - "OAK_LOG:16"
 
 action-bar:
   enabled: true
@@ -24,13 +36,13 @@ scoreboard:
     - " &%bオンライン&%7: &%f%online%&%7/&%f%max_online%"
     - " &%bワールド&%7: &%f%world%"
     - " &%b座標&%7: &%f%x%&%7,&%f %y%&%7,&%f %z%"
-    - " &%b所持金&%7: &%e%money%"
+    - " &%b所持金&%7: &%f%money%"
     - ""
 
 
 tablist:
-  header: "\n&%b%player%さん\n&%9すてらりあ &bへようこそ！\n"
-  footer: "\n&%b%online%&%7/&%9%max_online%\n"
+  header: "\n&%b%player%さん\n           &%9すてらりあ &%bへようこそ！           \n"
+  footer: "\n&%9%online%&%7/&%9%max_online%\n"
   value: "%afk%&%a%ping%ms"
   update-interval-ticks: 20
 
@@ -43,7 +55,7 @@ afk:
   enabled: true
   timeout-seconds: 300 # 何秒操作が無ければAFK扱いにするか
   actionbar-flash-seconds: 3 # AFK復帰通知をアクションバーに表示する秒数
-  tag: "&c[&%cAFK&c] &r" # %afk% プレースホルダーの中身
+  tag: "&c[&%c離席中&c] &r" # %afk% プレースホルダーの中身
 
 chat:
   enabled: true
@@ -79,6 +91,14 @@ teleport-effect:
   enabled: true
   particle: "DUST" # Bukkitの Particle enum名。DUSTの時だけ color/size が使われる
   color: "#55FFFF"
+  size: 1.0
+  radius: 1.0
+  points: 30
+
+join-effect:
+  enabled: true
+  particle: "DUST" # Bukkitの Particle enum名。DUSTの時だけ color/size が使われる
+  color: "#4C2FB3"
   size: 1.0
   radius: 1.0
   points: 30

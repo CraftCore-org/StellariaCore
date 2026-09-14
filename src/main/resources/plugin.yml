@@ -30,6 +30,12 @@ commands:
   balance:
     aliases: [money, bal]
   colors:
+  discord:
+    aliases: [dc]
+  playtime:
+  seen:
+  ranking:
+    aliases: [rank]
 
 permissions:
   stellaria.msg:
@@ -37,4 +43,10 @@ permissions:
   stellaria.pay:
     default: true
   stellaria.balance:
+    default: true
+  stellaria.playtime:
+    default: true
+  stellaria.seen:
+    default: true
+  stellaria.ranking:
     default: true

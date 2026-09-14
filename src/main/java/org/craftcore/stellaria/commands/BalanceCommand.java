@@ -12,12 +12,11 @@ import org.craftcore.stellaria.managers.EconomyManager;
 import org.craftcore.stellaria.utils.TabCompleteUtil;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * /balance（alias money, bal）コマンド。引数なしで自分の残高、プレイヤー指定で他人の残高
- * （要 stellaria.balance.others）、"top [page]" でランキング表示。
+ * （要 stellaria.balance.others）を表示する。ランキング表示は /ranking money に移行済み。
  */
 public class BalanceCommand implements CommandExecutor, TabCompleter {
 
@@ -31,11 +30,6 @@ public class BalanceCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String @NotNull [] args) {
         if (!sender.hasPermission("stellaria.balance")) {
             sender.sendMessage(plugin.getConfigManager().getMessage("balance.no_permission", null));
-            return true;
-        }
-
-        if (args.length >= 1 && args[0].equalsIgnoreCase("top")) {
-            showTop(sender, args);
             return true;
         }
 
@@ -69,49 +63,10 @@ public class BalanceCommand implements CommandExecutor, TabCompleter {
                 .replace("%amount%", amountText));
     }
 
-    private void showTop(CommandSender sender, String[] args) {
-        int pageSize = plugin.getConfigManager().getInt("economy.balance-top-page-size", 10);
-        int page = 1;
-        if (args.length >= 2) {
-            try {
-                page = Math.max(1, Integer.parseInt(args[1]));
-            } catch (NumberFormatException e) {
-                page = 1;
-            }
-        }
-
-        EconomyManager economy = plugin.getEconomyManager();
-        int totalPlayers = economy.getPlayerCount();
-        int maxPage = Math.max(1, (int) Math.ceil(totalPlayers / (double) pageSize));
-        int offset = (page - 1) * pageSize;
-
-        List<EconomyManager.BalanceEntry> entries = economy.getTopBalances(pageSize, offset);
-
-        sender.sendMessage(plugin.getConfigManager().getMessage("balance.top_header", null)
-                .replace("%page%", String.valueOf(page))
-                .replace("%max_page%", String.valueOf(maxPage)));
-
-        if (entries.isEmpty()) {
-            sender.sendMessage(plugin.getConfigManager().getMessage("balance.top_empty", null));
-            return;
-        }
-
-        int rank = offset + 1;
-        for (EconomyManager.BalanceEntry entry : entries) {
-            sender.sendMessage(plugin.getConfigManager().getMessage("balance.top_entry", null)
-                    .replace("%rank%", String.valueOf(rank))
-                    .replace("%player%", entry.name())
-                    .replace("%amount%", economy.format(entry.coins())));
-            rank++;
-        }
-    }
-
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String @NotNull [] args) {
         if (args.length == 1) {
-            List<String> candidates = new ArrayList<>(TabCompleteUtil.onlinePlayerNames(args[0]));
-            candidates.addAll(TabCompleteUtil.filterStartsWith(List.of("top"), args[0]));
-            return candidates;
+            return TabCompleteUtil.onlinePlayerNames(args[0]);
         }
         return List.of();
     }

@@ -4,7 +4,6 @@ import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
-import org.craftcore.stellaria.utils.ColorUtil;
 
 import java.util.List;
 
@@ -63,7 +62,10 @@ public class AutoBroadcastManager {
 
         String rawMessage = messages.get(currentIndex);
         for (Player viewer : Bukkit.getOnlinePlayers()) {
-            viewer.sendMessage(ColorUtil.component(plugin.getPlaceholderManager().resolve(rawMessage, viewer)));
+            String resolved = plugin.getPlaceholderManager().resolve(rawMessage, viewer);
+            // notifySound=false: 全員分ループして個別送信するので、trueにすると同じ相手に
+            // メンション通知音がオンライン人数分連続で鳴ってしまう。
+            viewer.sendMessage(plugin.getMentionService().highlightBroadcast(resolved, true, false));
         }
         currentIndex = (currentIndex + 1) % messages.size();
     }

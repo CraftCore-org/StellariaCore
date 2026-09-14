@@ -9,10 +9,14 @@ import org.craftcore.stellaria.commands.HealCommand;
 import org.craftcore.stellaria.commands.MessageCommand;
 import org.craftcore.stellaria.commands.BalanceCommand;
 import org.craftcore.stellaria.commands.ColorsCommand;
+import org.craftcore.stellaria.commands.DiscordCommand;
 import org.craftcore.stellaria.commands.EcoCommand;
 import org.craftcore.stellaria.commands.MuteCommand;
 import org.craftcore.stellaria.commands.PayCommand;
+import org.craftcore.stellaria.commands.PlaytimeCommand;
+import org.craftcore.stellaria.commands.RankingCommand;
 import org.craftcore.stellaria.commands.ReloadCommand;
+import org.craftcore.stellaria.commands.SeenCommand;
 import org.craftcore.stellaria.commands.tpa.TpaCore;
 import org.craftcore.stellaria.managers.*;
 import org.craftcore.stellaria.gui.GuiListener;
@@ -56,6 +60,7 @@ public class StellariaCore extends JavaPlugin {
     private MuteManager muteManager;
     private PrivateMessageManager privateMessageManager;
     private ActionBarManager actionBarManager;
+    private PlaytimeManager playtimeManager;
 
     @Override
     public void onEnable() {
@@ -80,8 +85,14 @@ public class StellariaCore extends JavaPlugin {
             "muted_by TEXT",
             "muted_at INTEGER"
         );
+        DatabaseManager.createTableIfNotExists("player_stats",
+            "uuid TEXT PRIMARY KEY",
+            "last_login INTEGER DEFAULT 0",
+            "playtime_seconds INTEGER DEFAULT 0"
+        );
 
         this.afkManager = new AfkManager(this);
+        this.playtimeManager = new PlaytimeManager(this);
 
         this.muteManager = new MuteManager(this);
         muteManager.loadAll();
@@ -224,6 +235,20 @@ public class StellariaCore extends JavaPlugin {
 
         getCommand("colors").setExecutor(new ColorsCommand(this));
 
+        getCommand("discord").setExecutor(new DiscordCommand(this));
+
+        PlaytimeCommand playtimeCommand = new PlaytimeCommand(this);
+        getCommand("playtime").setExecutor(playtimeCommand);
+        getCommand("playtime").setTabCompleter(playtimeCommand);
+
+        SeenCommand seenCommand = new SeenCommand(this);
+        getCommand("seen").setExecutor(seenCommand);
+        getCommand("seen").setTabCompleter(seenCommand);
+
+        RankingCommand rankingCommand = new RankingCommand(this);
+        getCommand("ranking").setExecutor(rankingCommand);
+        getCommand("ranking").setTabCompleter(rankingCommand);
+
         this.autoBroadcastManager = new AutoBroadcastManager(this);
         autoBroadcastManager.start();
 
@@ -279,6 +304,10 @@ public class StellariaCore extends JavaPlugin {
 
     public ActionBarManager getActionBarManager() {
         return this.actionBarManager;
+    }
+
+    public PlaytimeManager getPlaytimeManager() {
+        return this.playtimeManager;
     }
 
     /**
