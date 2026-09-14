@@ -13,6 +13,7 @@ import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.managers.ConfigManager;
 import org.craftcore.stellaria.managers.MentionService;
 import org.craftcore.stellaria.managers.MuteManager;
+import org.craftcore.stellaria.managers.RankManager;
 import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.DurationParser;
 
@@ -64,12 +65,15 @@ public class ChatListener implements Listener {
         String plainMessage = PlainTextComponentSerializer.plainText().serialize(event.message());
         Component message = mentionService.highlight(plainMessage, sender, colorCodesPermitted(config, sender));
         boolean clickToMessage = config.getBoolean("chat.click-to-message", true);
-        Component tooltip = buildTooltip(config, sender, clickToMessage);
+        RankManager.RankInfo rank = plugin.getRankManager().getRank(sender);
+        Component tooltip = buildTooltip(config, sender, clickToMessage, rank);
 
         event.renderer(ChatRenderer.viewerUnaware((source, sourceDisplayName, ignoredMessage) -> {
-            Component nameComponent = tooltip != null
-                    ? sourceDisplayName.hoverEvent(HoverEvent.showText(tooltip))
-                    : sourceDisplayName;
+            Component rankPrefix = ColorUtil.component(rank.color() + "&l| ");
+            Component nameComponent = rankPrefix.append(sourceDisplayName);
+            nameComponent = tooltip != null
+                    ? nameComponent.hoverEvent(HoverEvent.showText(tooltip))
+                    : nameComponent;
             if (clickToMessage) {
                 nameComponent = nameComponent.clickEvent(ClickEvent.suggestCommand("/msg " + sender.getName() + " "));
             }
@@ -81,15 +85,24 @@ public class ChatListener implements Listener {
      * 送信者名にホバーした時に出すツールチップ（{@code chat.tooltip.*} + クリック案内）。
      * ツールチップもクリック案内も無ければ null。
      */
-    private Component buildTooltip(ConfigManager config, Player sender, boolean clickToMessage) {
+    private Component buildTooltip(ConfigManager config, Player sender, boolean clickToMessage, RankManager.RankInfo rank) {
+        Component rankLine = rank.displayName().isEmpty()
+                ? null
+                : ColorUtil.component("&%7ランク: " + rank.color() + rank.displayName());
+
         Component linesTooltip = config.getBoolean("chat.tooltip.enabled", true)
                 ? plugin.getPlaceholderManager().resolveLines(config.getStringList("chat.tooltip.lines"), sender)
                 : null;
+        Component combined = rankLine;
+        if (linesTooltip != null) {
+            combined = combined != null ? combined.append(Component.newline()).append(linesTooltip) : linesTooltip;
+        }
+
         if (!clickToMessage) {
-            return linesTooltip;
+            return combined;
         }
         Component hint = ColorUtil.component(config.getMessage("chat.click_hint", sender));
-        return linesTooltip != null ? linesTooltip.append(Component.newline()).append(hint) : hint;
+        return combined != null ? combined.append(Component.newline()).append(hint) : hint;
     }
 
     /**
