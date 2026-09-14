@@ -5,7 +5,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.craftcore.stellaria.StellariaCore;
-import org.craftcore.stellaria.utils.FormatUtil;
 
 public class PlayerQuitListener implements Listener {
     private final StellariaCore plugin;
@@ -17,12 +16,11 @@ public class PlayerQuitListener implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
 
-        // config.yml から元の文字列を取得
-        String rawMsg = plugin.getConfigManager().getString("messages.quit", "");
+        // messages.yml からフォーマット済みのメッセージを取得
+        String quitMsg = plugin.getConfigManager().getMessage("quit", player);
 
-        if (!rawMsg.isEmpty()) {
-            // Formatを使ってプレースホルダー置き換え
-            event.setQuitMessage(FormatUtil.text(player, rawMsg));
+        if (!quitMsg.isEmpty()) {
+            event.setQuitMessage(quitMsg);
         } else {
             event.setQuitMessage(null);
         }

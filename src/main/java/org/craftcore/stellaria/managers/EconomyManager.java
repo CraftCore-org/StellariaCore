@@ -5,6 +5,7 @@ import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.utils.MoneyFormat;
 
 import java.util.List;
 import java.util.Collections;
@@ -43,7 +44,7 @@ public class EconomyManager extends AbstractEconomy {
 
     @Override
     public String format(double amount) {
-        return (int) amount + "円";
+        return MoneyFormat.format(amount) + "円";
     }
 
     @Override

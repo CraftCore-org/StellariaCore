@@ -2,38 +2,50 @@
 
 server:
   prefix: "&%b[Stellaria] &r" # メッセージのPrefix !NOTE: 未実装
-
-messages:
-  join: " &%a> &%7%player% さんがログインしました。" # プレイヤー参加時のメッセージ
-  quit: "&%c< &%7%player% さんがログアウトしました。" # プレイヤー参加時のメッセージ
-
-  tpa:
-    tpa_accept: "&%a[許可]"
-    tpa_deny: "&%c[拒否]"
-    tpa_send: "&%e&l| &%7%player%&%7にテレポートリクエストを送信しました。" # tpa送信時のメッセージ
-    tpa_receive: "&%e&l| &%7%player%&%7からテレポートリクエストが届きました。" # tpa受信時のメッセージ
-    tpa_accept_sender: "&%a&l| &%7%player%&%7がテレポートリクエストを許可しました。" # tpa許可時の送信側のメッセージ
-    tpa_accept_receiver: "&%a&l| &%7テレポートリクエストを許可しました。"
-    tpa_deny_sender: "&%c&l| &%7%player%&%7がテレポートリクエストを拒否しました。"
-    tpa_deny_receiver: "&%c&l| &%7テレポートリクエストを拒否しました。"
-    tpa_err_player: "&%c&l| &%7プレイヤーを指定してください。"
-    tpa_err_online: "&%c&l| &%7指定されたプレイヤーはオンラインではありません。"
-    tpa_err_notreceived: "&%c&l| &%7指定されたプレイヤーからテレポートリクエストは届いていません。"
-    tpa_err_self: "&%c&l| &%7自分自身にテレポートリクエストを送ることはできません。"
-
-    tphere_send: "&%e&l| &%7%player%&%7に呼び出しリクエストを送信しました。"
-    tphere_receive: "&%e&l| &%7%player%&%7から呼び出しリクエストが届きました。"
-    tphere_accept_sender: "&%a&l| &%7%player%&%7が呼び出しリクエストを許可しました。"
-    tphere_accept_receiver: "&%a&l| &%7呼び出しリクエストを許可しました。"
-    tphere_deny_sender: "&%c&l| &%7%player%&%7が呼び出しリクエストを拒否しました。"
-    tphere_deny_receiver: "&%c&l| &%7呼び出しリクエストを拒否しました。"
-    tphere_err_player: "&%c&l| &%7呼び出しリクエストを送るプレイヤーを指定してください。"
-    tphere_err_online: "&%c&l| &%7指定されたプレイヤーはオンラインではありません。"
-    tphere_err_notreceived: "&%c&l| &%7指定されたプレイヤーから呼び出しリクエストは届いていません。"
-    tphere_err_self: "&%c&l| &%7自分自身に呼び出しリクエストを送ることはできません。"
-
-
+  name: "Stellaria"
 
 economy:
   default-balance: 1000 # 新規プレイヤーの初期所持金 !NOTE: 未実装
 
+scoreboard:
+  title: "&%b&lSTELLARIA"
+  update-interval-ticks: 20
+  hide-numbers: true
+  lines:
+    - "&%7%server%"
+    - "&%7オンライン: &%f%online%/%max_online%"
+    - "&%7Ping: &%f%ping%ms"
+    - "&%7ワールド: &%f%world%"
+    - "&%7座標: &%f%x%, %y%, %z%"
+    - "&%7所持金: &%e%money%"
+
+tablist:
+  header: "\n&%d%player%さん\n&%5すてらりあへようこそ\n"
+  footer: "\n&%5stellaria.craftcore.org\n     &%ddiscord.gg/ssaREjBJXg     \n"
+  value: "&%7%ping%ms"
+  update-interval-ticks: 20
+
+belowname:
+  title: "&%c❤"
+  update-interval-ticks: 20
+
+chat:
+  enabled: true
+  format: "{placeholder}{sender}&%7: &%f{message}"
+  placeholder: ""
+  color-codes:
+    enabled: true
+    permission: "stellaria.chat.color"
+
+mention:
+  enabled: true
+  format: "&%6[&%e@{name}&%6]&r"
+  all:
+    enabled: true
+    keyword: "all"
+    permission: "stellaria.chat.mention.all"
+  sound:
+    enabled: true
+    name: "ENTITY_EXPERIENCE_ORB_PICKUP"
+    volume: 1.0
+    pitch: 1.0
