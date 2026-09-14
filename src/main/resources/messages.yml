@@ -6,6 +6,10 @@ quit: "&%c< &%7%player% さんがログアウトしました。" # プレイヤ�
 tpa:
   tpa_accept: "&%a[許可]"
   tpa_deny: "&%c[拒否]"
+  tpa_accept_tooltip:
+    - "&%7クリックしてテレポートリクエストを許可します"
+  tpa_deny_tooltip:
+    - "&%7クリックしてテレポートリクエストを拒否します"
   tpa_send: "&%e&l| &%7%player%&%7にテレポートリクエストを送信しました。" # tpa送信時のメッセージ
   tpa_receive: "&%e&l| &%7%player%&%7からテレポートリクエストが届きました。" # tpa受信時のメッセージ
   tpa_accept_sender: "&%a&l| &%7%player%&%7がテレポートリクエストを許可しました。" # tpa許可時の送信側のメッセージ

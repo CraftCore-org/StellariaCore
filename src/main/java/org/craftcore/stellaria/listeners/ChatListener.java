@@ -3,6 +3,7 @@ package org.craftcore.stellaria.listeners;
 import io.papermc.paper.chat.ChatRenderer;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -21,8 +22,8 @@ import org.craftcore.stellaria.utils.ColorUtil;
  * {@code chat.placeholder} の中身（例: {@code "%ping%ms"}）だけは {@code PlaceholderManager}
  * で解決する。
  *
- * orelia-serverutil の {@code ChatModule} を移植したもの（ホバーツールチップと、他プラグイン
- * 向けのProvider拡張ポイントは含まない）。
+ * orelia-serverutil の {@code ChatModule} を移植したもの（他プラグイン向けのProvider
+ * 拡張ポイントは含まない）。
  */
 public class ChatListener implements Listener {
 
@@ -45,9 +46,22 @@ public class ChatListener implements Listener {
 
         String plainMessage = PlainTextComponentSerializer.plainText().serialize(event.message());
         Component message = mentionService.highlight(plainMessage, sender, colorCodesPermitted(config, sender));
+        Component tooltip = buildTooltip(config, sender);
 
-        event.renderer(ChatRenderer.viewerUnaware((source, sourceDisplayName, ignoredMessage) ->
-                render(format, sourceDisplayName, placeholder, message)));
+        event.renderer(ChatRenderer.viewerUnaware((source, sourceDisplayName, ignoredMessage) -> {
+            Component nameComponent = tooltip != null
+                    ? sourceDisplayName.hoverEvent(HoverEvent.showText(tooltip))
+                    : sourceDisplayName;
+            return render(format, nameComponent, placeholder, message);
+        }));
+    }
+
+    /** 送信者名にホバーした時に出すツールチップ（{@code chat.tooltip.*}）。無効なら null。 */
+    private Component buildTooltip(ConfigManager config, Player sender) {
+        if (!config.getBoolean("chat.tooltip.enabled", true)) {
+            return null;
+        }
+        return plugin.getPlaceholderManager().resolveLines(config.getStringList("chat.tooltip.lines"), sender);
     }
 
     /**

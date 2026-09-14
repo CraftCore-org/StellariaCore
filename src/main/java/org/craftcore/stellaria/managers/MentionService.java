@@ -6,6 +6,7 @@ import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.ColorUtil;
+import org.craftcore.stellaria.utils.UrlHighlighter;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -79,8 +80,9 @@ public class MentionService {
         return result;
     }
 
+    /** メンションではない部分のテキスト。URLがあればリンク化しつつ、残りは色変換する。 */
     private Component literal(String text, boolean colorize) {
-        return colorize ? ColorUtil.component(text) : Component.text(text);
+        return UrlHighlighter.highlight(text, colorize);
     }
 
     private Player findOnlinePlayer(String name) {

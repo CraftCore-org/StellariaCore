@@ -2,6 +2,7 @@ package org.craftcore.stellaria.commands.tpa;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Sound;
@@ -27,6 +28,18 @@ public class TpaCore implements CommandExecutor {
     public static void resetPlayerTeleportRequests(Player player){
         tpRequest.remove(player.getUniqueId());
         tpHere.remove(player.getUniqueId());
+    }
+
+    /**
+     * クリックでコマンドを実行するボタンを作る。{@code tooltipPath}（messages.yml、複数行リスト）に
+     * 中身があれば、ホバーツールチップも付ける。TPA系ボタンで許可/拒否どっちにも使い回す。
+     *
+     * @param viewer このボタンを実際に見るプレイヤー（ツールチップのプレースホルダー解決に使う）
+     */
+    private Component button(String text, String command, String tooltipPath, Player viewer) {
+        Component tooltip = plugin.getPlaceholderManager().resolveLines(plugin.getConfigManager().getMessageList(tooltipPath), viewer);
+        Component btn = Component.text(text).clickEvent(ClickEvent.runCommand(command));
+        return tooltip != null ? btn.hoverEvent(HoverEvent.showText(tooltip)) : btn;
     }
 
     @Override
@@ -58,9 +71,9 @@ public class TpaCore implements CommandExecutor {
                 String tpa_receive = plugin.getConfigManager().getMessage("tpa.tpa_receive", (OfflinePlayer) sender);
 
                 ((Player)sender).playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_FLUTE,1,1);
-                Component message = Component.text(tpa_accept).clickEvent(ClickEvent.runCommand("/tpaccept " + sender.getName()))
+                Component message = button(tpa_accept, "/tpaccept " + sender.getName(), "tpa.tpa_accept_tooltip", player)
                         .append(Component.text("   "))
-                        .append(Component.text(tpa_deny).clickEvent(ClickEvent.runCommand("/tpdeny " + sender.getName())));
+                        .append(button(tpa_deny, "/tpdeny " + sender.getName(), "tpa.tpa_deny_tooltip", player));
                 sender.sendMessage(tpa_send);
                 player.sendMessage(tpa_receive);
                 player.sendMessage(message);
@@ -144,9 +157,9 @@ public class TpaCore implements CommandExecutor {
 
 
                 ((Player)sender).playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_FLUTE,1,1);
-                Component message = Component.text(tphere_accept).clickEvent(ClickEvent.runCommand("/tphaccept " + sender.getName()))
+                Component message = button(tphere_accept, "/tphaccept " + sender.getName(), "tpa.tpa_accept_tooltip", player)
                         .append(Component.text("   "))
-                        .append(Component.text(tphere_deny).clickEvent(ClickEvent.runCommand("/tphdeny " + sender.getName())));
+                        .append(button(tphere_deny, "/tphdeny " + sender.getName(), "tpa.tpa_deny_tooltip", player));
                 sender.sendMessage(tphere_send);
                 player.sendMessage(tphere_receive);
                 player.sendMessage(message);

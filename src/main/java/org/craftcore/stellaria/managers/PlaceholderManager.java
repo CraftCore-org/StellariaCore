@@ -1,12 +1,15 @@
 package org.craftcore.stellaria.managers;
 
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -30,6 +33,26 @@ public class PlaceholderManager {
 
     public String resolve(String template, Player player) {
         return FormatUtil.text(player, resolveBuiltIn(template, player));
+    }
+
+    /**
+     * 複数行のテンプレートをそれぞれ解決して改行区切りのComponentにまとめる。
+     * ホバーテキスト（ツールチップ）用。TPAのボタンやChatの送信者名ホバーなど、
+     * 複数行ツールチップが要る場所ならどこからでも使い回せる。
+     * テンプレートが空/nullなら null を返す。
+     */
+    public Component resolveLines(List<String> templates, Player player) {
+        if (templates == null || templates.isEmpty()) {
+            return null;
+        }
+        Component result = Component.empty();
+        for (int i = 0; i < templates.size(); i++) {
+            if (i > 0) {
+                result = result.append(Component.newline());
+            }
+            result = result.append(ColorUtil.component(resolve(templates.get(i), player)));
+        }
+        return result;
     }
 
     private String resolveBuiltIn(String template, Player player) {
