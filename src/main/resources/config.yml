@@ -27,7 +27,8 @@ tablist:
   update-interval-ticks: 20
 
 belowname:
-  title: "%afk%&%c❤"
+  title: "&%c❤"
+  value: "%afk%%health%"
   update-interval-ticks: 20
 
 chat:

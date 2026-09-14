@@ -146,7 +146,8 @@ public class StellariaCore extends JavaPlugin {
         );
         this.belownameManager = new BelownameManager(
             placeholderManager,
-            configManager.getString("belowname.title", "")
+            configManager.getString("belowname.title", ""),
+            configManager.getString("belowname.value", "%health%")
         );
 
         long scoreboardInterval = configManager.getInt("scoreboard.update-interval-ticks", 20);
@@ -269,7 +270,10 @@ public class StellariaCore extends JavaPlugin {
             configManager.getString("tablist.footer", ""),
             configManager.getString("tablist.value", "")
         );
-        belownameManager.updateSettings(configManager.getString("belowname.title", ""));
+        belownameManager.updateSettings(
+            configManager.getString("belowname.title", ""),
+            configManager.getString("belowname.value", "%health%")
+        );
         autoBroadcastManager.restart();
     }
 }
