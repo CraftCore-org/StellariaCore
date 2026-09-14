@@ -42,6 +42,9 @@ chat:
       - "&%7Ping: &%f%ping%ms"
       - "&%7所持金: &%e%money%"
 
+tpa:
+  teleport-delay-seconds: 5 # 承認後、実際にテレポートするまでの詠唱時間。0以下で即時テレポート。ダメージを受けるとキャンセルされる
+
 teleport-effect:
   enabled: true
   particle: "DUST" # Bukkitの Particle enum名。DUSTの時だけ color/size が使われる
