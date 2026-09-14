@@ -28,6 +28,7 @@ import org.craftcore.stellaria.managers.ScoreboardManager;
 import org.craftcore.stellaria.managers.TabListManager;
 import org.craftcore.stellaria.listeners.ChatListener;
 import org.craftcore.stellaria.listeners.PlayerJoinListener;
+import org.craftcore.stellaria.listeners.MentionTabCompleteListener;
 import org.craftcore.stellaria.listeners.MuteCommandBlockListener;
 import org.craftcore.stellaria.listeners.PlayerListener;
 import org.craftcore.stellaria.listeners.PlayerQuitListener;
@@ -166,6 +167,7 @@ public class StellariaCore extends JavaPlugin {
         this.mentionService = new MentionService(this);
         if (configManager.getBoolean("chat.enabled", true)) {
             getServer().getPluginManager().registerEvents(new ChatListener(this, mentionService), this);
+            getServer().getPluginManager().registerEvents(new MentionTabCompleteListener(), this);
         }
 
         TpaCore tpaCore = new TpaCore(this);
