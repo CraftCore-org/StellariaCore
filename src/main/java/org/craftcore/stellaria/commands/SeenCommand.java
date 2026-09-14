@@ -16,7 +16,9 @@ import java.util.List;
 
 /**
  * /seen [プレイヤー] コマンド。引数なしで自分、プレイヤー指定で他人（要 stellaria.seen.others）の
- * 最終ログインを表示する。対象がオンライン中なら「現在オンライン」と表示する。
+ * 最終ログアウトを表示する。対象がオンライン中なら「現在オンライン」と表示する
+ * （ログイン時刻だと、ログイン中はずっと同じ値のままで「最後にプレイしていたのはいつか」が
+ * 分からなくなるため、ログアウト時刻を基準にしている）。
  */
 public class SeenCommand implements CommandExecutor, TabCompleter {
 
@@ -62,13 +64,13 @@ public class SeenCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        long lastLogin = plugin.getPlaytimeManager().getLastLogin(target.getUniqueId());
-        if (lastLogin <= 0) {
+        long lastLogout = plugin.getPlaytimeManager().getLastLogout(target.getUniqueId());
+        if (lastLogout <= 0) {
             sender.sendMessage(plugin.getConfigManager().getMessage("seen.unknown", target));
             return true;
         }
 
-        String time = DurationParser.formatDuration(Math.max(0, (System.currentTimeMillis() - lastLogin) / 1000L));
+        String time = DurationParser.formatDuration(Math.max(0, (System.currentTimeMillis() - lastLogout) / 1000L));
         String key = self ? "seen.offline_self" : "seen.offline_other";
         sender.sendMessage(plugin.getConfigManager().getMessage(key, target).replace("%time%", time));
         return true;
