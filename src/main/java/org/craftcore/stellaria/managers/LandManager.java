@@ -248,4 +248,120 @@ public class LandManager {
 
         return ActionResult.SUCCESS;
     }
+
+    // ------------------------------------------------------------------
+    // 照会
+    // ------------------------------------------------------------------
+
+    /** 現在地のオーナー。未claimならnull。 */
+    public UUID ownerOf(Location location) {
+        Claim claim = claimsByChunk.get(ChunkKey.of(location));
+        return claim != null ? claim.owner() : null;
+    }
+
+    /**
+     * このプレイヤーがこの場所でブロック操作できるか。
+     * 管理者権限（stellaria.land.admin）・未claim地・オーナー本人・縄張りの信頼リストのいずれかでtrue。
+     */
+    public boolean canBuild(Location location, Player player) {
+        if (player.hasPermission("stellaria.land.admin")) {
+            return true;
+        }
+        Claim claim = claimsByChunk.get(ChunkKey.of(location));
+        if (claim == null) {
+            return true;
+        }
+        if (claim.owner().equals(player.getUniqueId())) {
+            return true;
+        }
+        Territory territory = territories.get(claim.territoryId());
+        return territory != null && territory.trusted.contains(player.getUniqueId());
+    }
+
+    /** この場所でPvPが許可されているか。claimが存在し、かつその縄張りのpvp_enabledがtrueの時だけtrue。 */
+    public boolean isPvpAllowed(Location location) {
+        Claim claim = claimsByChunk.get(ChunkKey.of(location));
+        if (claim == null) {
+            return false;
+        }
+        Territory territory = territories.get(claim.territoryId());
+        return territory != null && territory.pvpEnabled;
+    }
+
+    /** 現在地の縄張りの信頼リスト。未claimなら空集合。 */
+    public Set<UUID> trustedPlayers(Location location) {
+        Claim claim = claimsByChunk.get(ChunkKey.of(location));
+        if (claim == null) {
+            return Set.of();
+        }
+        Territory territory = territories.get(claim.territoryId());
+        return territory != null ? Set.copyOf(territory.trusted) : Set.of();
+    }
+
+    /** ownerが所有するclaimが属する縄張りの数（重複排除済み）。 */
+    public int territoryCountFor(UUID owner) {
+        Set<String> ids = new HashSet<>();
+        for (Claim claim : claimsByChunk.values()) {
+            if (claim.owner().equals(owner)) {
+                ids.add(claim.territoryId());
+            }
+        }
+        return ids.size();
+    }
+
+    // ------------------------------------------------------------------
+    // 信頼(trust) / PvPトグル
+    // ------------------------------------------------------------------
+
+    /** 現在地の縄張りに信頼プレイヤーを追加する。実行者がオーナーである必要がある。 */
+    public ActionResult trust(Player owner, UUID target) {
+        Claim claim = claimsByChunk.get(ChunkKey.of(owner.getLocation()));
+        if (claim == null) {
+            return ActionResult.NOT_CLAIMED;
+        }
+        if (!claim.owner().equals(owner.getUniqueId())) {
+            return ActionResult.NOT_OWNER;
+        }
+        Territory territory = territories.get(claim.territoryId());
+        if (territory.trusted.add(target)) {
+            DatabaseManager.insert("land_trusts", Map.of(
+                    "territory_id", claim.territoryId(),
+                    "trusted_uuid", target.toString()
+            ));
+        }
+        return ActionResult.SUCCESS;
+    }
+
+    /** 現在地の縄張りから信頼プレイヤーを外す。実行者がオーナーである必要がある。 */
+    public ActionResult untrust(Player owner, UUID target) {
+        Claim claim = claimsByChunk.get(ChunkKey.of(owner.getLocation()));
+        if (claim == null) {
+            return ActionResult.NOT_CLAIMED;
+        }
+        if (!claim.owner().equals(owner.getUniqueId())) {
+            return ActionResult.NOT_OWNER;
+        }
+        Territory territory = territories.get(claim.territoryId());
+        if (territory.trusted.remove(target)) {
+            DatabaseManager.execute("DELETE FROM land_trusts WHERE territory_id = ? AND trusted_uuid = ?",
+                    claim.territoryId(), target.toString());
+        }
+        return ActionResult.SUCCESS;
+    }
+
+    /** 現在地の縄張りのPvP許可を切り替える。実行者がオーナーである必要がある。 */
+    public ActionResult setPvpEnabled(Player owner, boolean enabled) {
+        Claim claim = claimsByChunk.get(ChunkKey.of(owner.getLocation()));
+        if (claim == null) {
+            return ActionResult.NOT_CLAIMED;
+        }
+        if (!claim.owner().equals(owner.getUniqueId())) {
+            return ActionResult.NOT_OWNER;
+        }
+        Territory territory = territories.get(claim.territoryId());
+        territory.pvpEnabled = enabled;
+        DatabaseManager.update("land_territories", Map.of("pvp_enabled", enabled ? 1 : 0),
+                "territory_id = ?", claim.territoryId());
+        return ActionResult.SUCCESS;
+    }
 }
