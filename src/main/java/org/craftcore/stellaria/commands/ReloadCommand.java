@@ -19,7 +19,7 @@ public class ReloadCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String @NotNull [] args) {
-        if (!sender.isOp()) {
+        if (!sender.hasPermission("stellaria.reload")) {
             sender.sendMessage("§c§l>>> §7No Permission!");
             return true;
         }

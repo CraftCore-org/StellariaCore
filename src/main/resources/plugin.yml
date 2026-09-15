@@ -16,21 +16,28 @@ commands:
   tphaccept:
   tphdeny:
   stellariareload:
+    permission: stellaria.reload
   afk:
   heal:
+    permission: stellaria.heal
   broadcast:
     aliases: [bc]
+    permission: stellaria.broadcast
   msg:
     aliases: [tell, w, message]
   reply:
     aliases: [r]
   mute:
+    permission: stellaria.mute
   unmute:
+    permission: stellaria.mute
   pay:
   eco:
+    permission: stellaria.eco
   balance:
     aliases: [money, bal]
   colors:
+    permission: stellaria.chat.color
   discord:
     aliases: [dc]
   playtime:
@@ -76,3 +83,25 @@ permissions:
     default: true
   stellaria.land.admin:
     default: op
+  stellaria.admin:
+    description: Stellaria運営用コマンドの一括権限。個々の権限はここから継承される。
+    default: op
+    children:
+      stellaria.reload: true
+      stellaria.broadcast: true
+      stellaria.mute: true
+      stellaria.eco: true
+      stellaria.chat.color: true
+      stellaria.heal: true
+  stellaria.reload:
+    default: false
+  stellaria.broadcast:
+    default: false
+  stellaria.mute:
+    default: false
+  stellaria.eco:
+    default: false
+  stellaria.chat.color:
+    default: false
+  stellaria.heal:
+    default: false
