@@ -57,6 +57,9 @@ commands:
   weathervote:
   wvaccept:
   wvdeny:
+  timevote:
+  tvaccept:
+  tvdeny:
   kikori:
   land:
 
