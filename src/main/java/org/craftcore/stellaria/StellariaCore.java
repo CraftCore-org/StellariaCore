@@ -8,6 +8,7 @@ import org.craftcore.stellaria.commands.tpa.TpaCore;
 import org.craftcore.stellaria.commands.HomeCommand;
 import org.craftcore.stellaria.commands.WarpCommand;
 import org.craftcore.stellaria.commands.KikoriCommand;
+import org.craftcore.stellaria.commands.LandCommand;
 import org.craftcore.stellaria.managers.*;
 import org.craftcore.stellaria.gui.GuiListener;
 import org.craftcore.stellaria.managers.ActionBarManager;
@@ -29,6 +30,7 @@ import org.craftcore.stellaria.listeners.MuteCommandBlockListener;
 import org.craftcore.stellaria.listeners.PlayerListener;
 import org.craftcore.stellaria.listeners.PlayerQuitListener;
 import org.craftcore.stellaria.listeners.KikoriListener;
+import org.craftcore.stellaria.listeners.LandProtectionListener;
 
 
 import org.craftcore.stellaria.utils.ConsoleUtil;
@@ -57,6 +59,7 @@ public class StellariaCore extends JavaPlugin {
     private WarpManager warpManager;
     private NametagManager nametagManager;
     private KikoriManager kikoriManager;
+    private LandManager landManager;
 
     @Override
     public void onEnable() {
@@ -106,12 +109,34 @@ public class StellariaCore extends JavaPlugin {
 
         DatabaseManager.addColumnIfNotExists("players", "kikori_unlocked INTEGER NOT NULL DEFAULT 0");
 
+        DatabaseManager.createTableIfNotExists("land_claims",
+            "world TEXT NOT NULL",
+            "chunk_x INTEGER NOT NULL",
+            "chunk_z INTEGER NOT NULL",
+            "owner_uuid TEXT NOT NULL",
+            "territory_id TEXT NOT NULL",
+            "claimed_at INTEGER NOT NULL",
+            "PRIMARY KEY (world, chunk_x, chunk_z)"
+        );
+
+        DatabaseManager.createTableIfNotExists("land_territories",
+            "territory_id TEXT PRIMARY KEY",
+            "pvp_enabled INTEGER NOT NULL DEFAULT 0"
+        );
+
+        DatabaseManager.createTableIfNotExists("land_trusts",
+            "territory_id TEXT NOT NULL",
+            "trusted_uuid TEXT NOT NULL",
+            "PRIMARY KEY (territory_id, trusted_uuid)"
+        );
+
         this.afkManager = new AfkManager(this);
         this.playtimeManager = new PlaytimeManager(this);
         this.rankManager = new RankManager(this);
         this.homeManager = new HomeManager(this);
         this.warpManager = new WarpManager(this);
         this.kikoriManager = new KikoriManager(this);
+        this.landManager = new LandManager(this);
 
         this.muteManager = new MuteManager(this);
         muteManager.loadAll();
@@ -163,6 +188,7 @@ public class StellariaCore extends JavaPlugin {
         this.elevatorManager = new ElevatorManager(this);
         getServer().getPluginManager().registerEvents(new PlayerListener(this, elevatorManager), this);
         getServer().getPluginManager().registerEvents(new KikoriListener(this), this);
+        getServer().getPluginManager().registerEvents(new LandProtectionListener(this), this);
 
         // 6. Scoreboard/Tablist/Belowname のインスタンス化とtick開始
         this.placeholderManager = new PlaceholderManager(this);
@@ -307,6 +333,10 @@ public class StellariaCore extends JavaPlugin {
         getCommand("weathervote").setTabCompleter(weatherVoteCommand);
         getCommand("wvaccept").setExecutor(weatherVoteCommand);
         getCommand("wvdeny").setExecutor(weatherVoteCommand);
+      
+        LandCommand landCommand = new LandCommand(this);
+        getCommand("land").setExecutor(landCommand);
+        getCommand("land").setTabCompleter(landCommand);
 
         this.autoBroadcastManager = new AutoBroadcastManager(this);
         autoBroadcastManager.start();
@@ -387,6 +417,10 @@ public class StellariaCore extends JavaPlugin {
 
     public KikoriManager getKikoriManager() {
         return this.kikoriManager;
+    }
+
+    public LandManager getLandManager() {
+        return this.landManager;
     }
 
     /**

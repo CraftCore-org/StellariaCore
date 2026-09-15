@@ -212,3 +212,19 @@ kikori:
   timeout-seconds: 300
   max-logs: 256
   leaf-radius: 3
+
+land:
+  enabled-worlds: ["world"]
+  cost-per-chunk: 500
+  max-chunks-per-player: 20
+  refund-on-unclaim: true
+  protect:
+    explosions: true
+    fire: true
+  protected-interactables: ["CHEST","TRAPPED_CHEST","BARREL","ENDER_CHEST","SHULKER_BOX","FURNACE","BLAST_FURNACE","SMOKER","HOPPER","DISPENSER","DROPPER","BREWING_STAND","ANVIL"]
+  border-particle:
+    enabled: true
+    particle: "DUST"
+    color: "#55FF55"
+    size: 1.0
+    duration-seconds: 3

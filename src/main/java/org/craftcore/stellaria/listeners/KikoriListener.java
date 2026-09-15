@@ -32,7 +32,7 @@ public class KikoriListener implements Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
         if (!TreeUtil.isLog(block.getType())) {
