@@ -1,19 +1,27 @@
 package org.craftcore.stellaria.managers;
 
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.NamespacedKey;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.block.Block;
+import org.bukkit.block.data.type.Leaves;
 import org.bukkit.entity.Player;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.TreeUtil;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -31,6 +39,7 @@ public class KikoriManager {
     private final Set<UUID> enabledPlayers = new HashSet<>();
     private final Map<UUID, Long> lastFellMillis = new HashMap<>();
     private final Set<UUID> pendingPass = new HashSet<>();
+    private final Map<UUID, ScheduledTask> activeFellTasks = new HashMap<>();
 
     public KikoriManager(StellariaCore plugin) {
         this.plugin = plugin;
@@ -186,13 +195,153 @@ public class KikoriManager {
     }
 
     // ------------------------------------------------------------------
+    // 伐採ロジック
+    // ------------------------------------------------------------------
+
+    /** 斧を持ってトグルON・天然丸太を壊した時にBlockBreakEventから呼ぶ。 */
+    public void tryStartFelling(Player player, Block origin) {
+        UUID uuid = player.getUniqueId();
+        if (activeFellTasks.containsKey(uuid)) {
+            return; // 既に伐採処理中（連鎖破壊で発生する内部BlockBreakEventの再入も含む）
+        }
+
+        int maxLogs = plugin.getConfigManager().getInt("kikori.max-logs", 256);
+        boolean passAvailable = hasPendingPass(uuid);
+        boolean passUsed = false;
+        boolean aborted = false;
+
+        Set<Block> visited = new HashSet<>();
+        Set<Block> collectedLogs = new LinkedHashSet<>();
+        Deque<Block> frontier = new ArrayDeque<>();
+        visited.add(origin);
+        frontier.add(origin);
+
+        while (!frontier.isEmpty() && collectedLogs.size() < maxLogs) {
+            Block current = frontier.poll();
+            if (!current.equals(origin) && isArtificialLog(current)) {
+                if (passAvailable) {
+                    passUsed = true;
+                } else {
+                    aborted = true;
+                    break;
+                }
+            }
+            collectedLogs.add(current);
+            for (Block neighbor : neighbors26(current)) {
+                if (TreeUtil.isLog(neighbor.getType()) && visited.add(neighbor)) {
+                    frontier.add(neighbor);
+                }
+            }
+        }
+
+        lastFellMillis.put(uuid, System.currentTimeMillis());
+
+        if (aborted) {
+            setEnabled(player, false);
+            String warning = plugin.getConfigManager().getMessage("kikori.artificial_detected", player);
+            player.sendMessage(warning);
+            plugin.getActionBarManager().flash(player, "kikori_warning", ColorUtil.component(warning), 60L);
+            return;
+        }
+
+        if (passUsed) {
+            pendingPass.remove(uuid);
+        }
+
+        int leafRadius = plugin.getConfigManager().getInt("kikori.leaf-radius", 3);
+        Set<Block> leaves = collectLeaves(collectedLogs, leafRadius);
+
+        Deque<Block> breakQueue = new ArrayDeque<>();
+        for (Block log : collectedLogs) {
+            if (!log.equals(origin)) {
+                breakQueue.add(log);
+            }
+        }
+        breakQueue.addAll(leaves);
+
+        if (breakQueue.isEmpty()) {
+            return; // 起点1本だけの木（隣接丸太も葉も無し） — バニラの単発破壊のみで完結
+        }
+
+        startFellTask(player, breakQueue);
+    }
+
+    /** 26方向（斜め含む）の隣接ブロックを返す。 */
+    private List<Block> neighbors26(Block block) {
+        List<Block> result = new ArrayList<>(26);
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    if (dx == 0 && dy == 0 && dz == 0) {
+                        continue;
+                    }
+                    result.add(block.getRelative(dx, dy, dz));
+                }
+            }
+        }
+        return result;
+    }
+
+    /** 収集した丸太それぞれの半径radiusブロック球内にある、天然（persistent=falseの）葉っぱを集める。 */
+    private Set<Block> collectLeaves(Set<Block> logs, int radius) {
+        Set<Block> leaves = new LinkedHashSet<>();
+        int radiusSquared = radius * radius;
+        for (Block log : logs) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (int dy = -radius; dy <= radius; dy++) {
+                    for (int dz = -radius; dz <= radius; dz++) {
+                        if (dx * dx + dy * dy + dz * dz > radiusSquared) {
+                            continue;
+                        }
+                        Block candidate = log.getRelative(dx, dy, dz);
+                        if (!TreeUtil.isLeaves(candidate.getType())) {
+                            continue;
+                        }
+                        if (!(candidate.getBlockData() instanceof Leaves leafData) || leafData.isPersistent()) {
+                            continue;
+                        }
+                        leaves.add(candidate);
+                    }
+                }
+            }
+        }
+        return leaves;
+    }
+
+    /**
+     * 破壊キューを1tickに1ブロックずつ処理する。プレイヤーのエンティティスケジューラを使うので、
+     * 切断時は自動的にタスクが終了する（TpaCoreのカウントダウンと同方式）。
+     */
+    private void startFellTask(Player player, Deque<Block> breakQueue) {
+        UUID uuid = player.getUniqueId();
+        ScheduledTask task = player.getScheduler().runAtFixedRate(plugin, scheduledTask -> {
+            Block block = breakQueue.poll();
+            if (block != null) {
+                Player current = Bukkit.getPlayer(uuid);
+                if (current != null && (TreeUtil.isLog(block.getType()) || TreeUtil.isLeaves(block.getType()))) {
+                    current.breakBlock(block);
+                }
+            }
+            if (breakQueue.isEmpty()) {
+                scheduledTask.cancel();
+                activeFellTasks.remove(uuid);
+            }
+        }, () -> activeFellTasks.remove(uuid), 1L, 1L);
+        activeFellTasks.put(uuid, task);
+    }
+
+    // ------------------------------------------------------------------
     // ライフサイクル
     // ------------------------------------------------------------------
 
-    /** 退出時に呼ぶ。トグル状態・pass予約を破棄する。 */
+    /** 退出時に呼ぶ。トグル状態・pass予約を破棄し、進行中の伐採タスクがあればキャンセルする。 */
     public void removePlayer(UUID uuid) {
         enabledPlayers.remove(uuid);
         lastFellMillis.remove(uuid);
         pendingPass.remove(uuid);
+        ScheduledTask task = activeFellTasks.remove(uuid);
+        if (task != null) {
+            task.cancel();
+        }
     }
 }
