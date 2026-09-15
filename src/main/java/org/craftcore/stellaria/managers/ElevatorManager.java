@@ -49,18 +49,18 @@ public class ElevatorManager {
         int max = plugin.getConfigManager().getInt("elevator.blocks." + elevatorBlockType.toString() + ".max", 0, true);
         if (max == 0) return;
         Block checkBlock = elevatorBlock;
-        if (!isMoveable(checkBlock)) {
-            Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.move_fail",""));
-            player.sendActionBar(message);
-            return;
-        }
         for (int i = 0; i < max; i++){
             checkBlock = checkBlock.getLocation().add(0,1,0).getBlock();
             if (checkBlock.getType() == elevatorBlockType){
                 if (!isMoveable(checkBlock)) {
                     Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.moveup_fail",""));
                     player.sendActionBar(message);
-                    break;
+                    return;
+                }
+                if (!isMoveable(elevatorBlock)) {
+                    Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.move_fail",""));
+                    player.sendActionBar(message);
+                    return;
                 }
                 Location location = new Location(player.getWorld(),player.getX(),checkBlock.getY() + 1,player.getZ(),player.getYaw(),player.getPitch());
                 player.teleport(location);
@@ -88,18 +88,18 @@ public class ElevatorManager {
         int max = plugin.getConfigManager().getInt("elevator.blocks." + elevatorBlockType.toString() + ".max", 0, true);
         if (max == 0) return;
         Block checkBlock = elevatorBlock;
-        if (!isMoveable(checkBlock)) {
-            Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.move_fail",""));
-            player.sendActionBar(message);
-            return;
-        }
         for (int i = 0; i < max; i++){
             checkBlock = checkBlock.getLocation().subtract(0,1,0).getBlock();
             if (checkBlock.getType() == elevatorBlockType){
                 if (!isMoveable(checkBlock)) {
                     Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.movedown_fail",""));
                     player.sendActionBar(message);
-                    break;
+                    return;
+                }
+                if (!isMoveable(elevatorBlock)) {
+                    Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.move_fail",""));
+                    player.sendActionBar(message);
+                    return;
                 }
                 Location location = new Location(player.getWorld(),player.getX(),checkBlock.getY() + 1,player.getZ(),player.getYaw(),player.getPitch());
                 player.teleport(location);

@@ -47,6 +47,9 @@ commands:
   warp:
   delwarp:
   warps:
+  weathervote:
+  wvaccept:
+  wvdeny:
   kikori:
   land:
 

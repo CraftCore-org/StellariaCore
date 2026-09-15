@@ -226,6 +226,25 @@ warp:
   list_entry: "&%7- &%f%name% &%7(by %owner%)"
   list_empty: "&%7ワープがまだありません。/setwarp <名前> で作成できます。"
 
+weathervote:
+  start_vote: "&r%player%&%7が&%g%world%&%7の天気を&%g%weather%&%7にしようとしています。\n&%g%votetime%&%7秒後に投票が終了します。"
+  vote_end_accept: "&%a賛成&%7が多数のため&%g%world%&%7の天気が&%g%weather%&%7に変更されました。"
+  vote_end_deny: "&%c反対&%7が多数のため天気は変更されませんでした。"
+  vote_accept: "&%a賛成&%7に投票しました。"
+  vote_deny: "&%c反対&%7に投票しました。"
+  accept: "&%a[賛成]"
+  deny: "&%c[反対]"
+  accept_tooltip:
+    - "&%7クリックして投票に&%a賛成&%7します"
+  deny_tooltip:
+    - "&%7クリックして投票に&%c反対&%7します"
+  err_args: "&%c変更したい天気を指定してください。"
+  err_unknown_weather: "&%c不明な天気です。"
+  err_voting: "&%c現在別の投票が進行中です。"
+  err_voted: "&%cすでに投票しています。"
+  err_notvoting: "&%c現在投票が行われていません。"
+  err_world: "&%cこのワールドは天気を変更できません。"
+
 kikori:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   no_permission: "&%cこのコマンドを実行する権限がありません。"
