@@ -88,7 +88,7 @@ tablist:
   header: "\n&%b%player%さん\n           &%9すてらりあ &%bへようこそ！           \n"
   footer: "\n&%9%online%&%7/&%9%max_online%\n"
   value: "%afk%&%a%ping%ms"
-  rank-prefix: "|" # ランクタグの前に付ける区切り文字（ランク色で色付けされる）
+  rank-prefix: "" # ランクタグの前に付ける区切り文字（ランク色で色付けされる）
   update-interval-ticks: 20
 
 belowname:
@@ -208,10 +208,10 @@ weathervote:
 
 kikori:
   enabled: true
-  price: 50000
+  price: 2000
   timeout-seconds: 300
   max-logs: 256
-  leaf-radius: 3
+  leaf-radius: 4
 
 land:
   enabled-worlds: ["world"]

@@ -35,7 +35,7 @@ public class ConsoleUtil {
 
     public static void printDisabledMessage() {
         sendLineBreak();
-        Bukkit.getConsoleSender().sendMessage(" §dStellaria &7Disabled.");
+        Bukkit.getConsoleSender().sendMessage(" §dStellaria §7Disabled.");
         sendLineBreak();
     }
 }
