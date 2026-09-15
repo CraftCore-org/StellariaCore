@@ -120,6 +120,27 @@ public class StellariaCore extends JavaPlugin {
 
         DatabaseManager.addColumnIfNotExists("players", "kikori_unlocked INTEGER NOT NULL DEFAULT 0");
 
+        DatabaseManager.createTableIfNotExists("land_claims",
+            "world TEXT NOT NULL",
+            "chunk_x INTEGER NOT NULL",
+            "chunk_z INTEGER NOT NULL",
+            "owner_uuid TEXT NOT NULL",
+            "territory_id TEXT NOT NULL",
+            "claimed_at INTEGER NOT NULL",
+            "PRIMARY KEY (world, chunk_x, chunk_z)"
+        );
+
+        DatabaseManager.createTableIfNotExists("land_territories",
+            "territory_id TEXT PRIMARY KEY",
+            "pvp_enabled INTEGER NOT NULL DEFAULT 0"
+        );
+
+        DatabaseManager.createTableIfNotExists("land_trusts",
+            "territory_id TEXT NOT NULL",
+            "trusted_uuid TEXT NOT NULL",
+            "PRIMARY KEY (territory_id, trusted_uuid)"
+        );
+
         this.afkManager = new AfkManager(this);
         this.playtimeManager = new PlaytimeManager(this);
         this.rankManager = new RankManager(this);

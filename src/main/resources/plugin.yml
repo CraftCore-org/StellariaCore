@@ -48,6 +48,7 @@ commands:
   delwarp:
   warps:
   kikori:
+  land:
 
 permissions:
   stellaria.msg:
@@ -68,3 +69,7 @@ permissions:
     default: true
   stellaria.warp:
     default: true
+  stellaria.land:
+    default: true
+  stellaria.land.admin:
+    default: op
