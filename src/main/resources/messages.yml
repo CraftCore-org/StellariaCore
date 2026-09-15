@@ -316,7 +316,8 @@ land:
   pvp_usage: "&%c使用方法: /land area pvp <on|off>"
   pvp_enabled: "&%aこのエリアでのPvPを有効にしました。"
   pvp_disabled: "&%cこのエリアでのPvPを無効にしました。"
-  pvp_blocked: "&%cここではPvPできません。"
+  pvp_blocked: "" # うるさいため非表示
+#  pvp_blocked: "&%cここではPvPできません。"
   explosions_usage: "&%c使用方法: /land area explosions <on|off>"
   explosions_enabled: "&%aこのエリアでの爆発によるブロック破壊を許可しました。"
   explosions_disabled: "&%cこのエリアでの爆発によるブロック破壊を無効にしました。"
