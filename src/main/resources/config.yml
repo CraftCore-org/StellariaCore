@@ -71,6 +71,10 @@ action-bar:
     enabled: false # 常時表示する固定テンプレートを使うかどうか
     template: ""
 
+boss-bar:
+  enabled: true
+  update-interval-ticks: 5 # 期限切れチャンネル(flash)を消すためのチェック間隔。テンプレートは持たず、呼び出し側の機能がtitle/color/overlay/progressを渡す
+
 scoreboard:
   title: "&%9&lすてらりあ"
   update-interval-ticks: 20

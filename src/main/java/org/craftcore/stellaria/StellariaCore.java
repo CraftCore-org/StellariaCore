@@ -54,6 +54,7 @@ public class StellariaCore extends JavaPlugin {
     private MuteManager muteManager;
     private PrivateMessageManager privateMessageManager;
     private ActionBarManager actionBarManager;
+    private BossBarManager bossBarManager;
     private PlaytimeManager playtimeManager;
     private RankManager rankManager;
     private HomeManager homeManager;
