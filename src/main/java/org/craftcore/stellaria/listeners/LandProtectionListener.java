@@ -2,9 +2,13 @@ package org.craftcore.stellaria.listeners;
 
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
+import org.bukkit.entity.TNTPrimed;
+import org.bukkit.entity.Tameable;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -12,19 +16,22 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockBurnEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
+import org.bukkit.event.block.BlockFromToEvent;
 import org.bukkit.event.block.BlockIgniteEvent;
+import org.bukkit.event.block.BlockPistonExtendEvent;
+import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.hanging.HangingBreakByEntityEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.utils.ColorUtil;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -33,29 +40,23 @@ import java.util.UUID;
  */
 public class LandProtectionListener implements Listener {
 
-    /** 保護通知メッセージのクールダウン（ミリ秒）。連鎖伐採やPvP連打で同じメッセージが連投されるのを防ぐ。 */
-    private static final long NOTICE_COOLDOWN_MILLIS = 2000L;
+    /**
+     * 保護通知はチャットではなくアクションバーの一時フラッシュ表示にする（ActionBarManager#flash）。
+     * 木こりの連鎖伐採やPvP連打で同じ判定が短時間に何度も走っても、アクションバーは同じチャンネルを
+     * 上書きするだけでチャット欄を汚さないため、独自のクールダウン管理が不要になる。
+     */
+    private static final long NOTICE_DURATION_TICKS = 40L;
+    private static final String NOTICE_CHANNEL = "land_protection";
 
     private final StellariaCore plugin;
-    private final Map<UUID, Long> lastNoticeMillis = new HashMap<>();
 
     public LandProtectionListener(StellariaCore plugin) {
         this.plugin = plugin;
     }
 
-    /**
-     * 保護通知メッセージを送ってよいか（かつ送るなら最終送信時刻を更新）。
-     * event.setCancelled(true)自体には決して関与しない ― キャンセルは常に無条件で行い、
-     * このメソッドはチャット通知の連投を防ぐためだけに使う。
-     */
-    private boolean shouldNotify(Player player) {
-        long now = System.currentTimeMillis();
-        Long last = lastNoticeMillis.get(player.getUniqueId());
-        if (last != null && now - last < NOTICE_COOLDOWN_MILLIS) {
-            return false;
-        }
-        lastNoticeMillis.put(player.getUniqueId(), now);
-        return true;
+    private void notify(Player player, String messageKey) {
+        String message = plugin.getConfigManager().getMessage(messageKey, player);
+        plugin.getActionBarManager().flash(player, NOTICE_CHANNEL, ColorUtil.component(message), NOTICE_DURATION_TICKS);
     }
 
     /**
@@ -66,9 +67,7 @@ public class LandProtectionListener implements Listener {
     public void onBlockBreak(BlockBreakEvent event) {
         if (!plugin.getLandManager().canBuild(event.getBlock().getLocation(), event.getPlayer())) {
             event.setCancelled(true);
-            if (shouldNotify(event.getPlayer())) {
-                event.getPlayer().sendMessage(plugin.getConfigManager().getMessage("land.protected-block", event.getPlayer()));
-            }
+            notify(event.getPlayer(), "land.protected_block");
         }
     }
 
@@ -76,9 +75,7 @@ public class LandProtectionListener implements Listener {
     public void onBlockPlace(BlockPlaceEvent event) {
         if (!plugin.getLandManager().canBuild(event.getBlock().getLocation(), event.getPlayer())) {
             event.setCancelled(true);
-            if (shouldNotify(event.getPlayer())) {
-                event.getPlayer().sendMessage(plugin.getConfigManager().getMessage("land.protected-block", event.getPlayer()));
-            }
+            notify(event.getPlayer(), "land.protected_block");
         }
     }
 
@@ -86,9 +83,7 @@ public class LandProtectionListener implements Listener {
     public void onBucketEmpty(PlayerBucketEmptyEvent event) {
         if (!plugin.getLandManager().canBuild(event.getBlock().getLocation(), event.getPlayer())) {
             event.setCancelled(true);
-            if (shouldNotify(event.getPlayer())) {
-                event.getPlayer().sendMessage(plugin.getConfigManager().getMessage("land.protected-block", event.getPlayer()));
-            }
+            notify(event.getPlayer(), "land.protected_block");
         }
     }
 
@@ -96,9 +91,7 @@ public class LandProtectionListener implements Listener {
     public void onBucketFill(PlayerBucketFillEvent event) {
         if (!plugin.getLandManager().canBuild(event.getBlock().getLocation(), event.getPlayer())) {
             event.setCancelled(true);
-            if (shouldNotify(event.getPlayer())) {
-                event.getPlayer().sendMessage(plugin.getConfigManager().getMessage("land.protected-block", event.getPlayer()));
-            }
+            notify(event.getPlayer(), "land.protected_block");
         }
     }
 
@@ -116,9 +109,7 @@ public class LandProtectionListener implements Listener {
         }
         if (!plugin.getLandManager().canBuild(block.getLocation(), event.getPlayer())) {
             event.setCancelled(true);
-            if (shouldNotify(event.getPlayer())) {
-                event.getPlayer().sendMessage(plugin.getConfigManager().getMessage("land.protected-block", event.getPlayer()));
-            }
+            notify(event.getPlayer(), "land.protected_block");
         }
     }
 
@@ -129,24 +120,41 @@ public class LandProtectionListener implements Listener {
 
     @EventHandler
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
-        if (!(event.getEntity() instanceof Player victim)) {
-            return;
-        }
         Player attacker = resolveAttacker(event.getDamager());
         if (attacker == null || attacker.hasPermission("stellaria.land.admin")) {
+            return;
+        }
+
+        // アーマースタンドはPvPではなく設置物の一種として扱う（破壊・攻撃はcanBuildで判定）。
+        if (event.getEntity() instanceof ArmorStand armorStand) {
+            if (!plugin.getLandManager().canBuild(armorStand.getLocation(), attacker)) {
+                event.setCancelled(true);
+                notify(attacker, "land.protected_block");
+            }
+            return;
+        }
+
+        if (!(event.getEntity() instanceof Player victim)) {
             return;
         }
         if (attacker.getUniqueId().equals(victim.getUniqueId())) {
             return;
         }
+
+        // claim不可ワールド（land.enabled-worlds外）では土地保護のPvP制限を適用しない。
+        // バニラ/他プラグインのPvP挙動にそのまま委ねる。
+        List<String> enabledWorlds = plugin.getConfigManager().getStringList("land.enabled-worlds");
+        if (!enabledWorlds.contains(victim.getWorld().getName())) {
+            return;
+        }
+
         if (!plugin.getLandManager().isPvpAllowed(victim.getLocation())) {
             event.setCancelled(true);
-            if (shouldNotify(attacker)) {
-                attacker.sendMessage(plugin.getConfigManager().getMessage("land.pvp-blocked", attacker));
-            }
+            notify(attacker, "land.pvp_blocked");
         }
     }
 
+    /** 直接攻撃・投射物・起爆されたTNT・懐かれた動物（オオカミ等）の攻撃者をPlayerまで解決する。 */
     private Player resolveAttacker(Entity damager) {
         if (damager instanceof Player player) {
             return player;
@@ -154,7 +162,78 @@ public class LandProtectionListener implements Listener {
         if (damager instanceof Projectile projectile && projectile.getShooter() instanceof Player player) {
             return player;
         }
+        if (damager instanceof TNTPrimed tnt && tnt.getSource() instanceof Player player) {
+            return player;
+        }
+        if (damager instanceof Tameable tameable && tameable.isTamed() && tameable.getOwner() instanceof Player player) {
+            return player;
+        }
         return null;
+    }
+
+    @EventHandler
+    public void onHangingBreak(HangingBreakByEntityEvent event) {
+        if (!plugin.getConfigManager().getBoolean("land.protect.hangings", true)) {
+            return;
+        }
+        if (!(event.getRemover() instanceof Player player)) {
+            return; // 爆発等プレイヤー以外が原因の場合は他のイベントハンドラ（爆発保護等）に任せる
+        }
+        if (!plugin.getLandManager().canBuild(event.getEntity().getLocation(), player)) {
+            event.setCancelled(true);
+            notify(player, "land.protected_block");
+        }
+    }
+
+    @EventHandler
+    public void onPistonExtend(BlockPistonExtendEvent event) {
+        if (!plugin.getConfigManager().getBoolean("land.protect.pistons", true)) {
+            return;
+        }
+        if (touchesClaim(event.getBlocks(), event.getDirection())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onPistonRetract(BlockPistonRetractEvent event) {
+        if (!plugin.getConfigManager().getBoolean("land.protect.pistons", true)) {
+            return;
+        }
+        if (touchesClaim(event.getBlocks(), event.getDirection())) {
+            event.setCancelled(true);
+        }
+    }
+
+    /** 移動対象ブロック、またはその移動先チャンクのいずれかがclaim済みならtrue（ピストンには行為者が無いため、
+     * オーナー・信頼リストに関わらず一律でclaim済みチャンクをまたぐ移動そのものを禁止する）。 */
+    private boolean touchesClaim(List<Block> movedBlocks, BlockFace direction) {
+        for (Block block : movedBlocks) {
+            if (plugin.getLandManager().ownerOf(block.getLocation()) != null) {
+                return true;
+            }
+            Block destination = block.getRelative(direction);
+            if (plugin.getLandManager().ownerOf(destination.getLocation()) != null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @EventHandler
+    public void onLiquidFlow(BlockFromToEvent event) {
+        if (!plugin.getConfigManager().getBoolean("land.protect.liquid-flow", true)) {
+            return;
+        }
+        UUID toOwner = plugin.getLandManager().ownerOf(event.getToBlock().getLocation());
+        if (toOwner == null) {
+            return; // 流入先が未claimなら何もしない
+        }
+        UUID fromOwner = plugin.getLandManager().ownerOf(event.getBlock().getLocation());
+        if (!toOwner.equals(fromOwner)) {
+            // 流入元が別オーナー（または未claim）の場合のみキャンセル。同じ縄張り内の自然な流れは許可する。
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler

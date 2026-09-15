@@ -46,6 +46,17 @@ public class LandManager {
 
     public enum ActionResult { SUCCESS, NOT_CLAIMED, NOT_OWNER }
 
+    /**
+     * claim()の結果。mergedは「2つ以上の既存縄張りを1つに統合した」時だけtrue（単に既存縄張りに
+     * 1個合流しただけならfalse）。pvpEnabledは統合後（または新規/合流後）の縄張りのPvP状態。
+     * resultがSUCCESS以外の場合、merged/pvpEnabledの値は意味を持たない。
+     */
+    public record ClaimOutcome(ClaimResult result, boolean merged, boolean pvpEnabled) {
+        private static ClaimOutcome of(ClaimResult result) {
+            return new ClaimOutcome(result, false, false);
+        }
+    }
+
     private static final int[][] NEIGHBOR_OFFSETS = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
     private final StellariaCore plugin;
@@ -120,52 +131,58 @@ public class LandManager {
      * 最初に失敗した理由を返す。全て通ればコストを引き落とし、隣接claimがあれば
      * 同じ縄張りに合流（複数の縄張りに隣接していればマージ）する。
      */
-    public ClaimResult claim(Player player) {
+    public ClaimOutcome claim(Player player) {
         ChunkKey key = ChunkKey.of(player.getLocation());
 
         List<String> enabledWorlds = plugin.getConfigManager().getStringList("land.enabled-worlds");
         if (!enabledWorlds.contains(key.world())) {
-            return ClaimResult.WORLD_DISABLED;
+            return ClaimOutcome.of(ClaimResult.WORLD_DISABLED);
         }
         if (claimsByChunk.containsKey(key)) {
-            return ClaimResult.ALREADY_CLAIMED;
+            return ClaimOutcome.of(ClaimResult.ALREADY_CLAIMED);
         }
 
         UUID owner = player.getUniqueId();
         int max = plugin.getConfigManager().getInt("land.max-chunks-per-player", 20);
         if (countClaims(owner) >= max) {
-            return ClaimResult.LIMIT_REACHED;
+            return ClaimOutcome.of(ClaimResult.LIMIT_REACHED);
         }
 
         double cost = plugin.getConfigManager().getDouble("land.cost-per-chunk", 500);
         EconomyManager economy = plugin.getEconomyManager();
         if (cost > 0 && !economy.has(player, cost)) {
-            return ClaimResult.INSUFFICIENT_FUNDS;
+            return ClaimOutcome.of(ClaimResult.INSUFFICIENT_FUNDS);
         }
         if (cost > 0) {
             economy.withdrawPlayer(player, cost);
         }
 
-        String territoryId = resolveTerritoryForNewClaim(key, owner);
+        TerritoryResolution resolution = resolveTerritoryForNewClaim(key, owner);
 
         DatabaseManager.insert("land_claims", Map.of(
                 "world", key.world(),
                 "chunk_x", key.chunkX(),
                 "chunk_z", key.chunkZ(),
                 "owner_uuid", owner.toString(),
-                "territory_id", territoryId,
+                "territory_id", resolution.territoryId(),
                 "claimed_at", System.currentTimeMillis()
         ));
-        claimsByChunk.put(key, new Claim(owner, territoryId));
+        claimsByChunk.put(key, new Claim(owner, resolution.territoryId()));
 
-        return ClaimResult.SUCCESS;
+        Territory territory = territories.get(resolution.territoryId());
+        boolean pvpEnabled = territory != null && territory.pvpEnabled;
+        return new ClaimOutcome(ClaimResult.SUCCESS, resolution.merged(), pvpEnabled);
+    }
+
+    /** resolveTerritoryForNewClaimの結果。mergedは2つ以上の既存縄張りを統合した場合だけtrue。 */
+    private record TerritoryResolution(String territoryId, boolean merged) {
     }
 
     /**
      * 隣接4方向のうち自分が持つclaimの縄張りIDを集める。0件なら新規縄張り、1件ならそれを再利用、
      * 2件以上ならcanonical（最初に見つかったもの）へ全部マージする。
      */
-    private String resolveTerritoryForNewClaim(ChunkKey key, UUID owner) {
+    private TerritoryResolution resolveTerritoryForNewClaim(ChunkKey key, UUID owner) {
         Set<String> adjacentTerritories = new LinkedHashSet<>();
         for (int[] offset : NEIGHBOR_OFFSETS) {
             ChunkKey neighborKey = new ChunkKey(key.world(), key.chunkX() + offset[0], key.chunkZ() + offset[1]);
@@ -179,15 +196,16 @@ public class LandManager {
             String territoryId = UUID.randomUUID().toString();
             territories.put(territoryId, new Territory(false));
             DatabaseManager.insert("land_territories", Map.of("territory_id", territoryId, "pvp_enabled", 0));
-            return territoryId;
+            return new TerritoryResolution(territoryId, false);
         }
 
         Iterator<String> iterator = adjacentTerritories.iterator();
         String canonicalId = iterator.next();
+        boolean merged = adjacentTerritories.size() > 1;
         while (iterator.hasNext()) {
             mergeTerritory(iterator.next(), canonicalId);
         }
-        return canonicalId;
+        return new TerritoryResolution(canonicalId, merged);
     }
 
     /** mergedIdの全claim・信頼リストをcanonicalIdへ付け替え、mergedId側の縄張りは削除する。 */
@@ -316,14 +334,26 @@ public class LandManager {
     // 信頼(trust) / PvPトグル
     // ------------------------------------------------------------------
 
-    /** 現在地の縄張りに信頼プレイヤーを追加する。実行者がオーナーである必要がある。 */
-    public ActionResult trust(Player owner, UUID target) {
-        Claim claim = claimsByChunk.get(ChunkKey.of(owner.getLocation()));
+    /**
+     * claim・オーナー確認の共通処理。エラーがあればActionResultを返し、問題なければnullを返す
+     * （trust/untrust/setPvpEnabledで繰り返される「claim存在確認→オーナー確認」を1箇所にまとめる）。
+     */
+    private ActionResult validateOwnedClaim(Claim claim, Player owner) {
         if (claim == null) {
             return ActionResult.NOT_CLAIMED;
         }
         if (!claim.owner().equals(owner.getUniqueId())) {
             return ActionResult.NOT_OWNER;
+        }
+        return null;
+    }
+
+    /** 現在地の縄張りに信頼プレイヤーを追加する。実行者がオーナーである必要がある。 */
+    public ActionResult trust(Player owner, UUID target) {
+        Claim claim = claimsByChunk.get(ChunkKey.of(owner.getLocation()));
+        ActionResult error = validateOwnedClaim(claim, owner);
+        if (error != null) {
+            return error;
         }
         Territory territory = territories.get(claim.territoryId());
         if (territory == null) {
@@ -341,11 +371,9 @@ public class LandManager {
     /** 現在地の縄張りから信頼プレイヤーを外す。実行者がオーナーである必要がある。 */
     public ActionResult untrust(Player owner, UUID target) {
         Claim claim = claimsByChunk.get(ChunkKey.of(owner.getLocation()));
-        if (claim == null) {
-            return ActionResult.NOT_CLAIMED;
-        }
-        if (!claim.owner().equals(owner.getUniqueId())) {
-            return ActionResult.NOT_OWNER;
+        ActionResult error = validateOwnedClaim(claim, owner);
+        if (error != null) {
+            return error;
         }
         Territory territory = territories.get(claim.territoryId());
         if (territory == null) {
@@ -361,11 +389,9 @@ public class LandManager {
     /** 現在地の縄張りのPvP許可を切り替える。実行者がオーナーである必要がある。 */
     public ActionResult setPvpEnabled(Player owner, boolean enabled) {
         Claim claim = claimsByChunk.get(ChunkKey.of(owner.getLocation()));
-        if (claim == null) {
-            return ActionResult.NOT_CLAIMED;
-        }
-        if (!claim.owner().equals(owner.getUniqueId())) {
-            return ActionResult.NOT_OWNER;
+        ActionResult error = validateOwnedClaim(claim, owner);
+        if (error != null) {
+            return error;
         }
         Territory territory = territories.get(claim.territoryId());
         if (territory == null) {

@@ -66,26 +66,33 @@ public class LandCommand implements CommandExecutor, TabCompleter {
 
     private void handleClaim(Player player) {
         LandManager.ChunkKey key = LandManager.ChunkKey.of(player.getLocation());
-        LandManager.ClaimResult result = plugin.getLandManager().claim(player);
-        switch (result) {
+        LandManager.ClaimOutcome outcome = plugin.getLandManager().claim(player);
+        switch (outcome.result()) {
             case SUCCESS -> {
                 player.sendMessage(FormatUtil.replace(
                         plugin.getConfigManager().getMessage("land.claimed", player), "%cost%", costText()));
+                if (outcome.merged()) {
+                    String pvpState = plugin.getConfigManager().getMessage(
+                            outcome.pvpEnabled() ? "land.pvp_state_on" : "land.pvp_state_off", player);
+                    player.sendMessage(FormatUtil.replace(
+                            plugin.getConfigManager().getMessage("land.territory_merged", player),
+                            "%pvp_state%", pvpState));
+                }
                 showClaimBorder(player, key);
             }
             case ALREADY_CLAIMED -> {
                 UUID owner = plugin.getLandManager().ownerOf(player.getLocation());
                 player.sendMessage(FormatUtil.replace(
-                        plugin.getConfigManager().getMessage("land.already-claimed", player),
+                        plugin.getConfigManager().getMessage("land.already_claimed", player),
                         "%owner%", ownerName(owner)));
             }
             case LIMIT_REACHED -> player.sendMessage(FormatUtil.replace(
-                    plugin.getConfigManager().getMessage("land.limit-reached", player),
+                    plugin.getConfigManager().getMessage("land.limit_reached", player),
                     "%max%", String.valueOf(plugin.getConfigManager().getInt("land.max-chunks-per-player", 20))));
             case INSUFFICIENT_FUNDS -> player.sendMessage(FormatUtil.replace(
-                    plugin.getConfigManager().getMessage("land.insufficient-funds", player), "%cost%", costText()));
+                    plugin.getConfigManager().getMessage("land.insufficient_funds", player), "%cost%", costText()));
             case WORLD_DISABLED -> player.sendMessage(
-                    plugin.getConfigManager().getMessage("land.world-disabled", player));
+                    plugin.getConfigManager().getMessage("land.world_disabled", player));
         }
     }
 
@@ -95,28 +102,28 @@ public class LandCommand implements CommandExecutor, TabCompleter {
         switch (result) {
             case SUCCESS -> {
                 boolean refunded = plugin.getConfigManager().getBoolean("land.refund-on-unclaim", true);
-                String key = refunded ? "land.unclaimed" : "land.unclaimed-no-refund";
+                String key = refunded ? "land.unclaimed" : "land.unclaimed_no_refund";
                 String message = plugin.getConfigManager().getMessage(key, player);
                 if (refunded) {
                     message = FormatUtil.replace(message, "%refund%", costText());
                 }
                 player.sendMessage(message);
             }
-            case NOT_CLAIMED -> player.sendMessage(plugin.getConfigManager().getMessage("land.not-claimed", player));
-            case NOT_OWNER -> player.sendMessage(plugin.getConfigManager().getMessage("land.not-your-claim", player));
+            case NOT_CLAIMED -> player.sendMessage(plugin.getConfigManager().getMessage("land.not_claimed", player));
+            case NOT_OWNER -> player.sendMessage(plugin.getConfigManager().getMessage("land.not_your_claim", player));
         }
     }
 
     private void handleInfo(Player player) {
         UUID owner = plugin.getLandManager().ownerOf(player.getLocation());
         if (owner == null) {
-            player.sendMessage(plugin.getConfigManager().getMessage("land.info-unclaimed", player));
+            player.sendMessage(plugin.getConfigManager().getMessage("land.info_unclaimed", player));
             return;
         }
         boolean pvpAllowed = plugin.getLandManager().isPvpAllowed(player.getLocation());
         String pvpState = plugin.getConfigManager().getMessage(
-                pvpAllowed ? "land.pvp-state-on" : "land.pvp-state-off", player);
-        String message = plugin.getConfigManager().getMessage("land.info-owner", player);
+                pvpAllowed ? "land.pvp_state_on" : "land.pvp_state_off", player);
+        String message = plugin.getConfigManager().getMessage("land.info_owner", player);
         message = FormatUtil.replace(message, "%owner%", ownerName(owner));
         message = FormatUtil.replace(message, "%pvp_state%", pvpState);
         player.sendMessage(message);
@@ -124,63 +131,63 @@ public class LandCommand implements CommandExecutor, TabCompleter {
 
     private void handleTrust(Player player, String[] args) {
         if (args.length < 2) {
-            player.sendMessage(plugin.getConfigManager().getMessage("land.trust-usage", player));
+            player.sendMessage(plugin.getConfigManager().getMessage("land.trust_usage", player));
             return;
         }
         UUID target = Bukkit.getOfflinePlayer(args[1]).getUniqueId();
         LandManager.ActionResult result = plugin.getLandManager().trust(player, target);
-        sendTrustResult(player, result, "land.trust-added", args[1]);
+        sendTrustResult(player, result, "land.trust_added", args[1]);
     }
 
     private void handleUntrust(Player player, String[] args) {
         if (args.length < 2) {
-            player.sendMessage(plugin.getConfigManager().getMessage("land.untrust-usage", player));
+            player.sendMessage(plugin.getConfigManager().getMessage("land.untrust_usage", player));
             return;
         }
         UUID target = Bukkit.getOfflinePlayer(args[1]).getUniqueId();
         LandManager.ActionResult result = plugin.getLandManager().untrust(player, target);
-        sendTrustResult(player, result, "land.trust-removed", args[1]);
+        sendTrustResult(player, result, "land.trust_removed", args[1]);
     }
 
     private void sendTrustResult(Player player, LandManager.ActionResult result, String successKey, String targetName) {
         switch (result) {
             case SUCCESS -> player.sendMessage(FormatUtil.replace(
                     plugin.getConfigManager().getMessage(successKey, player), "%target%", targetName));
-            case NOT_CLAIMED -> player.sendMessage(plugin.getConfigManager().getMessage("land.not-claimed", player));
-            case NOT_OWNER -> player.sendMessage(plugin.getConfigManager().getMessage("land.not-owner-trust", player));
+            case NOT_CLAIMED -> player.sendMessage(plugin.getConfigManager().getMessage("land.info_unclaimed", player));
+            case NOT_OWNER -> player.sendMessage(plugin.getConfigManager().getMessage("land.not_owner_trust", player));
         }
     }
 
     private void handleTrustList(Player player) {
         UUID owner = plugin.getLandManager().ownerOf(player.getLocation());
         if (owner == null) {
-            player.sendMessage(plugin.getConfigManager().getMessage("land.info-unclaimed", player));
+            player.sendMessage(plugin.getConfigManager().getMessage("land.info_unclaimed", player));
             return;
         }
         Set<UUID> trusted = plugin.getLandManager().trustedPlayers(player.getLocation());
         if (trusted.isEmpty()) {
-            player.sendMessage(plugin.getConfigManager().getMessage("land.trustlist-empty", player));
+            player.sendMessage(plugin.getConfigManager().getMessage("land.trustlist_empty", player));
             return;
         }
-        player.sendMessage(plugin.getConfigManager().getMessage("land.trustlist-header", player));
+        player.sendMessage(plugin.getConfigManager().getMessage("land.trustlist_header", player));
         for (UUID uuid : trusted) {
             player.sendMessage(FormatUtil.replace(
-                    plugin.getConfigManager().getMessage("land.trustlist-entry", player), "%name%", ownerName(uuid)));
+                    plugin.getConfigManager().getMessage("land.trustlist_entry", player), "%name%", ownerName(uuid)));
         }
     }
 
     private void handlePvp(Player player, String[] args) {
         if (args.length < 2 || !(args[1].equalsIgnoreCase("on") || args[1].equalsIgnoreCase("off"))) {
-            player.sendMessage(plugin.getConfigManager().getMessage("land.pvp-usage", player));
+            player.sendMessage(plugin.getConfigManager().getMessage("land.pvp_usage", player));
             return;
         }
         boolean enable = args[1].equalsIgnoreCase("on");
         LandManager.ActionResult result = plugin.getLandManager().setPvpEnabled(player, enable);
         switch (result) {
             case SUCCESS -> player.sendMessage(plugin.getConfigManager().getMessage(
-                    enable ? "land.pvp-enabled" : "land.pvp-disabled", player));
-            case NOT_CLAIMED -> player.sendMessage(plugin.getConfigManager().getMessage("land.not-claimed", player));
-            case NOT_OWNER -> player.sendMessage(plugin.getConfigManager().getMessage("land.not-owner-trust", player));
+                    enable ? "land.pvp_enabled" : "land.pvp_disabled", player));
+            case NOT_CLAIMED -> player.sendMessage(plugin.getConfigManager().getMessage("land.info_unclaimed", player));
+            case NOT_OWNER -> player.sendMessage(plugin.getConfigManager().getMessage("land.not_owner_trust", player));
         }
     }
 

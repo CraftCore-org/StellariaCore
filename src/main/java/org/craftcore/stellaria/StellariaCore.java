@@ -150,7 +150,6 @@ public class StellariaCore extends JavaPlugin {
         this.homeManager = new HomeManager(this);
         this.warpManager = new WarpManager(this);
         this.kikoriManager = new KikoriManager(this);
-        this.landManager = new LandManager(this);
 
         this.muteManager = new MuteManager(this);
         muteManager.loadAll();
@@ -174,6 +173,8 @@ public class StellariaCore extends JavaPlugin {
 
         // 2. EconomyManager のインスタンス化
         this.economyManager = new EconomyManager(this);
+        // LandManagerはEconomyManagerに依存しないが、将来の拡張に備えて構築後に置く
+        this.landManager = new LandManager(this);
 
         // 3. Vaultがサーバーにあるか確認し、登録する処理
         if (getServer().getPluginManager().getPlugin("Vault") != null) {
