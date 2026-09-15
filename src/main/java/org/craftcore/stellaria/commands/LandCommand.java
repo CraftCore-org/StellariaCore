@@ -17,6 +17,7 @@ import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
 import org.craftcore.stellaria.utils.ParticleUtil;
 import org.craftcore.stellaria.utils.TabCompleteUtil;
+import org.craftcore.stellaria.utils.UsageFormatUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -71,7 +72,7 @@ public class LandCommand implements CommandExecutor, TabCompleter {
             case "area" -> handleArea(player, args);
             case "rule" -> handleRule(player, args);
             case "bypass" -> handleBypass(player);
-            default -> player.sendMessage(plugin.getConfigManager().getMessage("land.usage", player));
+            default -> sendUsage(player, "land.usage");
         }
         return true;
     }
@@ -270,7 +271,7 @@ public class LandCommand implements CommandExecutor, TabCompleter {
 
     private void handleArea(Player player, String[] args) {
         if (args.length < 2) {
-            player.sendMessage(plugin.getConfigManager().getMessage("land.area_usage", player));
+            sendUsage(player, "land.area_usage");
             return;
         }
         String areaSub = args[1].toLowerCase();
@@ -286,13 +287,13 @@ public class LandCommand implements CommandExecutor, TabCompleter {
                     "land.doors_usage", "land.doors_enabled", "land.doors_disabled");
             case "chests" -> handleAreaFlag(player, args, LandManager.AreaFlag.CHESTS,
                     "land.chests_usage", "land.chests_enabled", "land.chests_disabled");
-            default -> player.sendMessage(plugin.getConfigManager().getMessage("land.area_usage", player));
+            default -> sendUsage(player, "land.area_usage");
         }
     }
 
     private void handleAreaTrust(Player player, String[] args) {
         if (args.length < 3) {
-            player.sendMessage(plugin.getConfigManager().getMessage("land.trust_usage", player));
+            sendUsage(player, "land.trust_usage");
             return;
         }
         String targetName = args[2];
@@ -303,7 +304,7 @@ public class LandCommand implements CommandExecutor, TabCompleter {
 
     private void handleAreaUntrust(Player player, String[] args) {
         if (args.length < 3) {
-            player.sendMessage(plugin.getConfigManager().getMessage("land.untrust_usage", player));
+            sendUsage(player, "land.untrust_usage");
             return;
         }
         String targetName = args[2];
@@ -343,7 +344,7 @@ public class LandCommand implements CommandExecutor, TabCompleter {
     private void handleAreaFlag(Player player, String[] args, LandManager.AreaFlag flag,
                                  String usageKey, String enabledKey, String disabledKey) {
         if (args.length < 3 || !(args[2].equalsIgnoreCase("on") || args[2].equalsIgnoreCase("off"))) {
-            player.sendMessage(plugin.getConfigManager().getMessage(usageKey, player));
+            sendUsage(player, usageKey);
             return;
         }
         boolean enable = args[2].equalsIgnoreCase("on");
@@ -363,7 +364,7 @@ public class LandCommand implements CommandExecutor, TabCompleter {
 
     private void handleRule(Player player, String[] args) {
         if (args.length < 2) {
-            player.sendMessage(plugin.getConfigManager().getMessage("land.rule_usage", player));
+            sendUsage(player, "land.rule_usage");
             return;
         }
         String ruleSub = args[1].toLowerCase();
@@ -376,14 +377,14 @@ public class LandCommand implements CommandExecutor, TabCompleter {
                     "land.rule_doors_usage", "land.rule_doors_on", "land.rule_doors_off", "land.rule_doors_default");
             case "chests" -> handleRuleFlag(player, args, LandManager.AreaFlag.CHESTS,
                     "land.rule_chests_usage", "land.rule_chests_on", "land.rule_chests_off", "land.rule_chests_default");
-            default -> player.sendMessage(plugin.getConfigManager().getMessage("land.rule_usage", player));
+            default -> sendUsage(player, "land.rule_usage");
         }
     }
 
     private void handleRuleFlag(Player player, String[] args, LandManager.AreaFlag flag,
                                  String usageKey, String onKey, String offKey, String defaultKey) {
         if (args.length < 3) {
-            player.sendMessage(plugin.getConfigManager().getMessage(usageKey, player));
+            sendUsage(player, usageKey);
             return;
         }
         Boolean value;
@@ -393,7 +394,7 @@ public class LandCommand implements CommandExecutor, TabCompleter {
             case "off" -> { value = Boolean.FALSE; successKey = offKey; }
             case "default" -> { value = null; successKey = defaultKey; }
             default -> {
-                player.sendMessage(plugin.getConfigManager().getMessage(usageKey, player));
+                sendUsage(player, usageKey);
                 return;
             }
         }
@@ -412,6 +413,17 @@ public class LandCommand implements CommandExecutor, TabCompleter {
 
     private String costText() {
         return plugin.getEconomyManager().format(plugin.getConfigManager().getDouble("land.cost-per-chunk", 500));
+    }
+
+    /**
+     * 使用方法（usage）メッセージ専用の送信ヘルパー。&lt;/&gt;/|が同じ色でぴったり詰まって
+     * 見づらいのをUsageFormatUtilで整形してから送る。ConfigManager#getMessageではなく
+     * getRawMessageを使うのは、UsageFormatUtilが&%<char>展開前の生文字列を必要とするため
+     * （getMessageは既に色コードを展開済みで渡ってくる）。
+     */
+    private void sendUsage(Player player, String messageKey) {
+        String raw = plugin.getConfigManager().getRawMessage(messageKey);
+        player.sendMessage(FormatUtil.text(player, UsageFormatUtil.format(raw)));
     }
 
     private String ownerName(UUID uuid) {
