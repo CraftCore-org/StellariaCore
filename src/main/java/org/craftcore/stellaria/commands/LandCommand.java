@@ -235,13 +235,13 @@ public class LandCommand implements CommandExecutor, TabCompleter {
         Location se = new Location(world, maxX, y, maxZ);
         Location sw = new Location(world, minX, y, maxZ);
 
-        Particle particle = Particle.valueOf(plugin.getConfigManager().getString("land.border-particle.particle", "DUST"));
+        Particle particle = resolveBorderParticle();
         int durationSeconds = plugin.getConfigManager().getInt("land.border-particle.duration-seconds", 3);
         int totalRuns = Math.max(1, durationSeconds * 2);
         int[] runsLeft = {totalRuns};
 
         if (particle == Particle.DUST) {
-            Color color = ParticleUtil.parseColor(plugin.getConfigManager().getString("land.border-particle.color", "#55FF55"));
+            Color color = resolveBorderColor();
             float size = (float) plugin.getConfigManager().getDouble("land.border-particle.size", 1.0);
             Bukkit.getRegionScheduler().runAtFixedRate(plugin, nw, task -> {
                 ParticleUtil.spawnLine(nw, ne, 0.5, color, size);
@@ -262,6 +262,26 @@ public class LandCommand implements CommandExecutor, TabCompleter {
                     task.cancel();
                 }
             }, 1L, 10L);
+        }
+    }
+
+    /** 設定ファイルのパーティクル種別を解決する。不正な値ならDUSTにフォールバックし、警告をログへ出す。 */
+    private Particle resolveBorderParticle() {
+        try {
+            return Particle.valueOf(plugin.getConfigManager().getString("land.border-particle.particle", "DUST"));
+        } catch (IllegalArgumentException e) {
+            plugin.getLogger().warning("land.border-particle.particle の値が不正なため、DUSTにフォールバックします: " + e.getMessage());
+            return Particle.DUST;
+        }
+    }
+
+    /** 設定ファイルの境界パーティクル色を解決する。不正な値ならデフォルト色にフォールバックし、警告をログへ出す。 */
+    private Color resolveBorderColor() {
+        try {
+            return ParticleUtil.parseColor(plugin.getConfigManager().getString("land.border-particle.color", "#55FF55"));
+        } catch (IllegalArgumentException e) {
+            plugin.getLogger().warning("land.border-particle.color の値が不正なため、デフォルト色にフォールバックします: " + e.getMessage());
+            return ParticleUtil.parseColor("#55FF55");
         }
     }
 

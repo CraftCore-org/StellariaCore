@@ -16,10 +16,16 @@ import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.player.PlayerBucketEmptyEvent;
+import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.craftcore.stellaria.StellariaCore;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * 土地保護（/land）のイベント判定。判定の中心は
@@ -27,10 +33,29 @@ import java.util.List;
  */
 public class LandProtectionListener implements Listener {
 
+    /** 保護通知メッセージのクールダウン（ミリ秒）。連鎖伐採やPvP連打で同じメッセージが連投されるのを防ぐ。 */
+    private static final long NOTICE_COOLDOWN_MILLIS = 2000L;
+
     private final StellariaCore plugin;
+    private final Map<UUID, Long> lastNoticeMillis = new HashMap<>();
 
     public LandProtectionListener(StellariaCore plugin) {
         this.plugin = plugin;
+    }
+
+    /**
+     * 保護通知メッセージを送ってよいか（かつ送るなら最終送信時刻を更新）。
+     * event.setCancelled(true)自体には決して関与しない ― キャンセルは常に無条件で行い、
+     * このメソッドはチャット通知の連投を防ぐためだけに使う。
+     */
+    private boolean shouldNotify(Player player) {
+        long now = System.currentTimeMillis();
+        Long last = lastNoticeMillis.get(player.getUniqueId());
+        if (last != null && now - last < NOTICE_COOLDOWN_MILLIS) {
+            return false;
+        }
+        lastNoticeMillis.put(player.getUniqueId(), now);
+        return true;
     }
 
     /**
@@ -41,7 +66,9 @@ public class LandProtectionListener implements Listener {
     public void onBlockBreak(BlockBreakEvent event) {
         if (!plugin.getLandManager().canBuild(event.getBlock().getLocation(), event.getPlayer())) {
             event.setCancelled(true);
-            event.getPlayer().sendMessage(plugin.getConfigManager().getMessage("land.protected-block", event.getPlayer()));
+            if (shouldNotify(event.getPlayer())) {
+                event.getPlayer().sendMessage(plugin.getConfigManager().getMessage("land.protected-block", event.getPlayer()));
+            }
         }
     }
 
@@ -49,12 +76,37 @@ public class LandProtectionListener implements Listener {
     public void onBlockPlace(BlockPlaceEvent event) {
         if (!plugin.getLandManager().canBuild(event.getBlock().getLocation(), event.getPlayer())) {
             event.setCancelled(true);
-            event.getPlayer().sendMessage(plugin.getConfigManager().getMessage("land.protected-block", event.getPlayer()));
+            if (shouldNotify(event.getPlayer())) {
+                event.getPlayer().sendMessage(plugin.getConfigManager().getMessage("land.protected-block", event.getPlayer()));
+            }
+        }
+    }
+
+    @EventHandler
+    public void onBucketEmpty(PlayerBucketEmptyEvent event) {
+        if (!plugin.getLandManager().canBuild(event.getBlock().getLocation(), event.getPlayer())) {
+            event.setCancelled(true);
+            if (shouldNotify(event.getPlayer())) {
+                event.getPlayer().sendMessage(plugin.getConfigManager().getMessage("land.protected-block", event.getPlayer()));
+            }
+        }
+    }
+
+    @EventHandler
+    public void onBucketFill(PlayerBucketFillEvent event) {
+        if (!plugin.getLandManager().canBuild(event.getBlock().getLocation(), event.getPlayer())) {
+            event.setCancelled(true);
+            if (shouldNotify(event.getPlayer())) {
+                event.getPlayer().sendMessage(plugin.getConfigManager().getMessage("land.protected-block", event.getPlayer()));
+            }
         }
     }
 
     @EventHandler
     public void onInteract(PlayerInteractEvent event) {
+        if (event.getHand() != EquipmentSlot.HAND) {
+            return;
+        }
         Block block = event.getClickedBlock();
         if (block == null || event.getAction() != Action.RIGHT_CLICK_BLOCK) {
             return;
@@ -64,7 +116,9 @@ public class LandProtectionListener implements Listener {
         }
         if (!plugin.getLandManager().canBuild(block.getLocation(), event.getPlayer())) {
             event.setCancelled(true);
-            event.getPlayer().sendMessage(plugin.getConfigManager().getMessage("land.protected-block", event.getPlayer()));
+            if (shouldNotify(event.getPlayer())) {
+                event.getPlayer().sendMessage(plugin.getConfigManager().getMessage("land.protected-block", event.getPlayer()));
+            }
         }
     }
 
@@ -82,9 +136,14 @@ public class LandProtectionListener implements Listener {
         if (attacker == null || attacker.hasPermission("stellaria.land.admin")) {
             return;
         }
+        if (attacker.getUniqueId().equals(victim.getUniqueId())) {
+            return;
+        }
         if (!plugin.getLandManager().isPvpAllowed(victim.getLocation())) {
             event.setCancelled(true);
-            attacker.sendMessage(plugin.getConfigManager().getMessage("land.pvp-blocked", attacker));
+            if (shouldNotify(attacker)) {
+                attacker.sendMessage(plugin.getConfigManager().getMessage("land.pvp-blocked", attacker));
+            }
         }
     }
 

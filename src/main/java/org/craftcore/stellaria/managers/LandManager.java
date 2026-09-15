@@ -83,6 +83,9 @@ public class LandManager {
                 rs -> new ClaimRow(rs.getString("world"), rs.getInt("chunk_x"), rs.getInt("chunk_z"),
                         UUID.fromString(rs.getString("owner_uuid")), rs.getString("territory_id")));
         for (ClaimRow row : claimRows) {
+            // land_territories側の行が欠落していても（本来あり得ないが、mergeTerritory()が
+            // transaction()で保護されていないための保険として）Territoryを必ず用意しておく。
+            territories.computeIfAbsent(row.territoryId(), id -> new Territory(false));
             claimsByChunk.put(new ChunkKey(row.world(), row.chunkX(), row.chunkZ()),
                     new Claim(row.owner(), row.territoryId()));
         }
@@ -323,6 +326,9 @@ public class LandManager {
             return ActionResult.NOT_OWNER;
         }
         Territory territory = territories.get(claim.territoryId());
+        if (territory == null) {
+            return ActionResult.NOT_CLAIMED;
+        }
         if (territory.trusted.add(target)) {
             DatabaseManager.insert("land_trusts", Map.of(
                     "territory_id", claim.territoryId(),
@@ -342,6 +348,9 @@ public class LandManager {
             return ActionResult.NOT_OWNER;
         }
         Territory territory = territories.get(claim.territoryId());
+        if (territory == null) {
+            return ActionResult.NOT_CLAIMED;
+        }
         if (territory.trusted.remove(target)) {
             DatabaseManager.execute("DELETE FROM land_trusts WHERE territory_id = ? AND trusted_uuid = ?",
                     claim.territoryId(), target.toString());
@@ -359,6 +368,9 @@ public class LandManager {
             return ActionResult.NOT_OWNER;
         }
         Territory territory = territories.get(claim.territoryId());
+        if (territory == null) {
+            return ActionResult.NOT_CLAIMED;
+        }
         territory.pvpEnabled = enabled;
         DatabaseManager.update("land_territories", Map.of("pvp_enabled", enabled ? 1 : 0),
                 "territory_id = ?", claim.territoryId());
