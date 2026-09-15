@@ -222,3 +222,17 @@ warp:
   list_header: "&%6&l--- ワープ一覧 ---"
   list_entry: "&%7- &%f%name% &%7(by %owner%)"
   list_empty: "&%7ワープがまだありません。/setwarp <名前> で作成できます。"
+
+kikori:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  usage: "&%c使用方法: /kikori [on|off|buy]"
+  not_unlocked: "&%cこの機能は購入していません。&%e/kikori buy &%cで購入できます。（%price%）"
+  already_unlocked: "&%cこの機能は既に購入済みです。"
+  buy_insufficient_funds: "&%c残高が足りません。（必要: %price%）"
+  buy_success: "&%a木こり機能を購入しました！&%7/kikori &%aで切り替えられます。"
+  enabled: "&%a木こり機能をONにしました。&%7斧を持って丸太を壊すと発動します。"
+  disabled: "&%7木こり機能をOFFにしました。"
+  timeout_disabled: "&%7一定時間操作が無かったため、木こり機能を自動でOFFにしました。"
+  artificial_detected: "&%c人工物を検知しました。木こり機能を自動でOFFにします。"
+  pass_granted: "&%e次回、人工物を検知しても1回だけ無視して伐採を続行します。"

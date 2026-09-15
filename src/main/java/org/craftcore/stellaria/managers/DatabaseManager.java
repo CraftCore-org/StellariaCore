@@ -145,6 +145,36 @@ public final class DatabaseManager {
         }
     }
 
+    /**
+     * 既存テーブルに列が無ければ追加する（SQLiteの{@code ALTER TABLE ... ADD COLUMN}を使用）。
+     * 新機能アンロックフラグのように、後から既存テーブルへ列を足したい時に使う。
+     *
+     * @param table     テーブル名
+     * @param columnDef "カラム名 型 制約"の形式（{@link #createTableIfNotExists}と同じ書式）
+     */
+    public static void addColumnIfNotExists(String table, String columnDef) {
+        String columnName = columnDef.trim().split("\\s+")[0];
+        try (PreparedStatement ps = raw().prepareStatement("PRAGMA table_info(" + table + ")");
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                if (rs.getString("name").equalsIgnoreCase(columnName)) {
+                    return; // 既に存在する
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().severe("テーブル情報の取得に失敗した(" + table + "): " + e.getMessage());
+            return;
+        }
+
+        String sql = "ALTER TABLE " + table + " ADD COLUMN " + columnDef;
+        try (PreparedStatement ps = raw().prepareStatement(sql)) {
+            ps.executeUpdate();
+            plugin.getLogger().info("テーブル " + table + " にカラムを追加しました: " + columnName);
+        } catch (SQLException e) {
+            plugin.getLogger().severe("カラム追加に失敗した(" + table + "): " + e.getMessage());
+        }
+    }
+
     // ------------------------------------------------------------------
     // 更新系 (INSERT / UPDATE / DELETE)
     // ------------------------------------------------------------------

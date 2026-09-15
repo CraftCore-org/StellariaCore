@@ -47,6 +47,7 @@ commands:
   warp:
   delwarp:
   warps:
+  kikori:
 
 permissions:
   stellaria.msg:

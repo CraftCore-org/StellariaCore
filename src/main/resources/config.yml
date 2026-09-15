@@ -200,3 +200,10 @@ elevator:
       volume: 1.0
       pitch: 0.75
   ignoreblocks: ["&CARPET","&_SIGN","&TORCH","&BANNER","&BUTTON","&LEVER","&_DOOR"]# エレベーターブロックの上2ブロックに置いてあっても移動ができるブロック
+
+kikori:
+  enabled: true
+  price: 50000
+  timeout-seconds: 300
+  max-logs: 256
+  leaf-radius: 3
