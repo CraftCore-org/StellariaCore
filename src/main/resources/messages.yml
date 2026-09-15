@@ -27,6 +27,9 @@ tpa:
   tpa_warmup_actionbar: "&e%seconds%秒後にテレポートします"
   tpa_warmup_cancelled: "&%c&l| &%7ダメージを受けたため、テレポートをキャンセルしました。"
   tpa_warmup_target_offline: "&%c&l| &%7相手がオフラインになったため、テレポートをキャンセルしました。"
+  tpa_warmup_target: "&%e&l| &%7%player% &%7さんが&%eあなたの元へ&%7%seconds%秒後にテレポートします。"
+  tpa_warmup_cancelled_target: "&%c&l| &%7%player% &%7さんのテレポートが、ダメージを受けたためキャンセルされました。"
+  tpa_warmup_mover_disconnected: "&%c&l| &%7%player% &%7さんが切断したため、テレポートはキャンセルされました。"
 
   tphere_send: "&%e&l| &%f%player%&%7に&%d呼び出し&%7リクエストを送信しました。"
   tphere_receive: "&%e&l| &%f%player%&%7から&%d呼び出し&%7リクエストが届きました。"

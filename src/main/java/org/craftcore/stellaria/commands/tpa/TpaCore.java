@@ -37,6 +37,9 @@ public class TpaCore implements CommandExecutor, Listener, TabCompleter {
     private final static Map<UUID, ScheduledTask> pendingTeleport = new HashMap<>();
     // テレポート詠唱中のアクションバーカウントダウン用ScheduledTask
     private final static Map<UUID, ScheduledTask> pendingCountdown = new HashMap<>();
+    // mover UUID -> destination UUID（詠唱中のみ）。詠唱の開始・キャンセル・切断を
+    // destination側にも通知するために、後から「誰が誰を待っているか」を引けるようにしている。
+    private final static Map<UUID, UUID> pendingTeleportDestination = new HashMap<>();
 
     private final StellariaCore plugin;
 
@@ -44,14 +47,48 @@ public class TpaCore implements CommandExecutor, Listener, TabCompleter {
         this.plugin = plugin;
     }
 
-    public static void resetPlayerTeleportRequests(Player player){
-        tpRequest.remove(player.getUniqueId());
-        tpHere.remove(player.getUniqueId());
-        tpaPendingSender.remove(player.getUniqueId());
-        tpHerePendingSender.remove(player.getUniqueId());
-        ScheduledTask task = pendingTeleport.remove(player.getUniqueId());
+    /**
+     * プレイヤー退出時の後片付け。このプレイヤーが「詠唱中のmover」だった場合は待っているdestinationへ、
+     * 「詠唱中に待たれていたdestination」だった場合は詠唱中のmoverへ、それぞれ切断を通知してからキャンセルする。
+     */
+    public static void resetPlayerTeleportRequests(Player player, StellariaCore plugin){
+        UUID playerId = player.getUniqueId();
+
+        // 自分がmover側だった場合: 待っているdestinationに切断を通知する
+        UUID destinationId = pendingTeleportDestination.remove(playerId);
+        if (destinationId != null) {
+            Player waitingDestination = Bukkit.getPlayer(destinationId);
+            if (waitingDestination != null) {
+                waitingDestination.sendMessage(FormatUtil.replace(
+                        plugin.getConfigManager().getMessage("tpa.tpa_warmup_mover_disconnected", waitingDestination),
+                        "%player%", player.getName()));
+            }
+        }
+
+        // 自分がdestination側だった場合: 詠唱中のmoverに即座に切断を通知してキャンセルする
+        // （元々はmoverの詠唱が時間切れになるまで気付けなかった）
+        Iterator<Map.Entry<UUID, UUID>> it = pendingTeleportDestination.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<UUID, UUID> entry = it.next();
+            if (!entry.getValue().equals(playerId)) continue;
+            UUID moverId = entry.getKey();
+            it.remove();
+            ScheduledTask moverTask = pendingTeleport.remove(moverId);
+            if (moverTask != null) moverTask.cancel();
+            Player waitingMover = Bukkit.getPlayer(moverId);
+            if (waitingMover != null) {
+                stopCountdown(waitingMover, plugin);
+                waitingMover.sendMessage(plugin.getConfigManager().getMessage("tpa.tpa_warmup_target_offline", waitingMover));
+            }
+        }
+
+        tpRequest.remove(playerId);
+        tpHere.remove(playerId);
+        tpaPendingSender.remove(playerId);
+        tpHerePendingSender.remove(playerId);
+        ScheduledTask task = pendingTeleport.remove(playerId);
         if (task != null) task.cancel();
-        ScheduledTask countdownTask = pendingCountdown.remove(player.getUniqueId());
+        ScheduledTask countdownTask = pendingCountdown.remove(playerId);
         if (countdownTask != null) countdownTask.cancel();
     }
 
@@ -66,8 +103,18 @@ public class TpaCore implements CommandExecutor, Listener, TabCompleter {
         ScheduledTask task = pendingTeleport.remove(player.getUniqueId());
         if (task != null) {
             task.cancel();
-            stopCountdown(player);
+            stopCountdown(player, plugin);
             player.sendMessage(plugin.getConfigManager().getMessage("tpa.tpa_warmup_cancelled", player));
+
+            UUID destinationId = pendingTeleportDestination.remove(player.getUniqueId());
+            if (destinationId != null) {
+                Player waitingDestination = Bukkit.getPlayer(destinationId);
+                if (waitingDestination != null) {
+                    waitingDestination.sendMessage(FormatUtil.replace(
+                            plugin.getConfigManager().getMessage("tpa.tpa_warmup_cancelled_target", waitingDestination),
+                            "%player%", player.getName()));
+                }
+            }
         }
     }
 
@@ -122,12 +169,18 @@ public class TpaCore implements CommandExecutor, Listener, TabCompleter {
         mover.sendMessage(FormatUtil.replace(
                 plugin.getConfigManager().getMessage("tpa.tpa_warmup", mover),
                 "%seconds%", String.valueOf(delaySeconds)));
+        destination.sendMessage(FormatUtil.replace(FormatUtil.replace(
+                plugin.getConfigManager().getMessage("tpa.tpa_warmup_target", destination),
+                "%player%", mover.getName()),
+                "%seconds%", String.valueOf(delaySeconds)));
 
         startCountdown(mover, delaySeconds);
+        pendingTeleportDestination.put(moverId, destinationId);
 
         ScheduledTask task = mover.getScheduler().runDelayed(plugin, scheduledTask -> {
             pendingTeleport.remove(moverId);
-            stopCountdown(mover);
+            pendingTeleportDestination.remove(moverId);
+            stopCountdown(mover, plugin);
             Player freshMover = Bukkit.getPlayer(moverId);
             Player freshDestination = Bukkit.getPlayer(destinationId);
             if (freshMover == null) return;
@@ -138,7 +191,8 @@ public class TpaCore implements CommandExecutor, Listener, TabCompleter {
             performTeleport(freshMover, freshDestination);
         }, () -> {
             pendingTeleport.remove(moverId);
-            stopCountdown(mover);
+            pendingTeleportDestination.remove(moverId);
+            stopCountdown(mover, plugin);
         }, delayTicks);
 
         pendingTeleport.put(moverId, task);
@@ -166,8 +220,12 @@ public class TpaCore implements CommandExecutor, Listener, TabCompleter {
         pendingCountdown.put(moverId, countdownTask);
     }
 
-    /** カウントダウンタスクを止めてアクションバー表示も消す。 */
-    private void stopCountdown(Player mover) {
+    /**
+     * カウントダウンタスクを止めてアクションバー表示も消す。
+     * {@link #resetPlayerTeleportRequests}（static、destination退出時にmover側を止める用途）からも
+     * 呼べるようにstatic化し、pluginを引数で受け取る。
+     */
+    private static void stopCountdown(Player mover, StellariaCore plugin) {
         ScheduledTask task = pendingCountdown.remove(mover.getUniqueId());
         if (task != null) {
             task.cancel();

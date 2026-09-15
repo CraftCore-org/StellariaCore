@@ -25,7 +25,7 @@ public class PlayerListener implements Listener {
     // Join時にここで手動更新する必要は無くなった（旧 TabList.updateAllPlayersTablist()）。
     @EventHandler
     public void onPlayerLeave(PlayerQuitEvent event){
-        TpaCore.resetPlayerTeleportRequests(event.getPlayer());
+        TpaCore.resetPlayerTeleportRequests(event.getPlayer(), plugin);
         plugin.getAfkManager().removePlayer(event.getPlayer().getUniqueId());
         plugin.getActionBarManager().removePlayer(event.getPlayer().getUniqueId());
         plugin.getKikoriManager().removePlayer(event.getPlayer().getUniqueId());
