@@ -27,6 +27,11 @@ public final class MoneyFormat {
         return sign + trimTrailingZero(abs);
     }
 
+    /** 丸めずカンマ区切りの整数で表す（例: {@code 15000} -> {@code "15,000"}）。管理者向け通知など正確な金額が必要な箇所で使う。 */
+    public static String formatExact(double amount) {
+        return String.format(Locale.ROOT, "%,d", Math.round(amount));
+    }
+
     private static String trimTrailingZero(double value) {
         String formatted = String.format(Locale.ROOT, "%.1f", value);
         return formatted.endsWith(".0") ? formatted.substring(0, formatted.length() - 2) : formatted;

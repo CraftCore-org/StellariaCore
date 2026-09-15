@@ -47,6 +47,12 @@ public class EconomyManager extends AbstractEconomy {
         return MoneyFormat.format(amount) + "円";
     }
 
+    /** 丸めずカンマ区切りの実数で表す。{@link #format(double)} は万/億/兆に丸めるため、
+     * 残高確認や送金・管理者操作の通知など正確な金額を見せるべき箇所ではこちらを使う。 */
+    public String formatExact(double amount) {
+        return MoneyFormat.formatExact(amount) + "円";
+    }
+
     @Override
     public String currencyNamePlural() {
         return "円";

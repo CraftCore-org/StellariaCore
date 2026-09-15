@@ -66,7 +66,7 @@ public class PayCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        String amountText = economy.format(amount);
+        String amountText = economy.formatExact(amount);
         player.sendMessage(plugin.getConfigManager().getMessage("pay.sender", target)
                 .replace("%amount%", amountText));
         target.sendMessage(plugin.getConfigManager().getMessage("pay.receiver", player)

@@ -89,7 +89,7 @@ public class RankingCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(plugin.getConfigManager().getMessage("ranking.money_entry", null)
                     .replace("%rank%", String.valueOf(rank))
                     .replace("%player%", entry.name())
-                    .replace("%value%", economy.format(entry.coins())));
+                    .replace("%value%", economy.formatExact(entry.coins())));
             rank++;
         }
         return true;

@@ -58,7 +58,7 @@ public class BalanceCommand implements CommandExecutor, TabCompleter {
 
     private void showBalance(CommandSender sender, OfflinePlayer target, String messageKey) {
         EconomyManager economy = plugin.getEconomyManager();
-        String amountText = economy.format(economy.getBalance(target));
+        String amountText = economy.formatExact(economy.getBalance(target));
         sender.sendMessage(plugin.getConfigManager().getMessage(messageKey, target)
                 .replace("%amount%", amountText));
     }

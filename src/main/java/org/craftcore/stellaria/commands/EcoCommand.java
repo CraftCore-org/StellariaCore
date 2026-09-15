@@ -83,7 +83,7 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
     }
 
     private void notify(CommandSender sender, OfflinePlayer target, String senderKey, String receiverKey, long amount) {
-        String amountText = plugin.getEconomyManager().format(amount);
+        String amountText = plugin.getEconomyManager().formatExact(amount);
         sender.sendMessage(plugin.getConfigManager().getMessage(senderKey, target)
                 .replace("%amount%", amountText));
         if (target.isOnline() && target.getPlayer() != null) {
