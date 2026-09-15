@@ -22,6 +22,7 @@ import org.craftcore.stellaria.commands.tpa.TpaCore;
 import org.craftcore.stellaria.commands.HomeCommand;
 import org.craftcore.stellaria.commands.WarpCommand;
 import org.craftcore.stellaria.commands.KikoriCommand;
+import org.craftcore.stellaria.commands.LandCommand;
 import org.craftcore.stellaria.managers.*;
 import org.craftcore.stellaria.gui.GuiListener;
 import org.craftcore.stellaria.managers.ActionBarManager;
@@ -340,6 +341,10 @@ public class StellariaCore extends JavaPlugin {
         KikoriCommand kikoriCommand = new KikoriCommand(this);
         getCommand("kikori").setExecutor(kikoriCommand);
         getCommand("kikori").setTabCompleter(kikoriCommand);
+
+        LandCommand landCommand = new LandCommand(this);
+        getCommand("land").setExecutor(landCommand);
+        getCommand("land").setTabCompleter(landCommand);
 
         this.autoBroadcastManager = new AutoBroadcastManager(this);
         autoBroadcastManager.start();
