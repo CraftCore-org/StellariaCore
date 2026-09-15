@@ -31,6 +31,7 @@ import org.craftcore.stellaria.listeners.PlayerListener;
 import org.craftcore.stellaria.listeners.PlayerQuitListener;
 import org.craftcore.stellaria.listeners.KikoriListener;
 import org.craftcore.stellaria.listeners.LandProtectionListener;
+import org.craftcore.stellaria.listeners.LandAreaStatusListener;
 
 
 import org.craftcore.stellaria.utils.ConsoleUtil;
@@ -160,6 +161,12 @@ public class StellariaCore extends JavaPlugin {
             }
         }
 
+        this.bossBarManager = new BossBarManager(this);
+        if (configManager.getBoolean("boss-bar.enabled", true)) {
+            long bossBarInterval = configManager.getInt("boss-bar.update-interval-ticks", 5);
+            Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> bossBarManager.tick(), bossBarInterval, bossBarInterval);
+        }
+
         // 2. EconomyManager のインスタンス化
         this.economyManager = new EconomyManager(this);
         // LandManagerはEconomyManagerに依存しないが、将来の拡張に備えて構築後に置く
@@ -193,6 +200,7 @@ public class StellariaCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PlayerListener(this, elevatorManager), this);
         getServer().getPluginManager().registerEvents(new KikoriListener(this), this);
         getServer().getPluginManager().registerEvents(new LandProtectionListener(this), this);
+        getServer().getPluginManager().registerEvents(new LandAreaStatusListener(this), this);
 
         // 6. Scoreboard/Tablist/Belowname のインスタンス化とtick開始
         this.placeholderManager = new PlaceholderManager(this);
@@ -397,6 +405,10 @@ public class StellariaCore extends JavaPlugin {
 
     public ActionBarManager getActionBarManager() {
         return this.actionBarManager;
+    }
+
+    public BossBarManager getBossBarManager() {
+        return this.bossBarManager;
     }
 
     public PlaytimeManager getPlaytimeManager() {
