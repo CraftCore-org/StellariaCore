@@ -309,6 +309,7 @@ land:
   status_doors_open: " &%7| &%aドア開放"
   status_chests_open: " &%7| &%aチェスト開放"
   status_explosions_allowed: " &%7| &%c爆発OK"
+  status_pvp_warning: "&%c&l⚔ PvP有効エリア &%7このエリアでは戦闘できます"
   list: "&%b保護中のチャンク&%7: &%f%chunks%&%7/&%f%max% &%7（エリア数: &%f%areas%&%7）"
   help:
     - "&%9&l| &%bland機能の説明"

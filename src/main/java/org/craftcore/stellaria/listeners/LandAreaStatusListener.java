@@ -1,5 +1,6 @@
 package org.craftcore.stellaria.listeners;
 
+import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
@@ -25,16 +26,18 @@ import java.util.UUID;
  * （情報表示のみ、何もキャンセルしない）のためファイルを分けている。
  *
  * 同じエリア内を歩き回っている間は再表示しない — プレイヤーごとに直近表示したエリアの
- * 状態（AreaSignature）を覚えておき、実際に内容が変わった時だけアクションバーを更新する。
+ * 状態（AreaSignature）を覚えておき、実際に内容が変わった時だけアクションバー/ボスバーを更新する。
  * これが無いと、1つの広いエリア内でチャンク境界を跨ぐたびに（全く同じ内容を）再送してしまい、
  * ちらつきの原因になる。
  *
- * PvP有効エリア進入時のボスバー警告は、別セッションで実装中のBossBarManagerが
- * mainにマージされ次第、updateDisplay()内のTODO箇所に追加する予定。
+ * PvP有効エリアに入っている間はボスバーで警告する（BossBarManager経由）。ActionBarと違い
+ * ボスバーはチャンネルごとに常設表示できるので、エリアを出た/PvPが無効なエリアに移った
+ * 瞬間にclearChannelするだけでよい（flash不要）。
  */
 public class LandAreaStatusListener implements Listener {
 
     private static final String AREA_STATUS_CHANNEL = "land_area_status";
+    private static final String PVP_WARNING_CHANNEL = "land_pvp_warning";
 
     /** 直近表示したエリアの状態。未claim地はUNCLAIMED定数で表す。 */
     private record AreaSignature(UUID owner, boolean pvpEnabled, boolean explosionsAllowed,
@@ -101,7 +104,7 @@ public class LandAreaStatusListener implements Listener {
 
         if (owner == null) {
             plugin.getActionBarManager().clearChannel(player, AREA_STATUS_CHANNEL);
-            // TODO(BossBarManager導入後): PvP警告ボスバーもここでclearChannelする
+            plugin.getBossBarManager().clearChannel(player, PVP_WARNING_CHANNEL);
             return;
         }
 
@@ -119,9 +122,13 @@ public class LandAreaStatusListener implements Listener {
         }
         plugin.getActionBarManager().setChannel(player, AREA_STATUS_CHANNEL, ColorUtil.component(text.toString()));
 
-        // TODO(BossBarManager導入後): signature.pvpEnabled()がtrueなら
-        // plugin.getBossBarManager().setChannel(player, "land_pvp_warning", ..., BossBar.Color.RED, BossBar.Overlay.PROGRESS, 1.0f)、
-        // falseならclearChannel(player, "land_pvp_warning") を呼ぶ。
+        if (signature.pvpEnabled()) {
+            plugin.getBossBarManager().setChannel(player, PVP_WARNING_CHANNEL,
+                    ColorUtil.component(plugin.getConfigManager().getMessage("land.status_pvp_warning", player)),
+                    BossBar.Color.RED, BossBar.Overlay.PROGRESS, 1.0f);
+        } else {
+            plugin.getBossBarManager().clearChannel(player, PVP_WARNING_CHANNEL);
+        }
     }
 
     private String ownerName(UUID uuid) {
