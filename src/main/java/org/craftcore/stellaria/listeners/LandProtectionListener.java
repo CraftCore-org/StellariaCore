@@ -189,10 +189,18 @@ public class LandProtectionListener implements Listener {
     /**
      * プレイヤー（直接・投射物・TNT・懐いた動物経由）による額縁/絵画等の破壊を保護する。
      * resolveAttackerを使うため、矢で額縁を撃ち抜くような間接攻撃も正しく判定できる。
+     * 爆発原因（Creeperや非プレイヤー起爆のTNT等）はresolveAttackerで解決できないプレイヤー不在の
+     * ケースがあるため、爆発原因の場合はplayer解決を待たずonEntityExplode等と同様に無条件で保護する。
      */
     @EventHandler
     public void onHangingBreakByEntity(HangingBreakByEntityEvent event) {
         if (!plugin.getConfigManager().getBoolean("land.protect.hangings", true)) {
+            return;
+        }
+        if (event.getCause() == HangingBreakEvent.RemoveCause.EXPLOSION) {
+            if (plugin.getLandManager().ownerOf(event.getEntity().getLocation()) != null) {
+                event.setCancelled(true);
+            }
             return;
         }
         Player player = resolveAttacker(event.getRemover());
@@ -206,9 +214,9 @@ public class LandProtectionListener implements Listener {
     }
 
     /**
-     * 爆発等、行為者がプレイヤーに紐づかない原因での額縁/絵画等の破壊を保護する
-     * （HangingBreakByEntityEventはonHangingBreakByEntityで処理済みのためここでは扱わない。
-     * 支柱のブロックが無くなった等の正常な物理的脱落まで妨げないよう、爆発原因のみを対象にする）。
+     * HangingBreakByEntityEvent以外の経路（支柱のブロックが無くなった等の物理的脱落）での
+     * 額縁/絵画等の破壊を扱う。爆発原因はonHangingBreakByEntity側（HangingBreakByEntityEventとして
+     * 届く場合）で既に処理されるため、ここでは爆発以外の原因は素通りさせ、正常な脱落を妨げない。
      */
     @EventHandler
     public void onHangingBreak(HangingBreakEvent event) {
