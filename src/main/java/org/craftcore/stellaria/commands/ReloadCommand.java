@@ -20,13 +20,13 @@ public class ReloadCommand implements CommandExecutor {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String @NotNull [] args) {
         if (!sender.isOp()) {
-            sender.sendMessage("§c§l| §7このコマンドを実行する権限がありません。");
+            sender.sendMessage("§c§l>>> §7No Permission!");
             return true;
         }
 
         plugin.getConfigManager().reload();
         plugin.reloadFeatureManagers();
-        sender.sendMessage("§a§l| §7設定ファイルを再読み込みしました。");
+        sender.sendMessage("§a§l>>> §7Config Reloaded!");
         return true;
     }
 }
