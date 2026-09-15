@@ -19,24 +19,29 @@ import org.craftcore.stellaria.utils.ParticleUtil;
 import org.craftcore.stellaria.utils.TabCompleteUtil;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 /**
- * /land コマンド。claim/unclaim/info/list/help/bypassはargs[0]で直接ディスパッチする個人操作、
+ * /land コマンド。claim/unclaim/info/list/map/help/bypassはargs[0]で直接ディスパッチする個人操作、
  * trust/untrust/trustlist/pvp/explosions/doors/chestsは/land area <sub>としてまとめてある
  * エリア（隣接claimの集合）単位の操作 — こちらを触った時だけエリア全体に変更が及ぶことを
  * コマンド名で明示するため、あえて独立したサブコマンドにせず"area"の下にネストしている。
+ * /land rule <flag> <on|off|default>は逆に「今立っているチャンク1つだけ」の個別設定で、
+ * エリアの設定を上書きする（defaultで個別設定を解除するとまたエリアの設定に従う）。
  */
 public class LandCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> SUBCOMMANDS = List.of(
-            "claim", "unclaim", "info", "list", "map", "help", "area", "bypass");
+            "claim", "unclaim", "info", "list", "map", "help", "area", "rule", "bypass");
     private static final List<String> AREA_SUBCOMMANDS = List.of(
             "trust", "untrust", "trustlist", "pvp", "explosions", "doors", "chests");
     private static final List<String> AREA_FLAG_SUBCOMMANDS = List.of("pvp", "explosions", "doors", "chests");
+    private static final List<String> RULE_FLAG_SUBCOMMANDS = List.of("pvp", "explosions", "doors", "chests");
     private static final List<String> ON_OFF = List.of("on", "off");
+    private static final List<String> RULE_VALUES = List.of("on", "off", "default");
 
     private final StellariaCore plugin;
 
@@ -64,6 +69,7 @@ public class LandCommand implements CommandExecutor, TabCompleter {
             case "map" -> handleMap(player);
             case "help" -> handleHelp(player);
             case "area" -> handleArea(player, args);
+            case "rule" -> handleRule(player, args);
             case "bypass" -> handleBypass(player);
             default -> player.sendMessage(plugin.getConfigManager().getMessage("land.usage", player));
         }
@@ -131,18 +137,40 @@ public class LandCommand implements CommandExecutor, TabCompleter {
 
     private void handleInfo(Player player) {
         Location location = player.getLocation();
-        UUID owner = plugin.getLandManager().ownerOf(location);
+        LandManager land = plugin.getLandManager();
+        UUID owner = land.ownerOf(location);
         if (owner == null) {
             player.sendMessage(plugin.getConfigManager().getMessage("land.info_unclaimed", player));
             return;
         }
         String message = plugin.getConfigManager().getMessage("land.info_owner", player);
         message = FormatUtil.replace(message, "%owner%", ownerName(owner));
-        message = FormatUtil.replace(message, "%pvp_state%", onOffText(player, plugin.getLandManager().isPvpAllowed(location)));
-        message = FormatUtil.replace(message, "%explosions_state%", onOffText(player, plugin.getLandManager().explosionsAllowed(location)));
-        message = FormatUtil.replace(message, "%doors_state%", onOffText(player, plugin.getLandManager().doorsOpenToOthers(location)));
-        message = FormatUtil.replace(message, "%chests_state%", onOffText(player, plugin.getLandManager().chestsOpenToOthers(location)));
+        message = FormatUtil.replace(message, "%pvp_state%", onOffText(player, land.isPvpAllowed(location)));
+        message = FormatUtil.replace(message, "%explosions_state%", onOffText(player, land.explosionsAllowed(location)));
+        message = FormatUtil.replace(message, "%doors_state%", onOffText(player, land.doorsOpenToOthers(location)));
+        message = FormatUtil.replace(message, "%chests_state%", onOffText(player, land.chestsOpenToOthers(location)));
         player.sendMessage(message);
+
+        // どのフラグがこのチャンク個別の設定（/land rule）で上書きされているかを分かりやすく別行で示す
+        // （エリア全体の設定と紛らわしくならないよう、上の行とは別メッセージにしている）。
+        List<String> overridden = new ArrayList<>();
+        if (land.chunkRuleOverride(location, LandManager.AreaFlag.PVP) != null) {
+            overridden.add(plugin.getConfigManager().getMessage("land.rule_flag_name_pvp", player));
+        }
+        if (land.chunkRuleOverride(location, LandManager.AreaFlag.EXPLOSIONS) != null) {
+            overridden.add(plugin.getConfigManager().getMessage("land.rule_flag_name_explosions", player));
+        }
+        if (land.chunkRuleOverride(location, LandManager.AreaFlag.DOORS) != null) {
+            overridden.add(plugin.getConfigManager().getMessage("land.rule_flag_name_doors", player));
+        }
+        if (land.chunkRuleOverride(location, LandManager.AreaFlag.CHESTS) != null) {
+            overridden.add(plugin.getConfigManager().getMessage("land.rule_flag_name_chests", player));
+        }
+        if (!overridden.isEmpty()) {
+            player.sendMessage(FormatUtil.replace(
+                    plugin.getConfigManager().getMessage("land.info_chunk_overrides", player),
+                    "%flags%", String.join("、", overridden)));
+        }
     }
 
     /** land.pvp_state_on/offは元々PvP専用の文言だが「有効」「無効」の一般語なので他3フラグの表示にも流用する。 */
@@ -330,6 +358,55 @@ public class LandCommand implements CommandExecutor, TabCompleter {
     }
 
     // ------------------------------------------------------------------
+    // /land rule <flag> <on|off|default>（今立っているチャンク1つだけの個別設定）
+    // ------------------------------------------------------------------
+
+    private void handleRule(Player player, String[] args) {
+        if (args.length < 2) {
+            player.sendMessage(plugin.getConfigManager().getMessage("land.rule_usage", player));
+            return;
+        }
+        String ruleSub = args[1].toLowerCase();
+        switch (ruleSub) {
+            case "pvp" -> handleRuleFlag(player, args, LandManager.AreaFlag.PVP,
+                    "land.rule_pvp_usage", "land.rule_pvp_on", "land.rule_pvp_off", "land.rule_pvp_default");
+            case "explosions" -> handleRuleFlag(player, args, LandManager.AreaFlag.EXPLOSIONS,
+                    "land.rule_explosions_usage", "land.rule_explosions_on", "land.rule_explosions_off", "land.rule_explosions_default");
+            case "doors" -> handleRuleFlag(player, args, LandManager.AreaFlag.DOORS,
+                    "land.rule_doors_usage", "land.rule_doors_on", "land.rule_doors_off", "land.rule_doors_default");
+            case "chests" -> handleRuleFlag(player, args, LandManager.AreaFlag.CHESTS,
+                    "land.rule_chests_usage", "land.rule_chests_on", "land.rule_chests_off", "land.rule_chests_default");
+            default -> player.sendMessage(plugin.getConfigManager().getMessage("land.rule_usage", player));
+        }
+    }
+
+    private void handleRuleFlag(Player player, String[] args, LandManager.AreaFlag flag,
+                                 String usageKey, String onKey, String offKey, String defaultKey) {
+        if (args.length < 3) {
+            player.sendMessage(plugin.getConfigManager().getMessage(usageKey, player));
+            return;
+        }
+        Boolean value;
+        String successKey;
+        switch (args[2].toLowerCase()) {
+            case "on" -> { value = Boolean.TRUE; successKey = onKey; }
+            case "off" -> { value = Boolean.FALSE; successKey = offKey; }
+            case "default" -> { value = null; successKey = defaultKey; }
+            default -> {
+                player.sendMessage(plugin.getConfigManager().getMessage(usageKey, player));
+                return;
+            }
+        }
+        LandManager.ActionResult result = plugin.getLandManager().setChunkRule(player, flag, value);
+        switch (result) {
+            case SUCCESS -> player.sendMessage(plugin.getConfigManager().getMessage(successKey, player));
+            case NOT_CLAIMED -> player.sendMessage(plugin.getConfigManager().getMessage("land.info_unclaimed", player));
+            case NOT_OWNER -> player.sendMessage(plugin.getConfigManager().getMessage("land.not_owner_trust", player));
+            case SELF_TARGET -> { }
+        }
+    }
+
+    // ------------------------------------------------------------------
     // 補助
     // ------------------------------------------------------------------
 
@@ -434,6 +511,14 @@ public class LandCommand implements CommandExecutor, TabCompleter {
             }
             if (args.length == 3 && AREA_FLAG_SUBCOMMANDS.contains(args[1].toLowerCase())) {
                 return TabCompleteUtil.filterStartsWith(ON_OFF, args[2]);
+            }
+        }
+        if (args[0].equalsIgnoreCase("rule")) {
+            if (args.length == 2) {
+                return TabCompleteUtil.filterStartsWith(RULE_FLAG_SUBCOMMANDS, args[1]);
+            }
+            if (args.length == 3 && RULE_FLAG_SUBCOMMANDS.contains(args[1].toLowerCase())) {
+                return TabCompleteUtil.filterStartsWith(RULE_VALUES, args[2]);
             }
         }
         return List.of();

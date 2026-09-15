@@ -5,6 +5,9 @@ import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -49,7 +52,40 @@ public class LandManager {
         }
     }
 
-    private record Claim(UUID owner, String areaId) {
+    /**
+     * pvpOverride等はnullなら「個別設定なし＝エリアの設定に従う」、非nullならそのチャンクだけの
+     * 個別設定（/land rule）としてエリア設定を上書きする。claim直後は全てnull。
+     */
+    private record Claim(UUID owner, String areaId, Boolean pvpOverride, Boolean explosionsOverride,
+                          Boolean doorsOverride, Boolean chestsOverride) {
+
+        static Claim newClaim(UUID owner, String areaId) {
+            return new Claim(owner, areaId, null, null, null, null);
+        }
+
+        /** areaIdだけ差し替えた新しいClaimを返す（マージ時、個別設定はそのまま引き継ぐ）。 */
+        Claim withAreaId(String newAreaId) {
+            return new Claim(owner, newAreaId, pvpOverride, explosionsOverride, doorsOverride, chestsOverride);
+        }
+
+        /** 指定フラグの個別設定だけ差し替えた新しいClaimを返す。 */
+        Claim withOverride(AreaFlag flag, Boolean value) {
+            return switch (flag) {
+                case PVP -> new Claim(owner, areaId, value, explosionsOverride, doorsOverride, chestsOverride);
+                case EXPLOSIONS -> new Claim(owner, areaId, pvpOverride, value, doorsOverride, chestsOverride);
+                case DOORS -> new Claim(owner, areaId, pvpOverride, explosionsOverride, value, chestsOverride);
+                case CHESTS -> new Claim(owner, areaId, pvpOverride, explosionsOverride, doorsOverride, value);
+            };
+        }
+
+        Boolean overrideFor(AreaFlag flag) {
+            return switch (flag) {
+                case PVP -> pvpOverride;
+                case EXPLOSIONS -> explosionsOverride;
+                case DOORS -> doorsOverride;
+                case CHESTS -> chestsOverride;
+            };
+        }
     }
 
     public enum ClaimResult { SUCCESS, ALREADY_CLAIMED, LIMIT_REACHED, INSUFFICIENT_FUNDS, WORLD_DISABLED }
@@ -91,7 +127,15 @@ public class LandManager {
                             boolean doorsOpenToOthers, boolean chestsOpenToOthers) {
     }
 
-    private record ClaimRow(String world, int chunkX, int chunkZ, UUID owner, String areaId) {
+    private record ClaimRow(String world, int chunkX, int chunkZ, UUID owner, String areaId,
+                             Boolean pvpOverride, Boolean explosionsOverride,
+                             Boolean doorsOverride, Boolean chestsOverride) {
+    }
+
+    /** SQLiteのnullable INTEGER列をBoolean（null=未設定, true/false=0/1）として読む。 */
+    private static Boolean readNullableBoolean(ResultSet rs, String column) throws SQLException {
+        int value = rs.getInt(column);
+        return rs.wasNull() ? null : value != 0;
     }
 
     private record TrustRow(String areaId, UUID trustedUuid) {
@@ -108,15 +152,19 @@ public class LandManager {
         }
 
         List<ClaimRow> claimRows = DatabaseManager.query(
-                "SELECT world, chunk_x, chunk_z, owner_uuid, territory_id FROM land_claims",
+                "SELECT world, chunk_x, chunk_z, owner_uuid, territory_id, "
+                        + "pvp_override, explosions_override, doors_override, chests_override FROM land_claims",
                 rs -> new ClaimRow(rs.getString("world"), rs.getInt("chunk_x"), rs.getInt("chunk_z"),
-                        UUID.fromString(rs.getString("owner_uuid")), rs.getString("territory_id")));
+                        UUID.fromString(rs.getString("owner_uuid")), rs.getString("territory_id"),
+                        readNullableBoolean(rs, "pvp_override"), readNullableBoolean(rs, "explosions_override"),
+                        readNullableBoolean(rs, "doors_override"), readNullableBoolean(rs, "chests_override")));
         for (ClaimRow row : claimRows) {
             // land_territories側の行が欠落していても（本来あり得ないが、mergeAreas()が
             // transaction()で保護されていないための保険として）Areaを必ず用意しておく。
             areas.computeIfAbsent(row.areaId(), id -> new Area(false, false, false, false));
             claimsByChunk.put(new ChunkKey(row.world(), row.chunkX(), row.chunkZ()),
-                    new Claim(row.owner(), row.areaId()));
+                    new Claim(row.owner(), row.areaId(), row.pvpOverride(), row.explosionsOverride(),
+                            row.doorsOverride(), row.chestsOverride()));
         }
 
         List<TrustRow> trustRows = DatabaseManager.query(
@@ -185,7 +233,7 @@ public class LandManager {
                 "territory_id", resolution.areaId(),
                 "claimed_at", System.currentTimeMillis()
         ));
-        claimsByChunk.put(key, new Claim(owner, resolution.areaId()));
+        claimsByChunk.put(key, Claim.newClaim(owner, resolution.areaId()));
 
         Area area = areas.get(resolution.areaId());
         boolean pvpEnabled = area != null && area.pvpEnabled;
@@ -239,7 +287,7 @@ public class LandManager {
         for (Map.Entry<ChunkKey, Claim> entry : claimsByChunk.entrySet()) {
             Claim claim = entry.getValue();
             if (claim.areaId().equals(mergedId)) {
-                entry.setValue(new Claim(claim.owner(), canonicalId));
+                entry.setValue(claim.withAreaId(canonicalId));
             }
         }
 
@@ -319,44 +367,69 @@ public class LandManager {
         return area != null && area.trusted.contains(player.getUniqueId());
     }
 
-    /** この場所でPvPが許可されているか。claimが存在し、かつそのエリアのpvp_enabledがtrueの時だけtrue。 */
+    /**
+     * この場所でPvPが許可されているか。未claim地は常にfalse。claim済みなら、このチャンク個別の
+     * /land rule設定（pvpOverride）があればそれを優先し、無ければエリアのpvp_enabledに従う。
+     */
     public boolean isPvpAllowed(Location location) {
         Claim claim = claimsByChunk.get(ChunkKey.of(location));
         if (claim == null) {
             return false;
         }
+        if (claim.pvpOverride() != null) {
+            return claim.pvpOverride();
+        }
         Area area = areas.get(claim.areaId());
         return area != null && area.pvpEnabled;
     }
 
-    /** この場所で爆発ダメージが許可されているか。未claim地は保護対象外なので常にtrue。 */
+    /** この場所で爆発ダメージが許可されているか。未claim地は保護対象外なので常にtrue。個別設定があれば優先。 */
     public boolean explosionsAllowed(Location location) {
         Claim claim = claimsByChunk.get(ChunkKey.of(location));
         if (claim == null) {
             return true;
         }
+        if (claim.explosionsOverride() != null) {
+            return claim.explosionsOverride();
+        }
         Area area = areas.get(claim.areaId());
         return area != null && area.explosionsAllowed;
     }
 
-    /** この場所のドア・トラップドア・フェンスゲートを非オーナーでも開閉できるか。未claim地は常にtrue。 */
+    /** この場所のドア・トラップドア・フェンスゲートを非オーナーでも開閉できるか。未claim地は常にtrue。個別設定があれば優先。 */
     public boolean doorsOpenToOthers(Location location) {
         Claim claim = claimsByChunk.get(ChunkKey.of(location));
         if (claim == null) {
             return true;
         }
+        if (claim.doorsOverride() != null) {
+            return claim.doorsOverride();
+        }
         Area area = areas.get(claim.areaId());
         return area != null && area.doorsOpenToOthers;
     }
 
-    /** この場所のチェスト等の収納・作業台系ブロックを非オーナーでも開閉できるか。未claim地は常にtrue。 */
+    /** この場所のチェスト等の収納・作業台系ブロックを非オーナーでも開閉できるか。未claim地は常にtrue。個別設定があれば優先。 */
     public boolean chestsOpenToOthers(Location location) {
         Claim claim = claimsByChunk.get(ChunkKey.of(location));
         if (claim == null) {
             return true;
         }
+        if (claim.chestsOverride() != null) {
+            return claim.chestsOverride();
+        }
         Area area = areas.get(claim.areaId());
         return area != null && area.chestsOpenToOthers;
+    }
+
+    /**
+     * このチャンクの指定フラグに個別設定（/land rule）が入っているか。
+     * nullなら個別設定なし（エリアの設定に従っている）、非nullならその値が個別設定として優先されている。
+     * 未claim地は常にnull。
+     */
+    public Boolean chunkRuleOverride(Location location, AreaFlag flag) {
+        Claim claim = claimsByChunk.get(ChunkKey.of(location));
+        return claim != null ? claim.overrideFor(flag) : null;
     }
 
     /** 現在地のエリアの信頼リスト。未claimなら空集合。 */
@@ -467,6 +540,37 @@ public class LandManager {
             case EXPLOSIONS -> "explosions_allowed";
             case DOORS -> "doors_open";
             case CHESTS -> "chests_open";
+        };
+    }
+
+    /**
+     * 現在地のチャンク「だけ」の個別設定（/land rule）を変更する。実行者がオーナーである必要がある。
+     * valueがnullなら個別設定を解除し、そのチャンクは以後エリアの設定にまた従うようになる。
+     * エリア全体に及ぶsetAreaFlagと違い、この変更は他のチャンクに一切影響しない。
+     */
+    public ActionResult setChunkRule(Player owner, AreaFlag flag, Boolean value) {
+        ChunkKey key = ChunkKey.of(owner.getLocation());
+        Claim claim = claimsByChunk.get(key);
+        ActionResult error = validateOwnedClaim(claim, owner);
+        if (error != null) {
+            return error;
+        }
+        claimsByChunk.put(key, claim.withOverride(flag, value));
+
+        // Map.of(...)はnull値を許容しないため、個別設定の解除（value=null）ではHashMapを使う。
+        Map<String, Object> values = new HashMap<>();
+        values.put(dbColumnForOverride(flag), value == null ? null : (value ? 1 : 0));
+        DatabaseManager.update("land_claims", values,
+                "world = ? AND chunk_x = ? AND chunk_z = ?", key.world(), key.chunkX(), key.chunkZ());
+        return ActionResult.SUCCESS;
+    }
+
+    private String dbColumnForOverride(AreaFlag flag) {
+        return switch (flag) {
+            case PVP -> "pvp_override";
+            case EXPLOSIONS -> "explosions_override";
+            case DOORS -> "doors_override";
+            case CHESTS -> "chests_override";
         };
     }
 

@@ -120,6 +120,11 @@ public class StellariaCore extends JavaPlugin {
             "claimed_at INTEGER NOT NULL",
             "PRIMARY KEY (world, chunk_x, chunk_z)"
         );
+        // NOT NULL DEFAULTを付けない = 未設定(NULL)が「エリア設定に従う」を表す（/land rule参照）
+        DatabaseManager.addColumnIfNotExists("land_claims", "pvp_override INTEGER");
+        DatabaseManager.addColumnIfNotExists("land_claims", "explosions_override INTEGER");
+        DatabaseManager.addColumnIfNotExists("land_claims", "doors_override INTEGER");
+        DatabaseManager.addColumnIfNotExists("land_claims", "chests_override INTEGER");
 
         DatabaseManager.createTableIfNotExists("land_territories",
             "territory_id TEXT PRIMARY KEY",
