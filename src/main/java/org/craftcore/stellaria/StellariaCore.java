@@ -123,6 +123,9 @@ public class StellariaCore extends JavaPlugin {
             "territory_id TEXT PRIMARY KEY",
             "pvp_enabled INTEGER NOT NULL DEFAULT 0"
         );
+        DatabaseManager.addColumnIfNotExists("land_territories", "explosions_allowed INTEGER NOT NULL DEFAULT 0");
+        DatabaseManager.addColumnIfNotExists("land_territories", "doors_open INTEGER NOT NULL DEFAULT 0");
+        DatabaseManager.addColumnIfNotExists("land_territories", "chests_open INTEGER NOT NULL DEFAULT 0");
 
         DatabaseManager.createTableIfNotExists("land_trusts",
             "territory_id TEXT NOT NULL",

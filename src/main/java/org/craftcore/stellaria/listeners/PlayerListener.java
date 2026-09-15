@@ -29,6 +29,7 @@ public class PlayerListener implements Listener {
         plugin.getAfkManager().removePlayer(event.getPlayer().getUniqueId());
         plugin.getActionBarManager().removePlayer(event.getPlayer().getUniqueId());
         plugin.getKikoriManager().removePlayer(event.getPlayer().getUniqueId());
+        plugin.getLandManager().removeBypassState(event.getPlayer().getUniqueId());
     }
 
     @EventHandler

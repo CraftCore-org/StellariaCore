@@ -15,10 +15,14 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 土地保護（/land）のチャンク所有権と縄張り（territory）を管理する。
+ * 土地保護（/land）のチャンク所有権とエリア（area、隣接するclaimの集合）を管理する。
  * BlockBreakEvent等のホットパスから毎回SQLiteへ問い合わせるのを避けるため、
- * 起動時にDBから全件ロードしたインメモリキャッシュ（claimsByChunk/territories）で判定する。
+ * 起動時にDBから全件ロードしたインメモリキャッシュ（claimsByChunk/areas）で判定する。
  * 更新系メソッドはDB書き込みとキャッシュ更新を同時に行う。
+ *
+ * DBのテーブル名・カラム名（land_territories, territory_id等）は移行時の履歴的事情で
+ * "territory"のままだが、これは完全に裏側の実装詳細でありユーザーからは一切見えない。
+ * コード上の概念名・コマンド名・メッセージは全て「エリア(area)」に統一している。
  */
 public class LandManager {
 
@@ -29,26 +33,35 @@ public class LandManager {
         }
     }
 
-    /** 縄張り（隣接するclaimの集合）。信頼リストとPvP許可を共有する単位。 */
-    private static final class Territory {
+    /** エリア（隣接するclaimの集合）。信頼リストと各種許可フラグを共有する単位。 */
+    private static final class Area {
         boolean pvpEnabled;
+        boolean explosionsAllowed;
+        boolean doorsOpenToOthers;
+        boolean chestsOpenToOthers;
         final Set<UUID> trusted = new HashSet<>();
 
-        Territory(boolean pvpEnabled) {
+        Area(boolean pvpEnabled, boolean explosionsAllowed, boolean doorsOpenToOthers, boolean chestsOpenToOthers) {
             this.pvpEnabled = pvpEnabled;
+            this.explosionsAllowed = explosionsAllowed;
+            this.doorsOpenToOthers = doorsOpenToOthers;
+            this.chestsOpenToOthers = chestsOpenToOthers;
         }
     }
 
-    private record Claim(UUID owner, String territoryId) {
+    private record Claim(UUID owner, String areaId) {
     }
 
     public enum ClaimResult { SUCCESS, ALREADY_CLAIMED, LIMIT_REACHED, INSUFFICIENT_FUNDS, WORLD_DISABLED }
 
-    public enum ActionResult { SUCCESS, NOT_CLAIMED, NOT_OWNER }
+    public enum ActionResult { SUCCESS, NOT_CLAIMED, NOT_OWNER, SELF_TARGET }
+
+    /** エリアのトグル可能な設定項目。/land area <flag> on|off の対象を1つのメソッドにまとめるための列挙。 */
+    public enum AreaFlag { PVP, EXPLOSIONS, DOORS, CHESTS }
 
     /**
-     * claim()の結果。mergedは「2つ以上の既存縄張りを1つに統合した」時だけtrue（単に既存縄張りに
-     * 1個合流しただけならfalse）。pvpEnabledは統合後（または新規/合流後）の縄張りのPvP状態。
+     * claim()の結果。mergedは「2つ以上の既存エリアを1つに統合した」時だけtrue（単に既存エリアに
+     * 1個合流しただけならfalse）。pvpEnabledは統合後（または新規/合流後）のエリアのPvP状態。
      * resultがSUCCESS以外の場合、merged/pvpEnabledの値は意味を持たない。
      */
     public record ClaimOutcome(ClaimResult result, boolean merged, boolean pvpEnabled) {
@@ -61,7 +74,9 @@ public class LandManager {
 
     private final StellariaCore plugin;
     private final Map<ChunkKey, Claim> claimsByChunk = new ConcurrentHashMap<>();
-    private final Map<String, Territory> territories = new ConcurrentHashMap<>();
+    private final Map<String, Area> areas = new ConcurrentHashMap<>();
+    /** stellaria.land.adminを持つプレイヤーが/land bypassで自発的にON/OFFする、保護無視モード。 */
+    private final Set<UUID> bypassEnabled = ConcurrentHashMap.newKeySet();
 
     public LandManager(StellariaCore plugin) {
         this.plugin = plugin;
@@ -72,21 +87,24 @@ public class LandManager {
     // 起動時ロード
     // ------------------------------------------------------------------
 
-    private record TerritoryRow(String territoryId, boolean pvpEnabled) {
+    private record AreaRow(String areaId, boolean pvpEnabled, boolean explosionsAllowed,
+                            boolean doorsOpenToOthers, boolean chestsOpenToOthers) {
     }
 
-    private record ClaimRow(String world, int chunkX, int chunkZ, UUID owner, String territoryId) {
+    private record ClaimRow(String world, int chunkX, int chunkZ, UUID owner, String areaId) {
     }
 
-    private record TrustRow(String territoryId, UUID trustedUuid) {
+    private record TrustRow(String areaId, UUID trustedUuid) {
     }
 
     private void loadFromDatabase() {
-        List<TerritoryRow> territoryRows = DatabaseManager.query(
-                "SELECT territory_id, pvp_enabled FROM land_territories",
-                rs -> new TerritoryRow(rs.getString("territory_id"), rs.getInt("pvp_enabled") != 0));
-        for (TerritoryRow row : territoryRows) {
-            territories.put(row.territoryId(), new Territory(row.pvpEnabled()));
+        List<AreaRow> areaRows = DatabaseManager.query(
+                "SELECT territory_id, pvp_enabled, explosions_allowed, doors_open, chests_open FROM land_territories",
+                rs -> new AreaRow(rs.getString("territory_id"), rs.getInt("pvp_enabled") != 0,
+                        rs.getInt("explosions_allowed") != 0, rs.getInt("doors_open") != 0, rs.getInt("chests_open") != 0));
+        for (AreaRow row : areaRows) {
+            areas.put(row.areaId(), new Area(row.pvpEnabled(), row.explosionsAllowed(),
+                    row.doorsOpenToOthers(), row.chestsOpenToOthers()));
         }
 
         List<ClaimRow> claimRows = DatabaseManager.query(
@@ -94,20 +112,20 @@ public class LandManager {
                 rs -> new ClaimRow(rs.getString("world"), rs.getInt("chunk_x"), rs.getInt("chunk_z"),
                         UUID.fromString(rs.getString("owner_uuid")), rs.getString("territory_id")));
         for (ClaimRow row : claimRows) {
-            // land_territories側の行が欠落していても（本来あり得ないが、mergeTerritory()が
-            // transaction()で保護されていないための保険として）Territoryを必ず用意しておく。
-            territories.computeIfAbsent(row.territoryId(), id -> new Territory(false));
+            // land_territories側の行が欠落していても（本来あり得ないが、mergeAreas()が
+            // transaction()で保護されていないための保険として）Areaを必ず用意しておく。
+            areas.computeIfAbsent(row.areaId(), id -> new Area(false, false, false, false));
             claimsByChunk.put(new ChunkKey(row.world(), row.chunkX(), row.chunkZ()),
-                    new Claim(row.owner(), row.territoryId()));
+                    new Claim(row.owner(), row.areaId()));
         }
 
         List<TrustRow> trustRows = DatabaseManager.query(
                 "SELECT territory_id, trusted_uuid FROM land_trusts",
                 rs -> new TrustRow(rs.getString("territory_id"), UUID.fromString(rs.getString("trusted_uuid"))));
         for (TrustRow row : trustRows) {
-            Territory territory = territories.get(row.territoryId());
-            if (territory != null) {
-                territory.trusted.add(row.trustedUuid());
+            Area area = areas.get(row.areaId());
+            if (area != null) {
+                area.trusted.add(row.trustedUuid());
             }
         }
     }
@@ -129,7 +147,7 @@ public class LandManager {
     /**
      * 現在地のチャンクをclaimする。ワールド許可・重複・上限・残高の順にチェックし、
      * 最初に失敗した理由を返す。全て通ればコストを引き落とし、隣接claimがあれば
-     * 同じ縄張りに合流（複数の縄張りに隣接していればマージ）する。
+     * 同じエリアに合流（複数のエリアに隣接していればマージ）する。
      */
     public ClaimOutcome claim(Player player) {
         ChunkKey key = ChunkKey.of(player.getLocation());
@@ -157,68 +175,70 @@ public class LandManager {
             economy.withdrawPlayer(player, cost);
         }
 
-        TerritoryResolution resolution = resolveTerritoryForNewClaim(key, owner);
+        AreaResolution resolution = resolveAreaForNewClaim(key, owner);
 
         DatabaseManager.insert("land_claims", Map.of(
                 "world", key.world(),
                 "chunk_x", key.chunkX(),
                 "chunk_z", key.chunkZ(),
                 "owner_uuid", owner.toString(),
-                "territory_id", resolution.territoryId(),
+                "territory_id", resolution.areaId(),
                 "claimed_at", System.currentTimeMillis()
         ));
-        claimsByChunk.put(key, new Claim(owner, resolution.territoryId()));
+        claimsByChunk.put(key, new Claim(owner, resolution.areaId()));
 
-        Territory territory = territories.get(resolution.territoryId());
-        boolean pvpEnabled = territory != null && territory.pvpEnabled;
+        Area area = areas.get(resolution.areaId());
+        boolean pvpEnabled = area != null && area.pvpEnabled;
         return new ClaimOutcome(ClaimResult.SUCCESS, resolution.merged(), pvpEnabled);
     }
 
-    /** resolveTerritoryForNewClaimの結果。mergedは2つ以上の既存縄張りを統合した場合だけtrue。 */
-    private record TerritoryResolution(String territoryId, boolean merged) {
+    /** resolveAreaForNewClaimの結果。mergedは2つ以上の既存エリアを統合した場合だけtrue。 */
+    private record AreaResolution(String areaId, boolean merged) {
     }
 
     /**
-     * 隣接4方向のうち自分が持つclaimの縄張りIDを集める。0件なら新規縄張り、1件ならそれを再利用、
+     * 隣接4方向のうち自分が持つclaimのエリアIDを集める。0件なら新規エリア、1件ならそれを再利用、
      * 2件以上ならcanonical（最初に見つかったもの）へ全部マージする。
      */
-    private TerritoryResolution resolveTerritoryForNewClaim(ChunkKey key, UUID owner) {
-        Set<String> adjacentTerritories = new LinkedHashSet<>();
+    private AreaResolution resolveAreaForNewClaim(ChunkKey key, UUID owner) {
+        Set<String> adjacentAreas = new LinkedHashSet<>();
         for (int[] offset : NEIGHBOR_OFFSETS) {
             ChunkKey neighborKey = new ChunkKey(key.world(), key.chunkX() + offset[0], key.chunkZ() + offset[1]);
             Claim neighborClaim = claimsByChunk.get(neighborKey);
             if (neighborClaim != null && neighborClaim.owner().equals(owner)) {
-                adjacentTerritories.add(neighborClaim.territoryId());
+                adjacentAreas.add(neighborClaim.areaId());
             }
         }
 
-        if (adjacentTerritories.isEmpty()) {
-            String territoryId = UUID.randomUUID().toString();
-            territories.put(territoryId, new Territory(false));
-            DatabaseManager.insert("land_territories", Map.of("territory_id", territoryId, "pvp_enabled", 0));
-            return new TerritoryResolution(territoryId, false);
+        if (adjacentAreas.isEmpty()) {
+            String areaId = UUID.randomUUID().toString();
+            areas.put(areaId, new Area(false, false, false, false));
+            DatabaseManager.insert("land_territories", Map.of(
+                    "territory_id", areaId, "pvp_enabled", 0,
+                    "explosions_allowed", 0, "doors_open", 0, "chests_open", 0));
+            return new AreaResolution(areaId, false);
         }
 
-        Iterator<String> iterator = adjacentTerritories.iterator();
+        Iterator<String> iterator = adjacentAreas.iterator();
         String canonicalId = iterator.next();
-        boolean merged = adjacentTerritories.size() > 1;
+        boolean merged = adjacentAreas.size() > 1;
         while (iterator.hasNext()) {
-            mergeTerritory(iterator.next(), canonicalId);
+            mergeAreas(iterator.next(), canonicalId);
         }
-        return new TerritoryResolution(canonicalId, merged);
+        return new AreaResolution(canonicalId, merged);
     }
 
-    /** mergedIdの全claim・信頼リストをcanonicalIdへ付け替え、mergedId側の縄張りは削除する。 */
-    private void mergeTerritory(String mergedId, String canonicalId) {
-        Territory canonical = territories.get(canonicalId);
-        Territory merged = territories.remove(mergedId);
+    /** mergedIdの全claim・信頼リストをcanonicalIdへ付け替え、mergedId側のエリアは削除する。 */
+    private void mergeAreas(String mergedId, String canonicalId) {
+        Area canonical = areas.get(canonicalId);
+        Area merged = areas.remove(mergedId);
         if (merged != null) {
             canonical.trusted.addAll(merged.trusted);
         }
 
         for (Map.Entry<ChunkKey, Claim> entry : claimsByChunk.entrySet()) {
             Claim claim = entry.getValue();
-            if (claim.territoryId().equals(mergedId)) {
+            if (claim.areaId().equals(mergedId)) {
                 entry.setValue(new Claim(claim.owner(), canonicalId));
             }
         }
@@ -238,7 +258,7 @@ public class LandManager {
     /**
      * 現在地のチャンクのclaimを解除する。adminOverrideがfalseの場合、実行者がオーナーでなければ失敗する。
      * 返金は常に元のオーナーに対して行う（adminOverrideで他人のclaimを解除した場合も同じ）。
-     * 解除後、その縄張りを参照するclaimが無くなったら縄張り・信頼リストも削除する。
+     * 解除後、そのエリアを参照するclaimが無くなったらエリア・信頼リストも削除する。
      */
     public ActionResult unclaim(Player player, boolean adminOverride) {
         ChunkKey key = ChunkKey.of(player.getLocation());
@@ -259,12 +279,12 @@ public class LandManager {
             plugin.getEconomyManager().depositPlayer(Bukkit.getOfflinePlayer(claim.owner()), cost);
         }
 
-        boolean territoryStillUsed = claimsByChunk.values().stream()
-                .anyMatch(c -> c.territoryId().equals(claim.territoryId()));
-        if (!territoryStillUsed) {
-            territories.remove(claim.territoryId());
-            DatabaseManager.execute("DELETE FROM land_trusts WHERE territory_id = ?", claim.territoryId());
-            DatabaseManager.execute("DELETE FROM land_territories WHERE territory_id = ?", claim.territoryId());
+        boolean areaStillUsed = claimsByChunk.values().stream()
+                .anyMatch(c -> c.areaId().equals(claim.areaId()));
+        if (!areaStillUsed) {
+            areas.remove(claim.areaId());
+            DatabaseManager.execute("DELETE FROM land_trusts WHERE territory_id = ?", claim.areaId());
+            DatabaseManager.execute("DELETE FROM land_territories WHERE territory_id = ?", claim.areaId());
         }
 
         return ActionResult.SUCCESS;
@@ -282,10 +302,10 @@ public class LandManager {
 
     /**
      * このプレイヤーがこの場所でブロック操作できるか。
-     * 管理者権限（stellaria.land.admin）・未claim地・オーナー本人・縄張りの信頼リストのいずれかでtrue。
+     * bypassモード中の管理者・未claim地・オーナー本人・エリアの信頼リストのいずれかでtrue。
      */
     public boolean canBuild(Location location, Player player) {
-        if (player.hasPermission("stellaria.land.admin")) {
+        if (player.hasPermission("stellaria.land.admin") && hasBypassEnabled(player)) {
             return true;
         }
         Claim claim = claimsByChunk.get(ChunkKey.of(location));
@@ -295,48 +315,78 @@ public class LandManager {
         if (claim.owner().equals(player.getUniqueId())) {
             return true;
         }
-        Territory territory = territories.get(claim.territoryId());
-        return territory != null && territory.trusted.contains(player.getUniqueId());
+        Area area = areas.get(claim.areaId());
+        return area != null && area.trusted.contains(player.getUniqueId());
     }
 
-    /** この場所でPvPが許可されているか。claimが存在し、かつその縄張りのpvp_enabledがtrueの時だけtrue。 */
+    /** この場所でPvPが許可されているか。claimが存在し、かつそのエリアのpvp_enabledがtrueの時だけtrue。 */
     public boolean isPvpAllowed(Location location) {
         Claim claim = claimsByChunk.get(ChunkKey.of(location));
         if (claim == null) {
             return false;
         }
-        Territory territory = territories.get(claim.territoryId());
-        return territory != null && territory.pvpEnabled;
+        Area area = areas.get(claim.areaId());
+        return area != null && area.pvpEnabled;
     }
 
-    /** 現在地の縄張りの信頼リスト。未claimなら空集合。 */
+    /** この場所で爆発ダメージが許可されているか。未claim地は保護対象外なので常にtrue。 */
+    public boolean explosionsAllowed(Location location) {
+        Claim claim = claimsByChunk.get(ChunkKey.of(location));
+        if (claim == null) {
+            return true;
+        }
+        Area area = areas.get(claim.areaId());
+        return area != null && area.explosionsAllowed;
+    }
+
+    /** この場所のドア・トラップドア・フェンスゲートを非オーナーでも開閉できるか。未claim地は常にtrue。 */
+    public boolean doorsOpenToOthers(Location location) {
+        Claim claim = claimsByChunk.get(ChunkKey.of(location));
+        if (claim == null) {
+            return true;
+        }
+        Area area = areas.get(claim.areaId());
+        return area != null && area.doorsOpenToOthers;
+    }
+
+    /** この場所のチェスト等の収納・作業台系ブロックを非オーナーでも開閉できるか。未claim地は常にtrue。 */
+    public boolean chestsOpenToOthers(Location location) {
+        Claim claim = claimsByChunk.get(ChunkKey.of(location));
+        if (claim == null) {
+            return true;
+        }
+        Area area = areas.get(claim.areaId());
+        return area != null && area.chestsOpenToOthers;
+    }
+
+    /** 現在地のエリアの信頼リスト。未claimなら空集合。 */
     public Set<UUID> trustedPlayers(Location location) {
         Claim claim = claimsByChunk.get(ChunkKey.of(location));
         if (claim == null) {
             return Set.of();
         }
-        Territory territory = territories.get(claim.territoryId());
-        return territory != null ? Set.copyOf(territory.trusted) : Set.of();
+        Area area = areas.get(claim.areaId());
+        return area != null ? Set.copyOf(area.trusted) : Set.of();
     }
 
-    /** ownerが所有するclaimが属する縄張りの数（重複排除済み）。 */
-    public int territoryCountFor(UUID owner) {
+    /** ownerが所有するclaimが属するエリアの数（重複排除済み）。 */
+    public int areaCountFor(UUID owner) {
         Set<String> ids = new HashSet<>();
         for (Claim claim : claimsByChunk.values()) {
             if (claim.owner().equals(owner)) {
-                ids.add(claim.territoryId());
+                ids.add(claim.areaId());
             }
         }
         return ids.size();
     }
 
     // ------------------------------------------------------------------
-    // 信頼(trust) / PvPトグル
+    // 信頼(trust) / エリア設定トグル
     // ------------------------------------------------------------------
 
     /**
      * claim・オーナー確認の共通処理。エラーがあればActionResultを返し、問題なければnullを返す
-     * （trust/untrust/setPvpEnabledで繰り返される「claim存在確認→オーナー確認」を1箇所にまとめる）。
+     * （trust/untrust/setAreaFlagで繰り返される「claim存在確認→オーナー確認」を1箇所にまとめる）。
      */
     private ActionResult validateOwnedClaim(Claim claim, Player owner) {
         if (claim == null) {
@@ -348,58 +398,99 @@ public class LandManager {
         return null;
     }
 
-    /** 現在地の縄張りに信頼プレイヤーを追加する。実行者がオーナーである必要がある。 */
+    /** 現在地のエリアに信頼プレイヤーを追加する。実行者がオーナーである必要がある。自分自身は追加できない。 */
     public ActionResult trust(Player owner, UUID target) {
+        if (target.equals(owner.getUniqueId())) {
+            return ActionResult.SELF_TARGET;
+        }
         Claim claim = claimsByChunk.get(ChunkKey.of(owner.getLocation()));
         ActionResult error = validateOwnedClaim(claim, owner);
         if (error != null) {
             return error;
         }
-        Territory territory = territories.get(claim.territoryId());
-        if (territory == null) {
+        Area area = areas.get(claim.areaId());
+        if (area == null) {
             return ActionResult.NOT_CLAIMED;
         }
-        if (territory.trusted.add(target)) {
+        if (area.trusted.add(target)) {
             DatabaseManager.insert("land_trusts", Map.of(
-                    "territory_id", claim.territoryId(),
+                    "territory_id", claim.areaId(),
                     "trusted_uuid", target.toString()
             ));
         }
         return ActionResult.SUCCESS;
     }
 
-    /** 現在地の縄張りから信頼プレイヤーを外す。実行者がオーナーである必要がある。 */
+    /** 現在地のエリアから信頼プレイヤーを外す。実行者がオーナーである必要がある。 */
     public ActionResult untrust(Player owner, UUID target) {
         Claim claim = claimsByChunk.get(ChunkKey.of(owner.getLocation()));
         ActionResult error = validateOwnedClaim(claim, owner);
         if (error != null) {
             return error;
         }
-        Territory territory = territories.get(claim.territoryId());
-        if (territory == null) {
+        Area area = areas.get(claim.areaId());
+        if (area == null) {
             return ActionResult.NOT_CLAIMED;
         }
-        if (territory.trusted.remove(target)) {
+        if (area.trusted.remove(target)) {
             DatabaseManager.execute("DELETE FROM land_trusts WHERE territory_id = ? AND trusted_uuid = ?",
-                    claim.territoryId(), target.toString());
+                    claim.areaId(), target.toString());
         }
         return ActionResult.SUCCESS;
     }
 
-    /** 現在地の縄張りのPvP許可を切り替える。実行者がオーナーである必要がある。 */
-    public ActionResult setPvpEnabled(Player owner, boolean enabled) {
+    /** 現在地のエリアの指定フラグ（PvP/爆発/ドア/チェスト）を切り替える。実行者がオーナーである必要がある。 */
+    public ActionResult setAreaFlag(Player owner, AreaFlag flag, boolean enabled) {
         Claim claim = claimsByChunk.get(ChunkKey.of(owner.getLocation()));
         ActionResult error = validateOwnedClaim(claim, owner);
         if (error != null) {
             return error;
         }
-        Territory territory = territories.get(claim.territoryId());
-        if (territory == null) {
+        Area area = areas.get(claim.areaId());
+        if (area == null) {
             return ActionResult.NOT_CLAIMED;
         }
-        territory.pvpEnabled = enabled;
-        DatabaseManager.update("land_territories", Map.of("pvp_enabled", enabled ? 1 : 0),
-                "territory_id = ?", claim.territoryId());
+        switch (flag) {
+            case PVP -> area.pvpEnabled = enabled;
+            case EXPLOSIONS -> area.explosionsAllowed = enabled;
+            case DOORS -> area.doorsOpenToOthers = enabled;
+            case CHESTS -> area.chestsOpenToOthers = enabled;
+        }
+        DatabaseManager.update("land_territories", Map.of(dbColumnFor(flag), enabled ? 1 : 0),
+                "territory_id = ?", claim.areaId());
         return ActionResult.SUCCESS;
+    }
+
+    private String dbColumnFor(AreaFlag flag) {
+        return switch (flag) {
+            case PVP -> "pvp_enabled";
+            case EXPLOSIONS -> "explosions_allowed";
+            case DOORS -> "doors_open";
+            case CHESTS -> "chests_open";
+        };
+    }
+
+    // ------------------------------------------------------------------
+    // 管理者bypassモード（/land bypass）
+    // ------------------------------------------------------------------
+
+    /** stellaria.land.admin持ちが現在bypassモード中か。 */
+    public boolean hasBypassEnabled(Player player) {
+        return bypassEnabled.contains(player.getUniqueId());
+    }
+
+    /** bypassモードを切り替える。切り替え後の状態（true=ON）を返す。 */
+    public boolean toggleBypass(Player player) {
+        UUID uuid = player.getUniqueId();
+        if (bypassEnabled.remove(uuid)) {
+            return false;
+        }
+        bypassEnabled.add(uuid);
+        return true;
+    }
+
+    /** 退出時に呼ぶ。bypassモードの状態を破棄する。 */
+    public void removeBypassState(UUID uuid) {
+        bypassEnabled.remove(uuid);
     }
 }

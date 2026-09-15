@@ -23,13 +23,19 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * /land コマンド。claim/unclaim/info/trust/untrust/trustlist/pvp/list/helpの9サブコマンドを
- * command.getName()ではなくargs[0]でディスパッチする（コマンド自体は"land"の1つだけのため）。
+ * /land コマンド。claim/unclaim/info/list/help/bypassはargs[0]で直接ディスパッチする個人操作、
+ * trust/untrust/trustlist/pvp/explosions/doors/chestsは/land area <sub>としてまとめてある
+ * エリア（隣接claimの集合）単位の操作 — こちらを触った時だけエリア全体に変更が及ぶことを
+ * コマンド名で明示するため、あえて独立したサブコマンドにせず"area"の下にネストしている。
  */
 public class LandCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> SUBCOMMANDS = List.of(
-            "claim", "unclaim", "info", "trust", "untrust", "trustlist", "pvp", "list", "help");
+            "claim", "unclaim", "info", "list", "help", "area", "bypass");
+    private static final List<String> AREA_SUBCOMMANDS = List.of(
+            "trust", "untrust", "trustlist", "pvp", "explosions", "doors", "chests");
+    private static final List<String> AREA_FLAG_SUBCOMMANDS = List.of("pvp", "explosions", "doors", "chests");
+    private static final List<String> ON_OFF = List.of("on", "off");
 
     private final StellariaCore plugin;
 
@@ -53,12 +59,10 @@ public class LandCommand implements CommandExecutor, TabCompleter {
             case "claim" -> handleClaim(player);
             case "unclaim" -> handleUnclaim(player);
             case "info" -> handleInfo(player);
-            case "trust" -> handleTrust(player, args);
-            case "untrust" -> handleUntrust(player, args);
-            case "trustlist" -> handleTrustList(player);
-            case "pvp" -> handlePvp(player, args);
             case "list" -> handleList(player);
             case "help" -> handleHelp(player);
+            case "area" -> handleArea(player, args);
+            case "bypass" -> handleBypass(player);
             default -> player.sendMessage(plugin.getConfigManager().getMessage("land.usage", player));
         }
         return true;
@@ -75,7 +79,7 @@ public class LandCommand implements CommandExecutor, TabCompleter {
                     String pvpState = plugin.getConfigManager().getMessage(
                             outcome.pvpEnabled() ? "land.pvp_state_on" : "land.pvp_state_off", player);
                     player.sendMessage(FormatUtil.replace(
-                            plugin.getConfigManager().getMessage("land.territory_merged", player),
+                            plugin.getConfigManager().getMessage("land.area_merged", player),
                             "%pvp_state%", pvpState));
                 }
                 showClaimBorder(player, key);
@@ -111,6 +115,7 @@ public class LandCommand implements CommandExecutor, TabCompleter {
             }
             case NOT_CLAIMED -> player.sendMessage(plugin.getConfigManager().getMessage("land.not_claimed", player));
             case NOT_OWNER -> player.sendMessage(plugin.getConfigManager().getMessage("land.not_your_claim", player));
+            default -> { }
         }
     }
 
@@ -129,24 +134,79 @@ public class LandCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(message);
     }
 
-    private void handleTrust(Player player, String[] args) {
+    private void handleList(Player player) {
+        int chunks = plugin.getLandManager().countClaims(player.getUniqueId());
+        int areaCount = plugin.getLandManager().areaCountFor(player.getUniqueId());
+        int max = plugin.getConfigManager().getInt("land.max-chunks-per-player", 20);
+        String message = plugin.getConfigManager().getMessage("land.list", player);
+        message = FormatUtil.replace(message, "%chunks%", String.valueOf(chunks));
+        message = FormatUtil.replace(message, "%max%", String.valueOf(max));
+        message = FormatUtil.replace(message, "%areas%", String.valueOf(areaCount));
+        player.sendMessage(message);
+    }
+
+    private void handleHelp(Player player) {
+        for (String line : plugin.getConfigManager().getMessageList("land.help")) {
+            player.sendMessage(FormatUtil.text(player, line));
+        }
+    }
+
+    private void handleBypass(Player player) {
+        if (!player.hasPermission("stellaria.land.admin")) {
+            player.sendMessage(plugin.getConfigManager().getMessage("land.no_permission", player));
+            return;
+        }
+        boolean enabled = plugin.getLandManager().toggleBypass(player);
+        player.sendMessage(plugin.getConfigManager().getMessage(
+                enabled ? "land.bypass_enabled" : "land.bypass_disabled", player));
+    }
+
+    // ------------------------------------------------------------------
+    // /land area <sub>
+    // ------------------------------------------------------------------
+
+    private void handleArea(Player player, String[] args) {
         if (args.length < 2) {
+            player.sendMessage(plugin.getConfigManager().getMessage("land.area_usage", player));
+            return;
+        }
+        String areaSub = args[1].toLowerCase();
+        switch (areaSub) {
+            case "trust" -> handleAreaTrust(player, args);
+            case "untrust" -> handleAreaUntrust(player, args);
+            case "trustlist" -> handleAreaTrustList(player);
+            case "pvp" -> handleAreaFlag(player, args, LandManager.AreaFlag.PVP,
+                    "land.pvp_usage", "land.pvp_enabled", "land.pvp_disabled");
+            case "explosions" -> handleAreaFlag(player, args, LandManager.AreaFlag.EXPLOSIONS,
+                    "land.explosions_usage", "land.explosions_enabled", "land.explosions_disabled");
+            case "doors" -> handleAreaFlag(player, args, LandManager.AreaFlag.DOORS,
+                    "land.doors_usage", "land.doors_enabled", "land.doors_disabled");
+            case "chests" -> handleAreaFlag(player, args, LandManager.AreaFlag.CHESTS,
+                    "land.chests_usage", "land.chests_enabled", "land.chests_disabled");
+            default -> player.sendMessage(plugin.getConfigManager().getMessage("land.area_usage", player));
+        }
+    }
+
+    private void handleAreaTrust(Player player, String[] args) {
+        if (args.length < 3) {
             player.sendMessage(plugin.getConfigManager().getMessage("land.trust_usage", player));
             return;
         }
-        UUID target = Bukkit.getOfflinePlayer(args[1]).getUniqueId();
+        String targetName = args[2];
+        UUID target = Bukkit.getOfflinePlayer(targetName).getUniqueId();
         LandManager.ActionResult result = plugin.getLandManager().trust(player, target);
-        sendTrustResult(player, result, "land.trust_added", args[1]);
+        sendTrustResult(player, result, "land.trust_added", targetName);
     }
 
-    private void handleUntrust(Player player, String[] args) {
-        if (args.length < 2) {
+    private void handleAreaUntrust(Player player, String[] args) {
+        if (args.length < 3) {
             player.sendMessage(plugin.getConfigManager().getMessage("land.untrust_usage", player));
             return;
         }
-        UUID target = Bukkit.getOfflinePlayer(args[1]).getUniqueId();
+        String targetName = args[2];
+        UUID target = Bukkit.getOfflinePlayer(targetName).getUniqueId();
         LandManager.ActionResult result = plugin.getLandManager().untrust(player, target);
-        sendTrustResult(player, result, "land.trust_removed", args[1]);
+        sendTrustResult(player, result, "land.trust_removed", targetName);
     }
 
     private void sendTrustResult(Player player, LandManager.ActionResult result, String successKey, String targetName) {
@@ -155,10 +215,11 @@ public class LandCommand implements CommandExecutor, TabCompleter {
                     plugin.getConfigManager().getMessage(successKey, player), "%target%", targetName));
             case NOT_CLAIMED -> player.sendMessage(plugin.getConfigManager().getMessage("land.info_unclaimed", player));
             case NOT_OWNER -> player.sendMessage(plugin.getConfigManager().getMessage("land.not_owner_trust", player));
+            case SELF_TARGET -> player.sendMessage(plugin.getConfigManager().getMessage("land.trust_self", player));
         }
     }
 
-    private void handleTrustList(Player player) {
+    private void handleAreaTrustList(Player player) {
         UUID owner = plugin.getLandManager().ownerOf(player.getLocation());
         if (owner == null) {
             player.sendMessage(plugin.getConfigManager().getMessage("land.info_unclaimed", player));
@@ -176,37 +237,26 @@ public class LandCommand implements CommandExecutor, TabCompleter {
         }
     }
 
-    private void handlePvp(Player player, String[] args) {
-        if (args.length < 2 || !(args[1].equalsIgnoreCase("on") || args[1].equalsIgnoreCase("off"))) {
-            player.sendMessage(plugin.getConfigManager().getMessage("land.pvp_usage", player));
+    private void handleAreaFlag(Player player, String[] args, LandManager.AreaFlag flag,
+                                 String usageKey, String enabledKey, String disabledKey) {
+        if (args.length < 3 || !(args[2].equalsIgnoreCase("on") || args[2].equalsIgnoreCase("off"))) {
+            player.sendMessage(plugin.getConfigManager().getMessage(usageKey, player));
             return;
         }
-        boolean enable = args[1].equalsIgnoreCase("on");
-        LandManager.ActionResult result = plugin.getLandManager().setPvpEnabled(player, enable);
+        boolean enable = args[2].equalsIgnoreCase("on");
+        LandManager.ActionResult result = plugin.getLandManager().setAreaFlag(player, flag, enable);
         switch (result) {
             case SUCCESS -> player.sendMessage(plugin.getConfigManager().getMessage(
-                    enable ? "land.pvp_enabled" : "land.pvp_disabled", player));
+                    enable ? enabledKey : disabledKey, player));
             case NOT_CLAIMED -> player.sendMessage(plugin.getConfigManager().getMessage("land.info_unclaimed", player));
             case NOT_OWNER -> player.sendMessage(plugin.getConfigManager().getMessage("land.not_owner_trust", player));
+            default -> { }
         }
     }
 
-    private void handleList(Player player) {
-        int chunks = plugin.getLandManager().countClaims(player.getUniqueId());
-        int territories = plugin.getLandManager().territoryCountFor(player.getUniqueId());
-        int max = plugin.getConfigManager().getInt("land.max-chunks-per-player", 20);
-        String message = plugin.getConfigManager().getMessage("land.list", player);
-        message = FormatUtil.replace(message, "%chunks%", String.valueOf(chunks));
-        message = FormatUtil.replace(message, "%max%", String.valueOf(max));
-        message = FormatUtil.replace(message, "%territories%", String.valueOf(territories));
-        player.sendMessage(message);
-    }
-
-    private void handleHelp(Player player) {
-        for (String line : plugin.getConfigManager().getMessageList("land.help")) {
-            player.sendMessage(FormatUtil.text(player, line));
-        }
-    }
+    // ------------------------------------------------------------------
+    // 補助
+    // ------------------------------------------------------------------
 
     private String costText() {
         return plugin.getEconomyManager().format(plugin.getConfigManager().getDouble("land.cost-per-chunk", 500));
@@ -297,11 +347,16 @@ public class LandCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             return TabCompleteUtil.filterStartsWith(SUBCOMMANDS, args[0]);
         }
-        if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
-            return TabCompleteUtil.onlinePlayerNames(args[1]);
-        }
-        if (args.length == 2 && args[0].equalsIgnoreCase("pvp")) {
-            return TabCompleteUtil.filterStartsWith(List.of("on", "off"), args[1]);
+        if (args[0].equalsIgnoreCase("area")) {
+            if (args.length == 2) {
+                return TabCompleteUtil.filterStartsWith(AREA_SUBCOMMANDS, args[1]);
+            }
+            if (args.length == 3 && (args[1].equalsIgnoreCase("trust") || args[1].equalsIgnoreCase("untrust"))) {
+                return TabCompleteUtil.onlinePlayerNames(args[2]);
+            }
+            if (args.length == 3 && AREA_FLAG_SUBCOMMANDS.contains(args[1].toLowerCase())) {
+                return TabCompleteUtil.filterStartsWith(ON_OFF, args[2]);
+            }
         }
         return List.of();
     }
