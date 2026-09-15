@@ -334,6 +334,12 @@ public class StellariaCore extends JavaPlugin {
         getCommand("weathervote").setTabCompleter(weatherVoteCommand);
         getCommand("wvaccept").setExecutor(weatherVoteCommand);
         getCommand("wvdeny").setExecutor(weatherVoteCommand);
+
+        TimeVoteCommand timeVoteCommand = new TimeVoteCommand(this);
+        getCommand("timevote").setExecutor(timeVoteCommand);
+        getCommand("timevote").setTabCompleter(timeVoteCommand);
+        getCommand("tvaccept").setExecutor(timeVoteCommand);
+        getCommand("tvdeny").setExecutor(timeVoteCommand);
       
         LandCommand landCommand = new LandCommand(this);
         getCommand("land").setExecutor(landCommand);

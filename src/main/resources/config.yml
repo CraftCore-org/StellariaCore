@@ -206,6 +206,11 @@ weathervote:
   worldname: #ワールドの表示名 指定されていないワールドは投票不可能
     world: "生活ワールド"
 
+timevote:
+  votetime: 15
+  worldname: #ワールドの表示名 指定されていないワールドは投票不可能
+    world: "生活ワールド"
+
 kikori:
   enabled: true
   price: 50000
