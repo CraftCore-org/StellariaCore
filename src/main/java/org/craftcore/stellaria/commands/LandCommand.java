@@ -168,36 +168,41 @@ public class LandCommand implements CommandExecutor, TabCompleter {
      * 色だけで状態を区別する（色は文字の描画幅に影響しないので、これなら確実に揃う）。
      */
     private void handleMap(Player player) {
-        int radius = plugin.getConfigManager().getInt("land.map-radius", 4);
+        // 上限を設けていないと管理者の設定ミスで極端に大きいグリッドを送りかねないため、
+        // このコマンド自体の妥当な使用範囲としてクランプする（DB等は絡まないので性能上の理由ではない）。
+        int radius = Math.min(10, Math.max(1, plugin.getConfigManager().getInt("land.map-radius", 4)));
         World world = player.getWorld();
         LandManager.ChunkKey center = LandManager.ChunkKey.of(player.getLocation());
         LandManager land = plugin.getLandManager();
         UUID self = player.getUniqueId();
 
-        StringBuilder grid = new StringBuilder();
+        player.sendMessage(plugin.getConfigManager().getMessage("land.map_header", player));
+
+        // 1行ずつ個別にsendMessageする（このコードベースの他の複数行出力＝handleHelp/trustlist等と
+        // 同じ確立された方式に合わせる。1メッセージに\nを埋め込んで一括送信する方式は
+        // このコードベースに前例が無く挙動が未検証のため、あえて採用しない）。
         for (int dz = -radius; dz <= radius; dz++) {
+            StringBuilder row = new StringBuilder();
             for (int dx = -radius; dx <= radius; dx++) {
                 if (dx == 0 && dz == 0) {
-                    grid.append("&%e■");
+                    row.append("&%e■");
                     continue;
                 }
                 Location cell = new Location(world, (center.chunkX() + dx) * 16.0, 64, (center.chunkZ() + dz) * 16.0);
                 UUID owner = land.ownerOf(cell);
                 if (owner == null) {
-                    grid.append("&%8■");
+                    row.append("&%8■");
                 } else if (owner.equals(self)) {
-                    grid.append("&%a■");
+                    row.append("&%a■");
                 } else if (land.trustedPlayers(cell).contains(self)) {
-                    grid.append("&%b■");
+                    row.append("&%b■");
                 } else {
-                    grid.append("&%c■");
+                    row.append("&%c■");
                 }
             }
-            grid.append("\n");
+            player.sendMessage(FormatUtil.text(player, row.toString()));
         }
 
-        player.sendMessage(plugin.getConfigManager().getMessage("land.map_header", player));
-        player.sendMessage(FormatUtil.text(player, grid.toString()));
         for (String line : plugin.getConfigManager().getMessageList("land.map_legend")) {
             player.sendMessage(FormatUtil.text(player, line));
         }
