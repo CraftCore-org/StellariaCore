@@ -71,6 +71,7 @@ public class StellariaCore extends JavaPlugin {
     private WarpManager warpManager;
     private NametagManager nametagManager;
     private KikoriManager kikoriManager;
+    private LandManager landManager;
 
     @Override
     public void onEnable() {
@@ -147,6 +148,7 @@ public class StellariaCore extends JavaPlugin {
         this.homeManager = new HomeManager(this);
         this.warpManager = new WarpManager(this);
         this.kikoriManager = new KikoriManager(this);
+        this.landManager = new LandManager(this);
 
         this.muteManager = new MuteManager(this);
         muteManager.loadAll();
@@ -416,6 +418,10 @@ public class StellariaCore extends JavaPlugin {
 
     public KikoriManager getKikoriManager() {
         return this.kikoriManager;
+    }
+
+    public LandManager getLandManager() {
+        return this.landManager;
     }
 
     /**
