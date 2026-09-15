@@ -68,6 +68,7 @@ public class StellariaCore extends JavaPlugin {
     private HomeManager homeManager;
     private WarpManager warpManager;
     private NametagManager nametagManager;
+    private KikoriManager kikoriManager;
 
     @Override
     public void onEnable() {
@@ -115,11 +116,14 @@ public class StellariaCore extends JavaPlugin {
             "yaw REAL", "pitch REAL"
         );
 
+        DatabaseManager.addColumnIfNotExists("players", "kikori_unlocked INTEGER NOT NULL DEFAULT 0");
+
         this.afkManager = new AfkManager(this);
         this.playtimeManager = new PlaytimeManager(this);
         this.rankManager = new RankManager(this);
         this.homeManager = new HomeManager(this);
         this.warpManager = new WarpManager(this);
+        this.kikoriManager = new KikoriManager(this);
 
         this.muteManager = new MuteManager(this);
         muteManager.loadAll();
@@ -211,6 +215,10 @@ public class StellariaCore extends JavaPlugin {
 
         if (configManager.getBoolean("afk.enabled", true)) {
             Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> afkManager.tick(), 200L, 200L);
+        }
+
+        if (configManager.getBoolean("kikori.enabled", true)) {
+            Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> kikoriManager.tick(), 200L, 200L);
         }
 
         // 7. チャットフォーマット・メンション
@@ -376,6 +384,10 @@ public class StellariaCore extends JavaPlugin {
 
     public NametagManager getNametagManager() {
         return this.nametagManager;
+    }
+
+    public KikoriManager getKikoriManager() {
+        return this.kikoriManager;
     }
 
     /**
