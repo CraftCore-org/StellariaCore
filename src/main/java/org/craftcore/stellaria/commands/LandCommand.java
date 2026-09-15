@@ -32,7 +32,7 @@ import java.util.UUID;
 public class LandCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> SUBCOMMANDS = List.of(
-            "claim", "unclaim", "info", "list", "help", "area", "bypass");
+            "claim", "unclaim", "info", "list", "map", "help", "area", "bypass");
     private static final List<String> AREA_SUBCOMMANDS = List.of(
             "trust", "untrust", "trustlist", "pvp", "explosions", "doors", "chests");
     private static final List<String> AREA_FLAG_SUBCOMMANDS = List.of("pvp", "explosions", "doors", "chests");
@@ -61,6 +61,7 @@ public class LandCommand implements CommandExecutor, TabCompleter {
             case "unclaim" -> handleUnclaim(player);
             case "info" -> handleInfo(player);
             case "list" -> handleList(player);
+            case "map" -> handleMap(player);
             case "help" -> handleHelp(player);
             case "area" -> handleArea(player, args);
             case "bypass" -> handleBypass(player);
@@ -158,6 +159,48 @@ public class LandCommand implements CommandExecutor, TabCompleter {
         message = FormatUtil.replace(message, "%max%", String.valueOf(max));
         message = FormatUtil.replace(message, "%areas%", String.valueOf(areaCount));
         player.sendMessage(message);
+    }
+
+    /**
+     * 現在地を中心に周辺チャンクの保護状態を正方形のグリッドで表示する。
+     * マインクラのデフォルトフォントはmonospaceではない（文字ごとに描画幅が違う）ため、
+     * 文字を変えて色分けすると列がズレる。これを避けるため、全マス同じ文字（■）だけを使い、
+     * 色だけで状態を区別する（色は文字の描画幅に影響しないので、これなら確実に揃う）。
+     */
+    private void handleMap(Player player) {
+        int radius = plugin.getConfigManager().getInt("land.map-radius", 4);
+        World world = player.getWorld();
+        LandManager.ChunkKey center = LandManager.ChunkKey.of(player.getLocation());
+        LandManager land = plugin.getLandManager();
+        UUID self = player.getUniqueId();
+
+        StringBuilder grid = new StringBuilder();
+        for (int dz = -radius; dz <= radius; dz++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                if (dx == 0 && dz == 0) {
+                    grid.append("&%e■");
+                    continue;
+                }
+                Location cell = new Location(world, (center.chunkX() + dx) * 16.0, 64, (center.chunkZ() + dz) * 16.0);
+                UUID owner = land.ownerOf(cell);
+                if (owner == null) {
+                    grid.append("&%8■");
+                } else if (owner.equals(self)) {
+                    grid.append("&%a■");
+                } else if (land.trustedPlayers(cell).contains(self)) {
+                    grid.append("&%b■");
+                } else {
+                    grid.append("&%c■");
+                }
+            }
+            grid.append("\n");
+        }
+
+        player.sendMessage(plugin.getConfigManager().getMessage("land.map_header", player));
+        player.sendMessage(FormatUtil.text(player, grid.toString()));
+        for (String line : plugin.getConfigManager().getMessageList("land.map_legend")) {
+            player.sendMessage(FormatUtil.text(player, line));
+        }
     }
 
     private void handleHelp(Player player) {

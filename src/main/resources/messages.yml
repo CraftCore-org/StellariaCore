@@ -281,7 +281,7 @@ kikori:
 land:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   no_permission: "&%cこのコマンドを実行する権限がありません。"
-  usage: "&%c使用方法: /land <claim|unclaim|info|list|help|area|bypass>"
+  usage: "&%c使用方法: /land <claim|unclaim|info|list|map|help|area|bypass>"
   area_usage: "&%c使用方法: /land area <trust|untrust|trustlist|pvp|explosions|doors|chests>"
   claimed: "&%aこのチャンクを保護しました！（コスト: &%e%cost%&%a）"
   area_merged: "&%bエリアが統合されました。&%7（PvP&%7: %pvp_state%&%7）"
@@ -329,6 +329,10 @@ land:
   status_chests_open: " &%7| &%aチェスト開放"
   status_explosions_allowed: " &%7| &%c爆発OK"
   status_pvp_warning: "&%c&l⚔ PvP有効エリア &%7このエリアでは戦闘できます"
+  map_header: "&%9&l--- 周辺エリアマップ ---"
+  map_legend:
+    - "&%a■&%7 自分の土地　&%b■&%7 信頼されてる土地　&%c■&%7 他人の土地"
+    - "&%8■&%7 未保護　&%e■&%7 現在地"
   list: "&%b保護中のチャンク&%7: &%f%chunks%&%7/&%f%max% &%7（エリア数: &%f%areas%&%7）"
   help:
     - "&%9&l| &%bland機能の説明"
@@ -338,3 +342,4 @@ land:
     - "&%7trust/pvp/explosions/doors/chestsの変更は全て&%e/land area <サブコマンド>&%7から行います"
     - "&%7PvPはサーバー全体でデフォルト無効です。&%e/land area pvp on &%7で自分のエリア内だけ有効化できます"
     - "&%7爆発・ドア開放・チェスト開放もデフォルト無効（保護あり）です。同じく&%e/land area <explosions|doors|chests> on &%7で有効化できます"
+    - "&%7&%e/land map &%7で周辺チャンクの保護状態を一覧できます"

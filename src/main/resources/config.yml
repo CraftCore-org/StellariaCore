@@ -227,6 +227,7 @@ land:
   cost-per-chunk: 500
   max-chunks-per-player: 20
   refund-on-unclaim: true
+  map-radius: 4 # /land map で表示する範囲（チャンク単位の半径）。4なら9x9マスのグリッドになる
   protect:
     explosions: true
     fire: true
