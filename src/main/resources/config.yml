@@ -201,6 +201,11 @@ elevator:
       pitch: 0.75
   ignoreblocks: ["&CARPET","&_SIGN","&TORCH","&BANNER","&BUTTON","&LEVER","&_DOOR"]# エレベーターブロックの上2ブロックに置いてあっても移動ができるブロック
 
+weathervote:
+  votetime: 15
+  worldname: #ワールドの表示名 指定されていないワールドは投票不可能
+    world: "生活ワールド"
+
 kikori:
   enabled: true
   price: 50000
