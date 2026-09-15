@@ -39,7 +39,8 @@ public class KikoriManager {
     private final Set<UUID> enabledPlayers = new HashSet<>();
     private final Map<UUID, Long> lastFellMillis = new HashMap<>();
     private final Set<UUID> pendingPass = new HashSet<>();
-    private final Map<UUID, ScheduledTask> activeFellTasks = new HashMap<>();
+    private final Map<UUID, List<ScheduledTask>> activeFellTasks = new HashMap<>();
+    private final Set<Block> claimedBlocks = new HashSet<>();
     private final Set<UUID> suppressLeafDurability = new HashSet<>();
 
     public KikoriManager(StellariaCore plugin) {
@@ -202,8 +203,9 @@ public class KikoriManager {
     /** 斧を持ってトグルON・天然丸太を壊した時にBlockBreakEventから呼ぶ。 */
     public void tryStartFelling(Player player, Block origin) {
         UUID uuid = player.getUniqueId();
-        if (activeFellTasks.containsKey(uuid)) {
-            return; // 既に伐採処理中（連鎖破壊で発生する内部BlockBreakEventの再入も含む）
+        if (claimedBlocks.contains(origin)) {
+            return; // 既に別の伐採タスクが処理中のブロック（連鎖破壊で発生する内部BlockBreakEventの再入や、
+                    // 複数の木を同時に伐採している時の重複も含む）
         }
 
         int maxLogs = plugin.getConfigManager().getInt("kikori.max-logs", 256);
@@ -229,7 +231,7 @@ public class KikoriManager {
             }
             collectedLogs.add(current);
             for (Block neighbor : neighbors26(current)) {
-                if (TreeUtil.isLog(neighbor.getType()) && visited.add(neighbor)) {
+                if (TreeUtil.isLog(neighbor.getType()) && !claimedBlocks.contains(neighbor) && visited.add(neighbor)) {
                     frontier.add(neighbor);
                 }
             }
@@ -264,6 +266,7 @@ public class KikoriManager {
             return; // 起点1本だけの木（隣接丸太も葉も無し） — バニラの単発破壊のみで完結
         }
 
+        claimedBlocks.addAll(breakQueue);
         startFellTask(player, breakQueue);
     }
 
@@ -309,18 +312,21 @@ public class KikoriManager {
         return leaves;
     }
 
-    /**
-     * 破壊キューを1tickに1ブロックずつ処理する。プレイヤーのエンティティスケジューラを使うので、
-     * 切断時は自動的にタスクが終了する（TpaCoreのカウントダウンと同方式）。
-     */
     /** PlayerItemDamageEventから呼ぶ。葉っぱの伐採中は耐久値ダメージをキャンセルするためのフラグ。 */
     public boolean isSuppressingLeafDurability(UUID uuid) {
         return suppressLeafDurability.contains(uuid);
     }
 
+    /**
+     * 破壊キューを1tickに1ブロックずつ処理する。プレイヤーのエンティティスケジューラを使うので、
+     * 切断時は自動的にタスクが終了する（TpaCoreのカウントダウンと同方式）。
+     * 1プレイヤーが同時に複数の木を伐採できるよう、タスクはプレイヤーごとに複数並行して走れる
+     * （個々のブロックはclaimedBlocksで排他制御しているので、同じブロックが二重に処理されることはない）。
+     */
     private void startFellTask(Player player, Deque<Block> breakQueue) {
         UUID uuid = player.getUniqueId();
-        ScheduledTask task = player.getScheduler().runAtFixedRate(plugin, scheduledTask -> {
+        ScheduledTask[] taskRef = new ScheduledTask[1];
+        taskRef[0] = player.getScheduler().runAtFixedRate(plugin, scheduledTask -> {
             Block block = breakQueue.poll();
             if (block != null) {
                 Player current = Bukkit.getPlayer(uuid);
@@ -334,28 +340,49 @@ public class KikoriManager {
                         suppressLeafDurability.remove(uuid);
                     }
                 }
+                claimedBlocks.remove(block); // 壊し終わってから解放（壊してる最中の内部BlockBreakEvent再入を防ぐため）
             }
             if (breakQueue.isEmpty()) {
                 scheduledTask.cancel();
-                activeFellTasks.remove(uuid);
+                removeActiveTask(uuid, taskRef[0]);
             }
-        }, () -> activeFellTasks.remove(uuid), 1L, 1L);
-        activeFellTasks.put(uuid, task);
+        }, () -> {
+            breakQueue.forEach(claimedBlocks::remove); // 切断等で途中終了した分の解放
+            removeActiveTask(uuid, taskRef[0]);
+        }, 1L, 1L);
+        addActiveTask(uuid, taskRef[0]);
+    }
+
+    private void addActiveTask(UUID uuid, ScheduledTask task) {
+        activeFellTasks.computeIfAbsent(uuid, key -> new ArrayList<>()).add(task);
+    }
+
+    private void removeActiveTask(UUID uuid, ScheduledTask task) {
+        List<ScheduledTask> tasks = activeFellTasks.get(uuid);
+        if (tasks == null) {
+            return;
+        }
+        tasks.remove(task);
+        if (tasks.isEmpty()) {
+            activeFellTasks.remove(uuid);
+        }
     }
 
     // ------------------------------------------------------------------
     // ライフサイクル
     // ------------------------------------------------------------------
 
-    /** 退出時に呼ぶ。トグル状態・pass予約を破棄し、進行中の伐採タスクがあればキャンセルする。 */
+    /** 退出時に呼ぶ。トグル状態・pass予約を破棄し、進行中の伐採タスクがあれば全てキャンセルする。 */
     public void removePlayer(UUID uuid) {
         enabledPlayers.remove(uuid);
         lastFellMillis.remove(uuid);
         pendingPass.remove(uuid);
         suppressLeafDurability.remove(uuid);
-        ScheduledTask task = activeFellTasks.remove(uuid);
-        if (task != null) {
-            task.cancel();
+        List<ScheduledTask> tasks = activeFellTasks.remove(uuid);
+        if (tasks != null) {
+            for (ScheduledTask task : tasks) {
+                task.cancel();
+            }
         }
     }
 }
