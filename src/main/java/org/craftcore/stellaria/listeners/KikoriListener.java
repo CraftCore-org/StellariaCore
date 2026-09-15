@@ -7,6 +7,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.inventory.ItemStack;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.TreeUtil;
@@ -52,6 +53,13 @@ public class KikoriListener implements Listener {
             return; // 自分で置いた1本を素直に壊すのは想定内の操作なので伐採は発動しない
         }
         plugin.getKikoriManager().tryStartFelling(player, block);
+    }
+
+    @EventHandler
+    public void onItemDamage(PlayerItemDamageEvent event) {
+        if (plugin.getKikoriManager().isSuppressingLeafDurability(event.getPlayer().getUniqueId())) {
+            event.setCancelled(true);
+        }
     }
 
     private boolean isHoldingAxe(Player player) {

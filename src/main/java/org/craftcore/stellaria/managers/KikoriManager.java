@@ -40,6 +40,7 @@ public class KikoriManager {
     private final Map<UUID, Long> lastFellMillis = new HashMap<>();
     private final Set<UUID> pendingPass = new HashSet<>();
     private final Map<UUID, ScheduledTask> activeFellTasks = new HashMap<>();
+    private final Set<UUID> suppressLeafDurability = new HashSet<>();
 
     public KikoriManager(StellariaCore plugin) {
         this.plugin = plugin;
@@ -312,14 +313,26 @@ public class KikoriManager {
      * 破壊キューを1tickに1ブロックずつ処理する。プレイヤーのエンティティスケジューラを使うので、
      * 切断時は自動的にタスクが終了する（TpaCoreのカウントダウンと同方式）。
      */
+    /** PlayerItemDamageEventから呼ぶ。葉っぱの伐採中は耐久値ダメージをキャンセルするためのフラグ。 */
+    public boolean isSuppressingLeafDurability(UUID uuid) {
+        return suppressLeafDurability.contains(uuid);
+    }
+
     private void startFellTask(Player player, Deque<Block> breakQueue) {
         UUID uuid = player.getUniqueId();
         ScheduledTask task = player.getScheduler().runAtFixedRate(plugin, scheduledTask -> {
             Block block = breakQueue.poll();
             if (block != null) {
                 Player current = Bukkit.getPlayer(uuid);
-                if (current != null && (TreeUtil.isLog(block.getType()) || TreeUtil.isLeaves(block.getType()))) {
+                boolean isLeaf = TreeUtil.isLeaves(block.getType());
+                if (current != null && (TreeUtil.isLog(block.getType()) || isLeaf)) {
+                    if (isLeaf) {
+                        suppressLeafDurability.add(uuid);
+                    }
                     current.breakBlock(block);
+                    if (isLeaf) {
+                        suppressLeafDurability.remove(uuid);
+                    }
                 }
             }
             if (breakQueue.isEmpty()) {
@@ -339,6 +352,7 @@ public class KikoriManager {
         enabledPlayers.remove(uuid);
         lastFellMillis.remove(uuid);
         pendingPass.remove(uuid);
+        suppressLeafDurability.remove(uuid);
         ScheduledTask task = activeFellTasks.remove(uuid);
         if (task != null) {
             task.cancel();
