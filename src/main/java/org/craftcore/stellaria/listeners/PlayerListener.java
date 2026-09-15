@@ -28,6 +28,7 @@ public class PlayerListener implements Listener {
         TpaCore.resetPlayerTeleportRequests(event.getPlayer());
         plugin.getAfkManager().removePlayer(event.getPlayer().getUniqueId());
         plugin.getActionBarManager().removePlayer(event.getPlayer().getUniqueId());
+        plugin.getKikoriManager().removePlayer(event.getPlayer().getUniqueId());
     }
 
     @EventHandler

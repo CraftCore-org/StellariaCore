@@ -41,6 +41,7 @@ import org.craftcore.stellaria.listeners.MentionTabCompleteListener;
 import org.craftcore.stellaria.listeners.MuteCommandBlockListener;
 import org.craftcore.stellaria.listeners.PlayerListener;
 import org.craftcore.stellaria.listeners.PlayerQuitListener;
+import org.craftcore.stellaria.listeners.KikoriListener;
 
 
 import org.craftcore.stellaria.utils.ConsoleUtil;
@@ -174,6 +175,7 @@ public class StellariaCore extends JavaPlugin {
         // getServer().getPluginManager().registerEvents(new PlayerListener(), this);
         this.elevatorManager = new ElevatorManager(this);
         getServer().getPluginManager().registerEvents(new PlayerListener(this, elevatorManager), this);
+        getServer().getPluginManager().registerEvents(new KikoriListener(this), this);
 
         // 6. Scoreboard/Tablist/Belowname のインスタンス化とtick開始
         this.placeholderManager = new PlaceholderManager(this);
