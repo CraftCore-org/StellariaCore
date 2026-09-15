@@ -3,21 +3,7 @@ package org.craftcore.stellaria;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.craftcore.stellaria.commands.AfkCommand;
-import org.craftcore.stellaria.commands.BroadcastCommand;
-import org.craftcore.stellaria.commands.HealCommand;
-import org.craftcore.stellaria.commands.MessageCommand;
-import org.craftcore.stellaria.commands.BalanceCommand;
-import org.craftcore.stellaria.commands.ColorsCommand;
-import org.craftcore.stellaria.commands.DiscordCommand;
-import org.craftcore.stellaria.commands.EcoCommand;
-import org.craftcore.stellaria.commands.MuteCommand;
-import org.craftcore.stellaria.commands.PayCommand;
-import org.craftcore.stellaria.commands.PlaytimeCommand;
-import org.craftcore.stellaria.commands.RankingCommand;
-import org.craftcore.stellaria.commands.ReloadCommand;
-import org.craftcore.stellaria.commands.ScoreboardCommand;
-import org.craftcore.stellaria.commands.SeenCommand;
+import org.craftcore.stellaria.commands.*;
 import org.craftcore.stellaria.commands.tpa.TpaCore;
 import org.craftcore.stellaria.commands.HomeCommand;
 import org.craftcore.stellaria.commands.WarpCommand;
@@ -315,6 +301,12 @@ public class StellariaCore extends JavaPlugin {
         KikoriCommand kikoriCommand = new KikoriCommand(this);
         getCommand("kikori").setExecutor(kikoriCommand);
         getCommand("kikori").setTabCompleter(kikoriCommand);
+
+        WeatherVoteCommand weatherVoteCommand = new WeatherVoteCommand(this);
+        getCommand("weathervote").setExecutor(weatherVoteCommand);
+        getCommand("weathervote").setTabCompleter(weatherVoteCommand);
+        getCommand("wvaccept").setExecutor(weatherVoteCommand);
+        getCommand("wvdeny").setExecutor(weatherVoteCommand);
 
         this.autoBroadcastManager = new AutoBroadcastManager(this);
         autoBroadcastManager.start();
