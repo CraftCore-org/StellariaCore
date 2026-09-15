@@ -227,3 +227,9 @@ land:
 - **Kikori連携**: 他人のclaim内にある天然木を、claim外から伐採コマンド起点で壊そうとする→保護されキャンセルされ、連鎖伐採も発動しないこと。claim内・境界をまたぐ木を伐採→claim内の丸太だけ残り、claim外の丸太は連鎖伐採されること（`ignoreCancelled=true`の効果確認）
 - **unclaimの返金**: `/land unclaim`実行→`land.cost-per-chunk`分がプレイヤーの残高に戻ること
 - **`/land help`**: 説明文が表示されること
+
+## 追記（実装後のフォローアップ）
+
+- **PvP: `land.enabled-worlds`外のワールドは対象外に変更**（2026-09-15実装後）。当初は「未claim地は常にPvPキャンセル」だったが、claim不可ワールド（ネザー・エンド等）でも永久にPvP不可になってしまう副作用が判明したため、`land.enabled-worlds`に含まれないワールドでは土地保護のPvP制限自体を適用せず、バニラ/他プラグインの挙動に委ねる形に変更した。上記226行目のテスト方針は`land.enabled-worlds`に含まれるワールドでのみ有効。
+- **保護通知はアクションバー表示に変更**。当初チャットメッセージ+自前クールダウンだったが、連投防止と実装の単純化を兼ねて`ActionBarManager#flash`経由の一時表示に統一した。
+- **追加の保護対象**: ピストンでのclaim境界をまたぐブロック移動、液体のclaim内への流入、額縁/絵画/アーマースタンドの破壊・中身の取り出し、TNT・懐いた動物経由のPvPも保護対象に追加（`land.protect.pistons`/`land.protect.liquid-flow`/`land.protect.hangings`で個別にON/OFF可能）。
