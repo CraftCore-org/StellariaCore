@@ -13,6 +13,7 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.managers.LandManager;
+import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
 import org.craftcore.stellaria.utils.ParticleUtil;
 import org.craftcore.stellaria.utils.TabCompleteUtil;
@@ -101,10 +102,18 @@ public class LandCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleUnclaim(Player player) {
+        UUID originalOwner = plugin.getLandManager().ownerOf(player.getLocation());
         boolean adminOverride = player.hasPermission("stellaria.land.admin");
         LandManager.ActionResult result = plugin.getLandManager().unclaim(player, adminOverride);
         switch (result) {
             case SUCCESS -> {
+                // 管理者が他人のclaimを解除した場合は、誰の土地だったかが分かる専用メッセージも出す
+                // （オーナー本人には見えない操作なので、実行者側に何をしたか明示するため）。
+                if (adminOverride && originalOwner != null && !originalOwner.equals(player.getUniqueId())) {
+                    player.sendMessage(FormatUtil.replace(
+                            plugin.getConfigManager().getMessage("land.unclaimed_admin_override", player),
+                            "%owner%", ownerName(originalOwner)));
+                }
                 boolean refunded = plugin.getConfigManager().getBoolean("land.refund-on-unclaim", true);
                 String key = refunded ? "land.unclaimed" : "land.unclaimed_no_refund";
                 String message = plugin.getConfigManager().getMessage(key, player);
@@ -115,23 +124,29 @@ public class LandCommand implements CommandExecutor, TabCompleter {
             }
             case NOT_CLAIMED -> player.sendMessage(plugin.getConfigManager().getMessage("land.not_claimed", player));
             case NOT_OWNER -> player.sendMessage(plugin.getConfigManager().getMessage("land.not_your_claim", player));
-            default -> { }
+            case SELF_TARGET -> { }
         }
     }
 
     private void handleInfo(Player player) {
-        UUID owner = plugin.getLandManager().ownerOf(player.getLocation());
+        Location location = player.getLocation();
+        UUID owner = plugin.getLandManager().ownerOf(location);
         if (owner == null) {
             player.sendMessage(plugin.getConfigManager().getMessage("land.info_unclaimed", player));
             return;
         }
-        boolean pvpAllowed = plugin.getLandManager().isPvpAllowed(player.getLocation());
-        String pvpState = plugin.getConfigManager().getMessage(
-                pvpAllowed ? "land.pvp_state_on" : "land.pvp_state_off", player);
         String message = plugin.getConfigManager().getMessage("land.info_owner", player);
         message = FormatUtil.replace(message, "%owner%", ownerName(owner));
-        message = FormatUtil.replace(message, "%pvp_state%", pvpState);
+        message = FormatUtil.replace(message, "%pvp_state%", onOffText(player, plugin.getLandManager().isPvpAllowed(location)));
+        message = FormatUtil.replace(message, "%explosions_state%", onOffText(player, plugin.getLandManager().explosionsAllowed(location)));
+        message = FormatUtil.replace(message, "%doors_state%", onOffText(player, plugin.getLandManager().doorsOpenToOthers(location)));
+        message = FormatUtil.replace(message, "%chests_state%", onOffText(player, plugin.getLandManager().chestsOpenToOthers(location)));
         player.sendMessage(message);
+    }
+
+    /** land.pvp_state_on/offは元々PvP専用の文言だが「有効」「無効」の一般語なので他3フラグの表示にも流用する。 */
+    private String onOffText(Player player, boolean on) {
+        return plugin.getConfigManager().getMessage(on ? "land.pvp_state_on" : "land.pvp_state_off", player);
     }
 
     private void handleList(Player player) {
@@ -151,6 +166,12 @@ public class LandCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    private static final String BYPASS_ACTIONBAR_CHANNEL = "land_bypass";
+
+    /**
+     * ON中は常設アクションバー表示（ActionBarManager#setChannel、期限なし）でbypass中であることを
+     * 可視化する。トグルし忘れて気付かず保護を無視し続ける、という元々の苦情の再発を防ぐため。
+     */
     private void handleBypass(Player player) {
         if (!player.hasPermission("stellaria.land.admin")) {
             player.sendMessage(plugin.getConfigManager().getMessage("land.no_permission", player));
@@ -159,6 +180,12 @@ public class LandCommand implements CommandExecutor, TabCompleter {
         boolean enabled = plugin.getLandManager().toggleBypass(player);
         player.sendMessage(plugin.getConfigManager().getMessage(
                 enabled ? "land.bypass_enabled" : "land.bypass_disabled", player));
+        if (enabled) {
+            plugin.getActionBarManager().setChannel(player, BYPASS_ACTIONBAR_CHANNEL,
+                    ColorUtil.component(plugin.getConfigManager().getMessage("land.bypass_indicator", player)));
+        } else {
+            plugin.getActionBarManager().clearChannel(player, BYPASS_ACTIONBAR_CHANNEL);
+        }
     }
 
     // ------------------------------------------------------------------
@@ -250,7 +277,7 @@ public class LandCommand implements CommandExecutor, TabCompleter {
                     enable ? enabledKey : disabledKey, player));
             case NOT_CLAIMED -> player.sendMessage(plugin.getConfigManager().getMessage("land.info_unclaimed", player));
             case NOT_OWNER -> player.sendMessage(plugin.getConfigManager().getMessage("land.not_owner_trust", player));
-            default -> { }
+            case SELF_TARGET -> { }
         }
     }
 
@@ -345,7 +372,10 @@ public class LandCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String @NotNull [] args) {
         if (args.length == 1) {
-            return TabCompleteUtil.filterStartsWith(SUBCOMMANDS, args[0]);
+            List<String> visible = sender.hasPermission("stellaria.land.admin")
+                    ? SUBCOMMANDS
+                    : SUBCOMMANDS.stream().filter(s -> !s.equals("bypass")).toList();
+            return TabCompleteUtil.filterStartsWith(visible, args[0]);
         }
         if (args[0].equalsIgnoreCase("area")) {
             if (args.length == 2) {

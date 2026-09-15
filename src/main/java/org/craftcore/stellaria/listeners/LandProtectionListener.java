@@ -2,6 +2,7 @@ package org.craftcore.stellaria.listeners;
 
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Tag;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.ArmorStand;
@@ -132,12 +133,27 @@ public class LandProtectionListener implements Listener {
         }
     }
 
+    /**
+     * バニラのTag（DOORS/TRAPDOORS/FENCE_GATES）で判定する。設定ファイル経由にしないのは、
+     * config.ymlは新規インストール時にしか展開されず（移行機能なし）、既存サーバーで
+     * 新しいキーが単に「無い」＝「保護対象0件」に化けてしまう事故を避けるため
+     * （実際に銅ドア/淡いオークドア等、キー追加時点で存在しなかった新素材も自動的に拾える）。
+     */
     private boolean isDoorMaterial(Material material) {
-        return plugin.getConfigManager().getStringList("land.protected-doors").contains(material.name());
+        return Tag.DOORS.isTagged(material) || Tag.TRAPDOORS.isTagged(material) || Tag.FENCE_GATES.isTagged(material);
     }
 
+    /**
+     * こちらは引き続きconfig.yml駆動（チェスト・シュルカー等はプレイヤーが手動で増減したいケースが
+     * 現実的にあるため）。ただし新キー land.protected-containers が空（＝既存サーバーで未更新）なら、
+     * このコマンド群導入前から存在した land.protected-interactables に自動フォールバックする。
+     */
     private boolean isContainerMaterial(Material material) {
-        return plugin.getConfigManager().getStringList("land.protected-containers").contains(material.name());
+        List<String> names = plugin.getConfigManager().getStringList("land.protected-containers");
+        if (names.isEmpty()) {
+            names = plugin.getConfigManager().getStringList("land.protected-interactables");
+        }
+        return names.contains(material.name());
     }
 
     @EventHandler
@@ -215,7 +231,7 @@ public class LandProtectionListener implements Listener {
             return;
         }
         if (event.getCause() == HangingBreakEvent.RemoveCause.EXPLOSION) {
-            if (plugin.getLandManager().ownerOf(event.getEntity().getLocation()) != null) {
+            if (!plugin.getLandManager().explosionsAllowed(event.getEntity().getLocation())) {
                 event.setCancelled(true);
             }
             return;
@@ -246,7 +262,7 @@ public class LandProtectionListener implements Listener {
         if (event.getCause() != HangingBreakEvent.RemoveCause.EXPLOSION) {
             return;
         }
-        if (plugin.getLandManager().ownerOf(event.getEntity().getLocation()) != null) {
+        if (!plugin.getLandManager().explosionsAllowed(event.getEntity().getLocation())) {
             event.setCancelled(true);
         }
     }
