@@ -48,14 +48,14 @@ public class ElevatorManager {
         Material elevatorBlockType = elevatorBlock.getType();
         int max = plugin.getConfigManager().getInt("elevator.blocks." + elevatorBlockType.toString() + ".max", 0, true);
         if (max == 0) return;
+        int moveable = 0;
         Block checkBlock = elevatorBlock;
         for (int i = 0; i < max; i++){
             checkBlock = checkBlock.getLocation().add(0,1,0).getBlock();
             if (checkBlock.getType() == elevatorBlockType){
                 if (!isMoveable(checkBlock)) {
-                    Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.moveup_fail",""));
-                    player.sendActionBar(message);
-                    return;
+                    moveable = 1;
+                    continue;
                 }
                 if (!isMoveable(elevatorBlock)) {
                     Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.move_fail",""));
@@ -80,6 +80,11 @@ public class ElevatorManager {
                 return;
             }
         }
+        if (moveable == 1){
+            Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.moveup_fail",""));
+            player.sendActionBar(message);
+            return;
+        }
     }
 
     public void PlayerElevatorMoveDown(Player player){
@@ -87,14 +92,14 @@ public class ElevatorManager {
         Material elevatorBlockType = elevatorBlock.getType();
         int max = plugin.getConfigManager().getInt("elevator.blocks." + elevatorBlockType.toString() + ".max", 0, true);
         if (max == 0) return;
+        int moveable = 0;
         Block checkBlock = elevatorBlock;
         for (int i = 0; i < max; i++){
             checkBlock = checkBlock.getLocation().subtract(0,1,0).getBlock();
             if (checkBlock.getType() == elevatorBlockType){
                 if (!isMoveable(checkBlock)) {
-                    Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.movedown_fail",""));
-                    player.sendActionBar(message);
-                    return;
+                    moveable = 1;
+                    continue;
                 }
                 if (!isMoveable(elevatorBlock)) {
                     Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.move_fail",""));
@@ -118,6 +123,11 @@ public class ElevatorManager {
                 player.playSound(player.getLocation(),sound,volume,pitch);
                 return;
             }
+        }
+        if (moveable == 1){
+            Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.movedown_fail",""));
+            player.sendActionBar(message);
+            return;
         }
     }
 }
