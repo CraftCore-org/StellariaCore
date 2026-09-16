@@ -68,6 +68,7 @@ public class StellariaCore extends JavaPlugin {
     private RankManager rankManager;
     private HomeManager homeManager;
     private WarpManager warpManager;
+    private HeadshopManager headshopManager;
     private NametagManager nametagManager;
     private KikoriManager kikoriManager;
     private MineManager mineManager;
@@ -181,6 +182,7 @@ public class StellariaCore extends JavaPlugin {
         this.rankManager = new RankManager(this);
         this.homeManager = new HomeManager(this);
         this.warpManager = new WarpManager(this);
+        this.headshopManager = new HeadshopManager(this);
         this.kikoriManager = new KikoriManager(this);
         this.mineManager = new MineManager(this);
         this.features = List.of(new KikoriFeature(kikoriManager), new MineFeature(mineManager));
@@ -467,6 +469,8 @@ public class StellariaCore extends JavaPlugin {
         this.autoBroadcastManager = new AutoBroadcastManager(this);
         autoBroadcastManager.start();
 
+        headshopManager.start();
+
         ConsoleUtil.printLogo(getPluginMeta().getVersion());
     }
 
@@ -542,6 +546,10 @@ public class StellariaCore extends JavaPlugin {
 
     public WarpManager getWarpManager() {
         return this.warpManager;
+    }
+
+    public HeadshopManager getHeadshopManager() {
+        return this.headshopManager;
     }
 
     public NametagManager getNametagManager() {
