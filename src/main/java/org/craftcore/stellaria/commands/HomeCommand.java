@@ -9,6 +9,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.gui.HomeSelectGui;
 import org.craftcore.stellaria.managers.HomeManager;
 import org.craftcore.stellaria.utils.FormatUtil;
 import org.craftcore.stellaria.utils.ParticleUtil;
@@ -51,7 +52,7 @@ public class HomeCommand implements CommandExecutor, TabCompleter {
             case "sethome" -> handleSetHome(player, args);
             case "home" -> handleHome(player, args);
             case "delhome" -> handleDelHome(player, args);
-            case "homes" -> handleHomes(player);
+            case "homes" -> handleHomes(player, args);
             default -> { }
         }
         return true;
@@ -82,7 +83,13 @@ public class HomeCommand implements CommandExecutor, TabCompleter {
             player.sendMessage(plugin.getConfigManager().getMessage("home.usage_home", player));
             return;
         }
-        String name = args[0];
+        teleportToHome(player, args[0]);
+    }
+
+    /**
+     * 名前付きホームへ移動する。/home とGUI選択のどちらからも呼ばれ、危険地点の確認状態も共有する。
+     */
+    public void teleportToHome(Player player, String name) {
         Location destination = plugin.getHomeManager().get(player.getUniqueId(), name);
         if (destination == null) {
             player.sendMessage(FormatUtil.replace(
@@ -128,7 +135,12 @@ public class HomeCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(FormatUtil.replace(plugin.getConfigManager().getMessage(key, player), "%name%", name));
     }
 
-    private void handleHomes(Player player) {
+    private void handleHomes(Player player, String[] args) {
+        if (args.length == 1 && args[0].equalsIgnoreCase("gui")) {
+            new HomeSelectGui(plugin, this, player).open(player);
+            return;
+        }
+
         List<String> names = plugin.getHomeManager().listNames(player.getUniqueId());
         if (names.isEmpty()) {
             player.sendMessage(plugin.getConfigManager().getMessage("home.list_empty", player));
@@ -143,6 +155,9 @@ public class HomeCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String @NotNull [] args) {
+        if (command.getName().equals("homes")) {
+            return args.length == 1 ? TabCompleteUtil.filterStartsWith(List.of("gui"), args[0]) : List.of();
+        }
         if (args.length != 1 || !(sender instanceof Player player) || command.getName().equals("sethome")) {
             return List.of();
         }
