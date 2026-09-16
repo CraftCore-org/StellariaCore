@@ -29,6 +29,8 @@ public class PlayerJoinListener implements Listener {
         String uuid = event.getPlayer().getUniqueId().toString();
         Player player = event.getPlayer();
 
+        plugin.getVanishManager().syncVisibilityForJoiningPlayer(player);
+
         // messages.yml からフォーマット済みのメッセージを取得
         String joinMsg = plugin.getConfigManager().getMessage("join", player);
 

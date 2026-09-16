@@ -37,7 +37,7 @@ import java.util.UUID;
 public class LandCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> SUBCOMMANDS = List.of(
-            "claim", "unclaim", "info", "list", "map", "border", "help", "area", "rule", "bypass");
+            "claim", "unclaim", "info", "list", "map", "border", "help", "area", "rule", "bypass", "unclaimable");
     private static final List<String> AREA_SUBCOMMANDS = List.of(
             "trust", "untrust", "trustlist", "pvp", "explosions", "doors", "chests");
     private static final List<String> AREA_FLAG_SUBCOMMANDS = List.of("pvp", "explosions", "doors", "chests");
@@ -628,7 +628,7 @@ public class LandCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             List<String> visible = sender.hasPermission("stellaria.land.admin")
                     ? SUBCOMMANDS
-                    : SUBCOMMANDS.stream().filter(s -> !s.equals("bypass")).toList();
+                    : SUBCOMMANDS.stream().filter(s -> !s.equals("bypass") && !s.equals("unclaimable")).toList();
             return TabCompleteUtil.filterStartsWith(visible, args[0]);
         }
         if (args[0].equalsIgnoreCase("area")) {

@@ -33,6 +33,7 @@ public class PlayerListener implements Listener {
         plugin.getMineManager().removePlayer(event.getPlayer().getUniqueId());
         plugin.getLandManager().removeBypassState(event.getPlayer().getUniqueId());
         plugin.getLandBorderParticleManager().disable(event.getPlayer().getUniqueId());
+        plugin.getVanishManager().removePlayer(event.getPlayer().getUniqueId());
     }
 
     @EventHandler

@@ -600,3 +600,9 @@ sudo:
   player_not_found: "&%cオンラインのプレイヤーが見つかりません: &%e%target%"
   blacklisted: "&%cこのコマンドは/sudoでは実行できません: &%e%command%"
   executed: "&%a%target% &%aとして実行しました: &%e%command%"
+
+vanish:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  enabled: "&%aVanishを有効にしました。"
+  disabled: "&%cVanishを無効にしました。"
+  action-bar: "&%c&l[VANISH] &%7現在ステルス中"

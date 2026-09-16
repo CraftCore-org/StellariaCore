@@ -16,13 +16,17 @@ public class PlayerQuitListener implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
 
-        // messages.yml からフォーマット済みのメッセージを取得
-        String quitMsg = plugin.getConfigManager().getMessage("quit", player);
-
-        if (!quitMsg.isEmpty()) {
-            event.setQuitMessage(quitMsg);
-        } else {
+        if (plugin.getVanishManager().isVanished(player.getUniqueId())) {
             event.setQuitMessage(null);
+        } else {
+            // messages.yml からフォーマット済みのメッセージを取得
+            String quitMsg = plugin.getConfigManager().getMessage("quit", player);
+
+            if (!quitMsg.isEmpty()) {
+                event.setQuitMessage(quitMsg);
+            } else {
+                event.setQuitMessage(null);
+            }
         }
 
         plugin.getDiscordBotManager().sendPlayerQuitLog(event);

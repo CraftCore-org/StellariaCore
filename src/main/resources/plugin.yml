@@ -83,6 +83,8 @@ commands:
     permission: stellaria.headshop
   sudo:
     permission: stellaria.sudo
+  vanish:
+    permission: stellaria.vanish
   lock:
   unlock:
 
@@ -120,6 +122,8 @@ permissions:
   stellaria.headshop.admin:
     default: op
   stellaria.sudo:
+    default: op
+  stellaria.vanish:
     default: op
   stellaria.lock:
     default: true
