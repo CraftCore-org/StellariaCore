@@ -112,7 +112,7 @@ adminshop:
 action-bar:
   enabled: true
   update-interval-ticks: 5
-  separator: " | " # 複数機能が同時にアクションバーを使うときの連結セパレータ
+  separator: " &%7|&r " # 複数機能が同時にアクションバーを使うときの連結セパレータ
   persistent:
     enabled: false # 常時表示する固定テンプレートを使うかどうか
     template: ""
