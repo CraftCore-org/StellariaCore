@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS headshop_rotation (
 - ページ送りの管理用インベントリ（1ページ45枠+ナビゲーション、`headshop_pool`を全件ページング表示）
 - **登録**: 既存GUI（`AdminShopGui`等）と同様、このGUIも`onClick`で全クリックを`setCancelled(true)`する（実物のドラッグ&ドロップは起きない）。運営はヘッドアイテムをカーソルに乗せた状態で空きスロットをクリックする。そのクリック時の`event.getCursor()`が`PLAYER_HEAD`なら`SkullMeta#getPlayerProfile()`からtextureプロパティ（base64）を読み取り、アイテムのカスタム表示名（`displayName`が設定されていればそれ、無ければ`headshop.admin.unnamed-head`のデフォルト文言）とあわせて`headshop_pool`にINSERTする。イベント自体はキャンセルされるのでカーソルのアイテムは常にそのまま運営の手元に残る。同一texture文字列が既に登録済みの場合は登録せず`headshop.admin.duplicate`メッセージのみ表示。カーソルが`PLAYER_HEAD`ですらない場合は`headshop.admin.invalid_head`を表示
 - **削除**: 既存登録済みのヘッドをシフトクリックすると、確認なしで`headshop_pool`から削除する（`land.unclaim`同様、即時実行系の操作として扱う）
+- ナビゲーション枠（`WarpSelectGui`と同じ位置関係）に、登録操作のやり方を説明する案内アイテムを1つ常時表示する（`headshop.admin.hint`のロア）
 - 権限: `stellaria.headshop.admin`
 
 ## コマンド設計（`HeadshopCommand`）
@@ -129,22 +130,33 @@ headshop:
 headshop:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   no_permission: "&%cこのコマンドを実行する権限がありません。"
-  title: "ヘッドショップ"
-  player-heads-title: "プレイヤーヘッド一覧"
-  admin-title: "ヘッドショップ管理"
+  title: "&%9&lヘッドショップ"
+  player-heads-title: "&%9&lプレイヤーヘッド一覧"
+  admin-title: "&%9&lヘッドショップ管理"
   purchased: "&%a%item% &%aを購入しました！（&%e%price% &%aコイン）"
   insufficient-funds: "&%c所持金が足りません（必要: &%e%price%&%c）"
   player-heads-hint:
     - "&%9&l| &%bヒント"
     - "&%7本日のおすすめヘッド（メイン画面）は"
     - "&%7毎日 &%e%reset_time% &%7に入れ替わります"
+  player-heads-empty: "&%7対象のプレイヤーがいません"
+  gui-previous-page: "&%e前のページ"
+  gui-next-page: "&%e次のページ"
+  gui-page: "&%7ページ %page%/%max_page%"
   admin:
     added: "&%aヘッドをプールに登録しました：&%e%item%"
     duplicate: "&%cこのヘッドは既に登録されています"
     invalid_head: "&%c頭アイテムをカーソルに乗せた状態でクリックしてください"
     unnamed-head: "名称未設定の頭"
     removed: "&%aプールからヘッドを削除しました：&%e%item%"
+    hint:
+      - "&%9&l| &%bヘッド登録のヒント"
+      - "&%7頭アイテムをカーソルに乗せた状態で"
+      - "&%7空きスロットをクリックすると登録されます"
+      - "&%7既存の頭は &%eShiftクリック &%7で削除できます"
 ```
+
+`gui-previous-page`/`gui-next-page`/`gui-page`/`player-heads-empty`は`HeadshopPlayerHeadsGui`と`HeadshopAdminGui`の両方のページングUIで共通利用する（`warp.gui_*`等、他機能のメッセージキーは流用しない）。`admin.hint`は管理者GUIの空きスロット付近に常時表示する案内アイテムのロア。
 
 ## エラーハンドリング
 
