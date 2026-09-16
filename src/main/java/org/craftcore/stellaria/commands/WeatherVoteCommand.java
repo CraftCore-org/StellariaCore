@@ -13,6 +13,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.gui.WeatherVoteGui;
 import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
 import org.jetbrains.annotations.NotNull;
@@ -103,8 +104,8 @@ public class WeatherVoteCommand implements CommandExecutor, TabCompleter {
         Player player = (Player) sender;
         if (command.getName().equalsIgnoreCase("weathervote")){
             if (args.length == 0){
-                sender.sendMessage(plugin.getConfigManager().getMessage("weathervote.err_args",(OfflinePlayer) sender));
-                return false;
+                new WeatherVoteGui(plugin, player).open(player);
+                return true;
             }
             if (isVoting) {
                 player.sendMessage(FormatUtil.text((OfflinePlayer) sender, plugin.getConfigManager().getMessage("weathervote.err_voting",(OfflinePlayer) sender)));
