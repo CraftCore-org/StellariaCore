@@ -110,6 +110,7 @@ public class StellariaCore extends JavaPlugin {
         );
 
         DatabaseManager.addColumnIfNotExists("players", "kikori_unlocked INTEGER NOT NULL DEFAULT 0");
+        DatabaseManager.addColumnIfNotExists("players", "hide_balance INTEGER NOT NULL DEFAULT 0");
 
         DatabaseManager.createTableIfNotExists("land_claims",
             "world TEXT NOT NULL",
@@ -321,6 +322,10 @@ public class StellariaCore extends JavaPlugin {
         SeenCommand seenCommand = new SeenCommand(this);
         getCommand("seen").setExecutor(seenCommand);
         getCommand("seen").setTabCompleter(seenCommand);
+
+        ProfileCommand profileCommand = new ProfileCommand(this);
+        getCommand("profile").setExecutor(profileCommand);
+        getCommand("profile").setTabCompleter(profileCommand);
 
         RankingCommand rankingCommand = new RankingCommand(this);
         getCommand("ranking").setExecutor(rankingCommand);

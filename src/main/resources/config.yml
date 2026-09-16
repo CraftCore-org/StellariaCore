@@ -53,6 +53,13 @@ warp:
 ranking:
   page-size: 10
 
+profile:
+  info-lines:
+    - "&%6&l--- プロフィール ---"
+    - "&%7名前: &%f%player%"
+    - "&%7プレイ時間: &%f%playtime%"
+    - "&%7所持金: &%e%money%"
+
 first-join-kit:
   enabled: true
   items: # "素材名:個数" 形式（個数省略で1個）

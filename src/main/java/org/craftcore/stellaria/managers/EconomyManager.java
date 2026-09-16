@@ -4,11 +4,14 @@ import net.milkbowl.vault.economy.AbstractEconomy;
 import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.MoneyFormat;
 
 import java.util.List;
 import java.util.Collections;
+import java.util.Map;
+import java.util.UUID;
 
 public class EconomyManager extends AbstractEconomy {
 
@@ -202,6 +205,24 @@ public class EconomyManager extends AbstractEconomy {
         return true;
     }
 
+    /** 対象プレイヤーの所持金を他者から非公開にしているかを返す。 */
+    public boolean isHideBalance(OfflinePlayer player) {
+        if (player == null) {
+            return false;
+        }
+        Integer hidden = DatabaseManager.queryOne(
+                "SELECT hide_balance FROM players WHERE uuid = ?",
+                rs -> rs.getInt("hide_balance"),
+                player.getUniqueId().toString()
+        );
+        return hidden != null && hidden != 0;
+    }
+
+    /** プレイヤー自身の所持金公開設定を非同期で更新する。 */
+    public void setHideBalance(Player player, boolean hidden) {
+        DatabaseManager.updateAsync("players", Map.of("hide_balance", hidden ? 1 : 0), "uuid = ?", player.getUniqueId().toString());
+    }
+
     /**
      * from -> to へ amount を送金する。DatabaseManager.transaction() で2件のUPDATEを
      * 1トランザクションにまとめる。from の残高が不足していれば何もせず false を返す。
@@ -224,14 +245,14 @@ public class EconomyManager extends AbstractEconomy {
     }
 
     /** /balance top のランキング1行分。 */
-    public record BalanceEntry(String name, long coins) {
+    public record BalanceEntry(UUID uuid, String name, long coins) {
     }
 
     /** 残高降順で limit 件、offset 件スキップして取得する（/balance top のページング用）。 */
     public List<BalanceEntry> getTopBalances(int limit, int offset) {
         return DatabaseManager.query(
-            "SELECT name, coins FROM players ORDER BY coins DESC LIMIT ? OFFSET ?",
-            rs -> new BalanceEntry(rs.getString("name"), rs.getLong("coins")),
+            "SELECT uuid, name, coins FROM players ORDER BY coins DESC LIMIT ? OFFSET ?",
+            rs -> new BalanceEntry(UUID.fromString(rs.getString("uuid")), rs.getString("name"), rs.getLong("coins")),
             limit, offset
         );
     }
