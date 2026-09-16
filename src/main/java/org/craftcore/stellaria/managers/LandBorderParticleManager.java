@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -91,10 +92,12 @@ public class LandBorderParticleManager {
     /** GlobalRegionSchedulerから設定間隔ごとに呼ぶ。 */
     public void tick() {
         LandManager land = plugin.getLandManager();
-        for (Map.Entry<UUID, DisplayState> entry : displays.entrySet()) {
+        Iterator<Map.Entry<UUID, DisplayState>> iterator = displays.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<UUID, DisplayState> entry = iterator.next();
             Player player = Bukkit.getPlayer(entry.getKey());
             if (player == null || !player.isOnline()) {
-                displays.remove(entry.getKey());
+                iterator.remove();
                 continue;
             }
 

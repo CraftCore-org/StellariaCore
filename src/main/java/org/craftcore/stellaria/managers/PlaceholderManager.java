@@ -6,6 +6,7 @@ import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.commands.WeatherVoteCommand;
 import org.craftcore.stellaria.utils.ColorUtil;
+import org.craftcore.stellaria.utils.DurationParser;
 import org.craftcore.stellaria.utils.FormatUtil;
 
 import java.time.LocalDateTime;
@@ -100,6 +101,7 @@ public class PlaceholderManager {
                 .replace("%date%", LocalDateTime.now().format(DATE_FORMAT))
                 .replace("%time%", LocalDateTime.now().format(TIME_FORMAT))
                 .replace("%money%", money)
+                .replace("%playtime%", DurationParser.formatDuration(plugin.getPlaytimeManager().getPlaytimeSeconds(player.getUniqueId())))
                 // マイクラのハート表示（10ハート=満タン）に合わせて、生のHP(0〜20)を2で割った値にする
                 .replace("%health%", trimTrailingZero(player.getHealth() / 2.0))
                 .replace("%max_health%", trimTrailingZero(player.getMaxHealth() / 2.0));

@@ -62,7 +62,7 @@ public final class WarpSelectGui extends Gui {
             String owner = warp.ownerName() != null ? warp.ownerName() : "?";
             getInventory().setItem(slot, item(Material.ENDER_PEARL, Component.text(warp.name(), NamedTextColor.WHITE), List.of(
                     message("warp.gui_entry_owner", "%owner%", owner),
-                    message("warp.gui_entry_lore")
+                    message("warp.gui_entry_lore", "%name%", warp.name())
             )));
         }
 

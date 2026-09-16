@@ -61,6 +61,12 @@ public class LandCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        // /chunkborder は /land border のエイリアス。border以降の引数だけ渡されたものとして扱う。
+        if (command.getName().equalsIgnoreCase("chunkborder")) {
+            handleBorder(player, prependBorder(args));
+            return true;
+        }
+
         String sub = args.length > 0 ? args[0].toLowerCase() : "";
         switch (sub) {
             case "claim" -> handleClaim(player);
@@ -76,6 +82,13 @@ public class LandCommand implements CommandExecutor, TabCompleter {
             default -> sendUsage(player, "land.usage");
         }
         return true;
+    }
+
+    private String[] prependBorder(String[] args) {
+        String[] result = new String[args.length + 1];
+        result[0] = "border";
+        System.arraycopy(args, 0, result, 1, args.length);
+        return result;
     }
 
     private void handleClaim(Player player) {
@@ -579,6 +592,9 @@ public class LandCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String @NotNull [] args) {
+        if (command.getName().equalsIgnoreCase("chunkborder")) {
+            return args.length == 1 ? TabCompleteUtil.filterStartsWith(ON_OFF, args[0]) : List.of();
+        }
         if (args.length == 1) {
             List<String> visible = sender.hasPermission("stellaria.land.admin")
                     ? SUBCOMMANDS

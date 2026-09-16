@@ -57,8 +57,9 @@ public final class HomeSelectGui extends Gui {
     private void populate() {
         int first = page * CONTENT_SLOTS;
         for (int slot = 0; slot < CONTENT_SLOTS && first + slot < homes.size(); slot++) {
-            getInventory().setItem(slot, item(Material.RED_BED, Component.text(homes.get(first + slot), NamedTextColor.WHITE),
-                    List.of(message("home.gui_entry_lore"))));
+            String homeName = homes.get(first + slot);
+            getInventory().setItem(slot, item(Material.RED_BED, Component.text(homeName, NamedTextColor.WHITE),
+                    List.of(message("home.gui_entry_lore", "%name%", homeName))));
         }
 
         if (homes.isEmpty()) {
