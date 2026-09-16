@@ -357,6 +357,12 @@ public class LandManager {
         return claimsByChunk.containsKey(key);
     }
 
+    /** 指定チャンクのエリアID。未claimならnull。境界パーティクルでエリアごとの色分けに使う。 */
+    public String areaIdOf(ChunkKey key) {
+        Claim claim = claimsByChunk.get(key);
+        return claim != null ? claim.areaId() : null;
+    }
+
     /** claim一覧が変化した世代。呼び出し側はキャッシュの再計算要否だけに用いる。 */
     public long claimsVersion() {
         return claimsVersion;

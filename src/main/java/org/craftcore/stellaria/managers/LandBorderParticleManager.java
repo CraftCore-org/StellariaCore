@@ -8,12 +8,14 @@ import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.ParticleUtil;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -21,11 +23,14 @@ import java.util.UUID;
  * チャンク境界パーティクルの常時表示を管理する。2つのモードがあり、同じプレイヤーが
  * 同時に両方を表示することはできない（片方をONにするともう片方は自動的に置き換わる）。
  * <ul>
- *   <li>{@link Mode#CLAIMED} — /land border。保護済みチャンクの外周のみ表示。</li>
- *   <li>{@link Mode#ALL_CHUNKS} — /chunkborder。保護状態に関係なく全チャンクの境界を表示。</li>
+ *   <li>{@link Mode#CLAIMED} — /land border。保護済みチャンクの外周を、
+ *       エリア（隣接claimの集合）ごとに色分けして表示する。別エリア同士が隣接していれば
+ *       同じ保護状態でも境界線を引く（他人の土地と繋がって見えないようにするため）。</li>
+ *   <li>{@link Mode#ALL_CHUNKS} — /chunkborder。保護状態に関係なく全チャンクの境界を
+ *       単色で表示する。</li>
  * </ul>
  *
- * プレイヤーごとに半径と「境界になるXZ座標・隣接点の組」をキャッシュする。毎回走査するのは
+ * プレイヤーごとに半径と「エリアごとの境界点・隣接点の組・色」をキャッシュする。毎回走査するのは
  * 表示中のパーティクル座標だけで、対象チャンクの走査はON時、中心チャンクの移動時、または
  * （CLAIMEDモードのみ）claim一覧が変更された時に限る。
  */
@@ -52,8 +57,12 @@ public class LandBorderParticleManager {
         }
     }
 
+    /** 1エリア（またはALL_CHUNKSモードの全体）分の境界点・隣接点・表示色。 */
+    private record AreaBorder(Color color, List<BorderPoint> points, List<BorderSegment> segments) {
+    }
+
     private record BorderCache(LandManager.ChunkKey center, int radius, long claimsVersion,
-                               List<BorderPoint> points, List<BorderSegment> segments) {
+                               List<AreaBorder> areas) {
     }
 
     private static final class DisplayState {
@@ -104,10 +113,13 @@ public class LandBorderParticleManager {
         return state != null && state.mode == mode;
     }
 
-    /** 現在キャッシュしている境界パーティクルの表示点数（診断用）。表示OFFなら0。 */
+    /** 現在キャッシュしている境界パーティクルの表示点数の合計（診断用）。表示OFFなら0。 */
     public int currentPointCount(UUID uuid) {
         DisplayState state = displays.get(uuid);
-        return state != null && state.cache != null ? state.cache.points().size() : 0;
+        if (state == null || state.cache == null) {
+            return 0;
+        }
+        return state.cache.areas().stream().mapToInt(area -> area.points().size()).sum();
     }
 
     /** GlobalRegionSchedulerから設定間隔ごとに呼ぶ。 */
@@ -136,48 +148,73 @@ public class LandBorderParticleManager {
 
     private BorderCache buildCache(LandManager.ChunkKey center, int radius, Mode mode) {
         LandManager land = plugin.getLandManager();
-        Set<BorderPoint> points = new HashSet<>();
-        Set<BorderSegment> segments = new HashSet<>();
 
-        for (int dx = -radius; dx <= radius; dx++) {
-            for (int dz = -radius; dz <= radius; dz++) {
-                LandManager.ChunkKey chunk = new LandManager.ChunkKey(
-                        center.world(), center.chunkX() + dx, center.chunkZ() + dz);
-                if (mode == Mode.CLAIMED && !land.isClaimed(chunk)) {
-                    continue;
-                }
-
-                int minX = chunk.chunkX() * CHUNK_SIZE;
-                int minZ = chunk.chunkZ() * CHUNK_SIZE;
-                int maxX = minX + CHUNK_SIZE;
-                int maxZ = minZ + CHUNK_SIZE;
-
-                if (mode == Mode.ALL_CHUNKS) {
+        if (mode == Mode.ALL_CHUNKS) {
+            Set<BorderPoint> points = new HashSet<>();
+            Set<BorderSegment> segments = new HashSet<>();
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (int dz = -radius; dz <= radius; dz++) {
+                    int minX = (center.chunkX() + dx) * CHUNK_SIZE;
+                    int minZ = (center.chunkZ() + dz) * CHUNK_SIZE;
+                    int maxX = minX + CHUNK_SIZE;
+                    int maxZ = minZ + CHUNK_SIZE;
                     // 保護状態を問わず、範囲内の全チャンクの4辺をそのまま描画する
                     // （隣接チャンクとの共有辺はSetで自然に重複排除される）。
                     addHorizontalSide(points, segments, minX, maxX, minZ);
                     addHorizontalSide(points, segments, minX, maxX, maxZ);
                     addVerticalSide(points, segments, minX, minZ, maxZ);
                     addVerticalSide(points, segments, maxX, minZ, maxZ);
+                }
+            }
+            AreaBorder area = new AreaBorder(resolveColor(), List.copyOf(points), List.copyOf(segments));
+            return new BorderCache(center, radius, land.claimsVersion(), List.of(area));
+        }
+
+        // CLAIMEDモード: エリア（隣接claimの集合）ごとに境界点・色をまとめる。
+        // 「別エリアと隣接している辺」は、相手が未claimでも別オーナーのclaimでも境界を引く
+        // （＝自分の判定は「隣接チャンクのエリアIDが自分と違うか」だけで、isClaimed()は使わない）。
+        Map<String, Set<BorderPoint>> pointsByArea = new HashMap<>();
+        Map<String, Set<BorderSegment>> segmentsByArea = new HashMap<>();
+
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                LandManager.ChunkKey chunk = new LandManager.ChunkKey(
+                        center.world(), center.chunkX() + dx, center.chunkZ() + dz);
+                String areaId = land.areaIdOf(chunk);
+                if (areaId == null) {
                     continue;
                 }
 
-                if (!land.isClaimed(new LandManager.ChunkKey(center.world(), chunk.chunkX(), chunk.chunkZ() - 1))) {
+                Set<BorderPoint> points = pointsByArea.computeIfAbsent(areaId, id -> new HashSet<>());
+                Set<BorderSegment> segments = segmentsByArea.computeIfAbsent(areaId, id -> new HashSet<>());
+
+                int minX = chunk.chunkX() * CHUNK_SIZE;
+                int minZ = chunk.chunkZ() * CHUNK_SIZE;
+                int maxX = minX + CHUNK_SIZE;
+                int maxZ = minZ + CHUNK_SIZE;
+
+                if (!Objects.equals(areaId, land.areaIdOf(new LandManager.ChunkKey(center.world(), chunk.chunkX(), chunk.chunkZ() - 1)))) {
                     addHorizontalSide(points, segments, minX, maxX, minZ);
                 }
-                if (!land.isClaimed(new LandManager.ChunkKey(center.world(), chunk.chunkX(), chunk.chunkZ() + 1))) {
+                if (!Objects.equals(areaId, land.areaIdOf(new LandManager.ChunkKey(center.world(), chunk.chunkX(), chunk.chunkZ() + 1)))) {
                     addHorizontalSide(points, segments, minX, maxX, maxZ);
                 }
-                if (!land.isClaimed(new LandManager.ChunkKey(center.world(), chunk.chunkX() - 1, chunk.chunkZ()))) {
+                if (!Objects.equals(areaId, land.areaIdOf(new LandManager.ChunkKey(center.world(), chunk.chunkX() - 1, chunk.chunkZ())))) {
                     addVerticalSide(points, segments, minX, minZ, maxZ);
                 }
-                if (!land.isClaimed(new LandManager.ChunkKey(center.world(), chunk.chunkX() + 1, chunk.chunkZ()))) {
+                if (!Objects.equals(areaId, land.areaIdOf(new LandManager.ChunkKey(center.world(), chunk.chunkX() + 1, chunk.chunkZ())))) {
                     addVerticalSide(points, segments, maxX, minZ, maxZ);
                 }
             }
         }
 
-        return new BorderCache(center, radius, land.claimsVersion(), List.copyOf(points), List.copyOf(segments));
+        List<AreaBorder> areas = new ArrayList<>();
+        for (Map.Entry<String, Set<BorderPoint>> entry : pointsByArea.entrySet()) {
+            String areaId = entry.getKey();
+            areas.add(new AreaBorder(colorForArea(areaId), List.copyOf(entry.getValue()),
+                    List.copyOf(segmentsByArea.getOrDefault(areaId, Set.of()))));
+        }
+        return new BorderCache(center, radius, land.claimsVersion(), areas);
     }
 
     private void addHorizontalSide(Set<BorderPoint> points, Set<BorderSegment> segments,
@@ -209,35 +246,37 @@ public class LandBorderParticleManager {
     /**
      * 境界XZごとに現在の最高ブロックの1つ上を表示する。高さはキャッシュしないため、地形が変わっても
      * 次回表示時に追従する。隣接点の高低差が2以上なら低い側の座標に縦の補完点を足す。
-     * CLAIMED/ALL_CHUNKSどちらのモードでも同じロジックで地形に追従する。
+     * エリアごとに色（DustOptions）を切り替えて描画する。
      */
     private void render(Player player, BorderCache cache) {
         World world = player.getWorld();
-        Map<BorderPoint, Integer> heights = new HashMap<>();
-        for (BorderPoint point : cache.points()) {
-            int y = world.getHighestBlockYAt(point.x(), point.z()) + 1;
-            heights.put(point, y);
-        }
-
         Particle particle = resolveParticle();
-        Particle.DustOptions dust = particle == Particle.DUST
-                ? new Particle.DustOptions(resolveColor(), (float) plugin.getConfigManager()
-                .getDouble("land.border-particle.size", 1.0))
-                : null;
-        for (Map.Entry<BorderPoint, Integer> entry : heights.entrySet()) {
-            spawn(player, particle, dust, entry.getKey(), entry.getValue());
-        }
-        for (BorderSegment segment : cache.segments()) {
-            int firstY = heights.get(segment.first());
-            int secondY = heights.get(segment.second());
-            if (Math.abs(firstY - secondY) < 2) {
-                continue;
+        float size = (float) plugin.getConfigManager().getDouble("land.border-particle.size", 1.0);
+
+        for (AreaBorder area : cache.areas()) {
+            Map<BorderPoint, Integer> heights = new HashMap<>();
+            for (BorderPoint point : area.points()) {
+                heights.put(point, world.getHighestBlockYAt(point.x(), point.z()) + 1);
             }
-            BorderPoint lowerPoint = firstY < secondY ? segment.first() : segment.second();
-            int lowerY = Math.min(firstY, secondY);
-            int higherY = Math.max(firstY, secondY);
-            for (int y = lowerY + 1; y < higherY; y++) {
-                spawn(player, particle, dust, lowerPoint, y);
+
+            Particle.DustOptions dust = particle == Particle.DUST
+                    ? new Particle.DustOptions(area.color(), size)
+                    : null;
+            for (Map.Entry<BorderPoint, Integer> entry : heights.entrySet()) {
+                spawn(player, particle, dust, entry.getKey(), entry.getValue());
+            }
+            for (BorderSegment segment : area.segments()) {
+                int firstY = heights.get(segment.first());
+                int secondY = heights.get(segment.second());
+                if (Math.abs(firstY - secondY) < 2) {
+                    continue;
+                }
+                BorderPoint lowerPoint = firstY < secondY ? segment.first() : segment.second();
+                int lowerY = Math.min(firstY, secondY);
+                int higherY = Math.max(firstY, secondY);
+                for (int y = lowerY + 1; y < higherY; y++) {
+                    spawn(player, particle, dust, lowerPoint, y);
+                }
             }
         }
     }
@@ -265,6 +304,7 @@ public class LandBorderParticleManager {
         }
     }
 
+    /** ALL_CHUNKSモードや、resolveParticleがDUST以外の色を無視するケースで使う固定色。 */
     private Color resolveColor() {
         try {
             return ParticleUtil.parseColor(plugin.getConfigManager().getString("land.border-particle.color", "#55FF55"));
@@ -272,5 +312,15 @@ public class LandBorderParticleManager {
             plugin.getLogger().warning("land.border-particle.color の値が不正なため、デフォルト色にフォールバックします: " + e.getMessage());
             return ParticleUtil.parseColor("#55FF55");
         }
+    }
+
+    /**
+     * エリアIDから決定論的に色相を割り当てる（同じエリアは常に同じ色、別エリアは高確率で別の色）。
+     * 彩度・明度は固定で見やすさを確保する。configでの色指定は不要。
+     */
+    private Color colorForArea(String areaId) {
+        float hue = (Math.abs(areaId.hashCode()) % 360) / 360f;
+        int rgb = java.awt.Color.HSBtoRGB(hue, 0.85f, 1.0f) & 0xFFFFFF;
+        return Color.fromRGB(rgb);
     }
 }
