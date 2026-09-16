@@ -8,11 +8,13 @@ import org.craftcore.stellaria.commands.tpa.TpaCore;
 import org.craftcore.stellaria.commands.HomeCommand;
 import org.craftcore.stellaria.commands.WarpCommand;
 import org.craftcore.stellaria.commands.KikoriCommand;
+import org.craftcore.stellaria.commands.MineCommand;
 import org.craftcore.stellaria.commands.LandCommand;
 import org.craftcore.stellaria.managers.*;
 import org.craftcore.stellaria.gui.GuiListener;
 import org.craftcore.stellaria.features.Feature;
 import org.craftcore.stellaria.features.KikoriFeature;
+import org.craftcore.stellaria.features.MineFeature;
 import org.craftcore.stellaria.managers.ActionBarManager;
 import org.craftcore.stellaria.managers.AfkManager;
 import org.craftcore.stellaria.managers.AutoBroadcastManager;
@@ -32,6 +34,7 @@ import org.craftcore.stellaria.listeners.MuteCommandBlockListener;
 import org.craftcore.stellaria.listeners.PlayerListener;
 import org.craftcore.stellaria.listeners.PlayerQuitListener;
 import org.craftcore.stellaria.listeners.KikoriListener;
+import org.craftcore.stellaria.listeners.MineListener;
 import org.craftcore.stellaria.listeners.LandProtectionListener;
 import org.craftcore.stellaria.listeners.LandAreaStatusListener;
 import org.craftcore.stellaria.listeners.VoteListener;
@@ -67,6 +70,7 @@ public class StellariaCore extends JavaPlugin {
     private WarpManager warpManager;
     private NametagManager nametagManager;
     private KikoriManager kikoriManager;
+    private MineManager mineManager;
     private LandManager landManager;
     private DiscordBotManager discordBotManager;
     private LandBorderParticleManager landBorderParticleManager;
@@ -120,6 +124,7 @@ public class StellariaCore extends JavaPlugin {
 
         DatabaseManager.addColumnIfNotExists("players", "kikori_unlocked INTEGER NOT NULL DEFAULT 0");
         DatabaseManager.addColumnIfNotExists("players", "hide_balance INTEGER NOT NULL DEFAULT 0");
+        DatabaseManager.addColumnIfNotExists("players", "mine_unlocked INTEGER NOT NULL DEFAULT 0");
 
         DatabaseManager.createTableIfNotExists("land_claims",
             "world TEXT NOT NULL",
@@ -150,13 +155,21 @@ public class StellariaCore extends JavaPlugin {
             "PRIMARY KEY (territory_id, trusted_uuid)"
         );
 
+        // 行が存在する = 表示ON。/land border と /chunkborder は排他なので1人1行で足りる。
+        DatabaseManager.createTableIfNotExists("land_border_displays",
+            "uuid TEXT PRIMARY KEY",
+            "mode TEXT NOT NULL",
+            "radius INTEGER NOT NULL"
+        );
+
         this.afkManager = new AfkManager(this);
         this.playtimeManager = new PlaytimeManager(this);
         this.rankManager = new RankManager(this);
         this.homeManager = new HomeManager(this);
         this.warpManager = new WarpManager(this);
         this.kikoriManager = new KikoriManager(this);
-        this.features = List.of(new KikoriFeature(kikoriManager));
+        this.mineManager = new MineManager(this);
+        this.features = List.of(new KikoriFeature(kikoriManager), new MineFeature(mineManager));
 
         this.discordBotManager = new DiscordBotManager(this);
 
@@ -226,6 +239,7 @@ public class StellariaCore extends JavaPlugin {
         this.elevatorManager = new ElevatorManager(this);
         getServer().getPluginManager().registerEvents(new PlayerListener(this, elevatorManager), this);
         getServer().getPluginManager().registerEvents(new KikoriListener(this), this);
+        getServer().getPluginManager().registerEvents(new MineListener(this), this);
         getServer().getPluginManager().registerEvents(new LandProtectionListener(this), this);
         getServer().getPluginManager().registerEvents(new LandAreaStatusListener(this), this);
 
@@ -273,6 +287,10 @@ public class StellariaCore extends JavaPlugin {
 
         if (configManager.getBoolean("kikori.enabled", true)) {
             Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> kikoriManager.tick(), 200L, 200L);
+        }
+
+        if (configManager.getBoolean("mine.enabled", true)) {
+            Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> mineManager.tick(), 200L, 200L);
         }
 
         if (configManager.getBoolean("discord.bot.enabled",true)){
@@ -398,6 +416,10 @@ public class StellariaCore extends JavaPlugin {
         getCommand("kikori").setExecutor(kikoriCommand);
         getCommand("kikori").setTabCompleter(kikoriCommand);
 
+        MineCommand mineCommand = new MineCommand(this);
+        getCommand("mine").setExecutor(mineCommand);
+        getCommand("mine").setTabCompleter(mineCommand);
+
         FeaturesCommand featuresCommand = new FeaturesCommand(this, features);
         getCommand("features").setExecutor(featuresCommand);
         getCommand("features").setTabCompleter(featuresCommand);
@@ -514,6 +536,10 @@ public class StellariaCore extends JavaPlugin {
 
     public KikoriManager getKikoriManager() {
         return this.kikoriManager;
+    }
+
+    public MineManager getMineManager() {
+        return this.mineManager;
     }
 
     public List<Feature> getFeatures() {

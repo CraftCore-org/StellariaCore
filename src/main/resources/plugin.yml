@@ -75,6 +75,7 @@ commands:
   tvaccept:
   tvdeny:
   kikori:
+  mine:
   features:
   land:
   chunkborder:
@@ -103,6 +104,8 @@ permissions:
   stellaria.warp:
     default: true
   stellaria.land:
+    default: true
+  stellaria.mine:
     default: true
   stellaria.land.admin:
     default: op

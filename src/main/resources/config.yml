@@ -282,6 +282,12 @@ kikori:
   max-logs: 256
   leaf-radius: 4
 
+mine:
+  enabled: true
+  price: 3000
+  timeout-seconds: 300
+  max-ores: 128
+
 land:
   enabled-worlds: ["world"]
   cost-per-chunk: 500
