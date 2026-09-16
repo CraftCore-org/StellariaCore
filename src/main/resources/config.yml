@@ -20,6 +20,21 @@ discord:
     joinlog-format: "%player%が参加しました。"
     quitlog-format: "%player%が退出しました。"
 
+map:
+  link: "https://map.craftcore.org" #
+
+homepage:
+  link: "https://craftcore.org/stellaria"
+  craftcore-link: "https://craftcore.org" #
+
+vote:
+  enabled: true
+  reward:
+    money: 500
+  sites:
+    mineportal: "https://example.com/mineportal" # TODO: 実際の投票URLに差し替え
+    minecraftjp: "https://example.com/minecraftjp" # TODO: 実際の投票URLに差し替え
+
 rank:
   enabled: true
   default:
@@ -40,6 +55,14 @@ rank:
 
 economy:
   default-balance: 1000 # 新規プレイヤーの初期所持金
+
+world:
+  gui-title: "&%9ワールドを選択"
+  gui-rows: 0 # 1〜6で固定行数。0または範囲外ならワールド数から自動計算（例: 6）
+  # Bukkit上のワールド名をGUIに表示する名前へ置き換える（未設定のワールドは元の名前を表示）
+  #   world: "生活ワールド"
+  #   world_nether: "ネザー"
+  display-names: {}
 
 home:
   max-per-player: 5
@@ -66,6 +89,13 @@ warp:
 ranking:
   page-size: 10
 
+profile:
+  info-lines:
+    - "&%6&l--- プロフィール ---"
+    - "&%7名前: &%f%player%"
+    - "&%7プレイ時間: &%f%playtime%"
+    - "&%7所持金: &%e%money%"
+
 first-join-kit:
   enabled: true
   items: # "素材名:個数" 形式（個数省略で1個）
@@ -76,10 +106,26 @@ first-join-kit:
     - "COOKED_BEEF:16"
     - "OAK_LOG:16"
 
+adminshop:
+  enabled: true
+  # rows: 6 # 省略時は商品数に応じて自動決定（1〜6）
+  items:
+    - material: BREAD
+      price: 10
+      # slot: 0 # 省略時は空いているスロットへ自動配置
+    - material: CARROT
+      price: 8
+    - material: POTATO
+      price: 8
+    - material: COOKED_BEEF
+      price: 40
+    - material: OAK_LOG
+      price: 20
+
 action-bar:
   enabled: true
   update-interval-ticks: 5
-  separator: " | " # 複数機能が同時にアクションバーを使うときの連結セパレータ
+  separator: " &%7|&r " # 複数機能が同時にアクションバーを使うときの連結セパレータ
   persistent:
     enabled: false # 常時表示する固定テンプレートを使うかどうか
     template: ""
@@ -94,7 +140,6 @@ scoreboard:
   hide-numbers: true
   lines:
     - ""
-    - " &%bオンライン&%7: &%f%online%&%7/&%f%max_online%"
     - " &%bワールド&%7: &%f%world%"
     - " &%b座標&%7: &%f%x%&%7,&%f %y%&%7,&%f %z%"
     - " &%b所持金&%7: &%f%money%"
@@ -256,3 +301,70 @@ land:
     color: "#55FF55"
     size: 1.0
     duration-seconds: 3
+    # /land border の常時表示用設定。半径はプレイヤーの現在地を中心にしたチャンク単位。
+    toggle-radius-default: 3
+    toggle-interval-ticks: 20
+
+menu:
+  rows: 5 # 1〜6。省略/範囲外の場合は5
+  items:
+    - slot: 10
+      material: PLAYER_HEAD
+      name: "&%bプロフィール"
+      action: "profile"
+    - slot: 11
+      material: PAPER
+      name: "&%9Discord"
+      action: "discord"
+    - slot: 12
+      material: EMERALD
+      name: "&%aサーバー投票"
+      action: "vote"
+    - slot: 13
+      material: COMPASS
+      name: "&%eワールド移動"
+      action: "world"
+    - slot: 14
+      material: LIGHTNING_ROD
+      name: "&%b天気投票"
+      action: "weathervote"
+    - slot: 15
+      material: CLOCK
+      name: "&%6時間投票"
+      action: "timevote"
+    - slot: 16
+      material: ENDER_CHEST
+      name: "&%8エンダーチェスト"
+      action: "enderchest"
+    - slot: 28
+      material: REDSTONE
+      name: "&%c便利機能"
+      action: "features"
+    - slot: 29
+      material: FILLED_MAP
+      name: "&%2マップ"
+      action: "map"
+    - slot: 30
+      material: DARK_OAK_LOG
+      name: "&%9ホームページ"
+      action: "homepage"
+    - slot: 31
+      material: ENDER_PEARL
+      name: "&%dテレポートリクエストの使い方"
+      action: "tpa-help"
+    - slot: 32
+      material: SHIELD
+      name: "&%a土地保護のヘルプ"
+      action: "land-help"
+    - slot: 33
+      material: LODESTONE
+      name: "&%3ワープ"
+      action: "warp"
+    - slot: 34
+      material: RED_BED
+      name: "&%9ホーム"
+      action: "home"
+    - slot: 44
+      material: COMPASS
+      name: "&%9メニューアイテムを入手"
+      action: "get-menu-item"

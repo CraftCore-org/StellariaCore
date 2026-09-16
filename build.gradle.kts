@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "org.craftcore.stellaria"
-version = "1.0.42"
+version = "1.0.51"
 
 repositories {
     mavenCentral()
@@ -14,6 +14,7 @@ repositories {
     maven("https://repo.codemc.io/repository/maven-releases/")             // PacketEvents
     maven("https://repo.codemc.org/repository/maven-public")               // VaultUnlocked
     maven("https://repo.extendedclip.com/content/repositories/placeholderapi/") // PlaceholderAPI
+    maven("https://jitpack.io")                                             // NuVotifier
 }
 
 dependencies {
@@ -27,6 +28,10 @@ dependencies {
     compileOnly("net.luckperms:api:5.4")
     implementation("org.xerial:sqlite-jdbc:3.46.1.0")
     implementation("net.dv8tion:JDA:6.6.0")
+    compileOnly("net.luckperms:api:5.4")
+    compileOnly("com.github.nuvotifier:nuvotifier:2.7.2")
+    implementation("org.xerial:sqlite-jdbc:3.46.1.0")
+    
 }
 
 tasks.withType<JavaCompile> {

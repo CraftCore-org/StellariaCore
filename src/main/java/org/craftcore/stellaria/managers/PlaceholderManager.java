@@ -33,7 +33,19 @@ public class PlaceholderManager {
     }
 
     public String resolve(String template, Player player) {
-        return FormatUtil.text(player, resolveBuiltIn(template, player));
+        return resolve(template, player, player);
+    }
+
+    /**
+     * テンプレートを対象プレイヤーの情報で解決する。閲覧者が対象とは別人で、対象者が所持金を
+     * 非公開にしている場合、{@code %money%} は非公開メッセージに置き換える。
+     *
+     * @param template 解決するテンプレート
+     * @param target プレースホルダー情報の対象プレイヤー
+     * @param viewer 解決結果を閲覧するプレイヤー。プレイヤーでない閲覧者の場合は {@code null}
+     */
+    public String resolve(String template, Player target, Player viewer) {
+        return FormatUtil.text(target, resolveBuiltIn(template, target, viewer));
     }
 
     /**
@@ -43,6 +55,13 @@ public class PlaceholderManager {
      * テンプレートが空/nullなら null を返す。
      */
     public Component resolveLines(List<String> templates, Player player) {
+        return resolveLines(templates, player, player);
+    }
+
+    /**
+     * 複数行テンプレートを対象プレイヤーの情報で解決し、閲覧者に応じて非公開情報を伏せる。
+     */
+    public Component resolveLines(List<String> templates, Player target, Player viewer) {
         if (templates == null || templates.isEmpty()) {
             return null;
         }
@@ -51,16 +70,20 @@ public class PlaceholderManager {
             if (i > 0) {
                 result = result.append(Component.newline());
             }
-            result = result.append(ColorUtil.component(resolve(templates.get(i), player)));
+            result = result.append(ColorUtil.component(resolve(templates.get(i), target, viewer)));
         }
         return result;
     }
 
-    private String resolveBuiltIn(String template, Player player) {
+    private String resolveBuiltIn(String template, Player player, Player viewer) {
         int x = player.getLocation().getBlockX();
         int y = player.getLocation().getBlockY();
         int z = player.getLocation().getBlockZ();
         double balance = plugin.getEconomyManager().getBalance(player);
+        String money = plugin.getEconomyManager().format(balance);
+        if (template.contains("%money%") && shouldHideBalance(player, viewer)) {
+            money = plugin.getConfigManager().getMessage("profile.balance_hidden", player);
+        }
 
         return template
                 .replace("%afk%", resolveAfkTag(player))
@@ -76,10 +99,15 @@ public class PlaceholderManager {
                 .replace("%location%", player.getWorld().getName() + " (" + x + ", " + y + ", " + z + ")")
                 .replace("%date%", LocalDateTime.now().format(DATE_FORMAT))
                 .replace("%time%", LocalDateTime.now().format(TIME_FORMAT))
-                .replace("%money%", plugin.getEconomyManager().format(balance))
+                .replace("%money%", money)
                 // マイクラのハート表示（10ハート=満タン）に合わせて、生のHP(0〜20)を2で割った値にする
                 .replace("%health%", trimTrailingZero(player.getHealth() / 2.0))
                 .replace("%max_health%", trimTrailingZero(player.getMaxHealth() / 2.0));
+    }
+
+    private boolean shouldHideBalance(Player target, Player viewer) {
+        return (viewer == null || !target.getUniqueId().equals(viewer.getUniqueId()))
+                && plugin.getEconomyManager().isHideBalance(target);
     }
 
     private String resolveAfkTag(Player player) {

@@ -118,12 +118,16 @@ public class KikoriManager {
 
     public enum PurchaseResult { SUCCESS, ALREADY_UNLOCKED, INSUFFICIENT_FUNDS }
 
+    public int getPrice() {
+        return plugin.getConfigManager().getInt("kikori.price", 50000);
+    }
+
     /** /kikori buy から呼ぶ。kikori.price をEconomyManagerから引き落とし、成功したらDBのフラグを立てる。 */
     public PurchaseResult purchase(Player player) {
         if (isUnlocked(player)) {
             return PurchaseResult.ALREADY_UNLOCKED;
         }
-        int price = plugin.getConfigManager().getInt("kikori.price", 50000);
+        int price = getPrice();
         EconomyResponse response = plugin.getEconomyManager().withdrawPlayer(player, price);
         if (!response.transactionSuccess()) {
             return PurchaseResult.INSUFFICIENT_FUNDS;

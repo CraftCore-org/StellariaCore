@@ -1,6 +1,5 @@
 package org.craftcore.stellaria.listeners;
 
-import io.papermc.paper.chat.ChatRenderer;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -64,16 +63,18 @@ public class ChatListener implements Listener {
 
         String format = config.getString("chat.format", "{placeholder}{sender}&%7: &%f{message}");
         String placeholderTemplate = config.getString("chat.placeholder", "");
-        Component placeholder = ColorUtil.component(plugin.getPlaceholderManager().resolve(placeholderTemplate, sender));
 
         String plainMessage = PlainTextComponentSerializer.plainText().serialize(event.message());
         Component message = mentionService.highlight(plainMessage, sender, colorCodesPermitted(config, sender));
         boolean clickToMessage = config.getBoolean("chat.click-to-message", true);
         RankManager.RankInfo rank = plugin.getRankManager().getRank(sender);
-        Component tooltip = buildTooltip(config, sender, clickToMessage, rank);
         Component rankPrefix = ColorUtil.component(rank.color() + config.getRawMessage("chat.sender_prefix"));
 
-        event.renderer(ChatRenderer.viewerUnaware((source, sourceDisplayName, ignoredMessage) -> {
+        event.renderer((source, sourceDisplayName, ignoredMessage, audience) -> {
+            Player viewer = audience instanceof Player player ? player : null;
+            Component placeholder = ColorUtil.component(plugin.getPlaceholderManager()
+                    .resolve(placeholderTemplate, sender, viewer));
+            Component tooltip = buildTooltip(config, sender, viewer, clickToMessage, rank);
             Component nameComponent = rankPrefix.append(
                     sourceDisplayName.decoration(TextDecoration.BOLD, false).color(NamedTextColor.WHITE));
             nameComponent = tooltip != null
@@ -83,21 +84,21 @@ public class ChatListener implements Listener {
                 nameComponent = nameComponent.clickEvent(ClickEvent.suggestCommand("/msg " + sender.getName() + " "));
             }
             return render(format, nameComponent, placeholder, message);
-        }));
+        });
     }
 
     /**
      * 送信者名にホバーした時に出すツールチップ（{@code chat.tooltip.*} + クリック案内）。
      * ツールチップもクリック案内も無ければ null。
      */
-    private Component buildTooltip(ConfigManager config, Player sender, boolean clickToMessage, RankManager.RankInfo rank) {
+    private Component buildTooltip(ConfigManager config, Player sender, Player viewer, boolean clickToMessage, RankManager.RankInfo rank) {
         Component rankLine = rank.displayName().isEmpty()
                 ? null
                 : ColorUtil.component(config.getRawMessage("chat.tooltip.rank_line")
                         .replace("%rank%", rank.color() + rank.displayName()));
 
         Component linesTooltip = config.getBoolean("chat.tooltip.enabled", true)
-                ? plugin.getPlaceholderManager().resolveLines(config.getStringList("chat.tooltip.lines"), sender)
+                ? plugin.getPlaceholderManager().resolveLines(config.getStringList("chat.tooltip.lines"), sender, viewer)
                 : null;
         Component combined = rankLine;
         if (linesTooltip != null) {

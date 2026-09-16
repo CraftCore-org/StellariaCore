@@ -6,9 +6,12 @@ description: Feature plugin for Stellaria MC
 api-version: 1.21
 
 depend: [Citizens, packetevents, Vault, PlaceholderAPI]
-softdepend: [LuckPerms]
+softdepend: [LuckPerms, NuVotifier]
 
 commands:
+  menu:
+  menuitem:
+  tphelp:
   tpa:
   tpaccept:
   tpdeny:
@@ -36,12 +39,23 @@ commands:
     permission: stellaria.eco
   balance:
     aliases: [money, bal]
+  world:
+    permission: stellaria.world
   colors:
     permission: stellaria.chat.color
+  adminshop:
   discord:
     aliases: [dc]
+  map:
+  homepage:
+  enderchest:
+    aliases: [ec]
+  vote:
   playtime:
   seen:
+  profile:
+    permission: stellaria.profile
+  settings:
   ranking:
     aliases: [rank]
   scoreboard:
@@ -61,6 +75,7 @@ commands:
   tvaccept:
   tvdeny:
   kikori:
+  features:
   land:
 
 permissions:
@@ -70,9 +85,13 @@ permissions:
     default: true
   stellaria.balance:
     default: true
+  stellaria.world:
+    default: true
   stellaria.playtime:
     default: true
   stellaria.seen:
+    default: true
+  stellaria.profile:
     default: true
   stellaria.ranking:
     default: true

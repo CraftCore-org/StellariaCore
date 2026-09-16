@@ -1,0 +1,143 @@
+package org.craftcore.stellaria.gui;
+
+import net.kyori.adventure.text.Component;
+import org.bukkit.Material;
+import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.commands.HomeCommand;
+import org.craftcore.stellaria.commands.WarpCommand;
+import org.craftcore.stellaria.utils.ColorUtil;
+import org.craftcore.stellaria.utils.FormatUtil;
+import org.craftcore.stellaria.utils.MenuItemUtil;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * サーバー内の各機能への入口をまとめた総合メニュー（/menu）。
+ * 行数・スロット・アイコン・表示名・アクションは {@code config.yml} の {@code menu} セクションで
+ * 変更できる（{@link #loadEntries(StellariaCore)}参照）。それぞれのアクションは既存の
+ * コマンド/GUIをそのまま呼び出すだけで、独自ロジックは持たない。
+ */
+public class MenuGui extends Gui {
+
+    private static final int DEFAULT_ROWS = 5;
+
+    private final StellariaCore plugin;
+    private final Map<Integer, MenuEntry> entriesBySlot;
+
+    public MenuGui(StellariaCore plugin, Player viewer) {
+        super(inventorySize(plugin), messageComponent(plugin, "menu.title", viewer));
+        this.plugin = plugin;
+        this.entriesBySlot = loadEntries(plugin);
+        populate(viewer);
+    }
+
+    private static int inventorySize(StellariaCore plugin) {
+        int rows = plugin.getConfigManager().getInt("menu.rows", DEFAULT_ROWS);
+        return Math.max(1, Math.min(6, rows)) * 9;
+    }
+
+    private void populate(Player viewer) {
+        for (Map.Entry<Integer, MenuEntry> entry : entriesBySlot.entrySet()) {
+            int slot = entry.getKey();
+            if (slot >= getInventory().getSize()) {
+                continue;
+            }
+            MenuEntry menuEntry = entry.getValue();
+            ItemStack item = new ItemStack(menuEntry.material());
+            ItemMeta meta = item.getItemMeta();
+            meta.displayName(ColorUtil.component(menuEntry.name()));
+            item.setItemMeta(meta);
+            getInventory().setItem(slot, item);
+        }
+    }
+
+    @Override
+    public void onClick(InventoryClickEvent event) {
+        event.setCancelled(true);
+        if (!(event.getWhoClicked() instanceof Player player) || event.getRawSlot() >= getInventory().getSize()) {
+            return;
+        }
+
+        MenuEntry entry = entriesBySlot.get(event.getRawSlot());
+        if (entry == null) {
+            return;
+        }
+
+        switch (entry.action()) {
+            case "profile" -> new ProfileGui(plugin, player, this).open(player);
+            case "discord" -> runCommand(player, "discord");
+            case "vote" -> runCommand(player, "vote");
+            case "world" -> new WorldSelectGui(plugin, this).open(player);
+            case "weathervote" -> new WeatherVoteGui(plugin, player, this).open(player);
+            case "timevote" -> new TimeVoteGui(plugin, player, this).open(player);
+            case "enderchest" -> {
+                player.closeInventory();
+                player.openInventory(player.getEnderChest());
+            }
+            case "features" -> new FeaturesGui(plugin, plugin.getFeatures(), player, this).open(player);
+            case "map" -> runCommand(player, "map");
+            case "homepage" -> runCommand(player, "homepage");
+            case "tpa-help" -> sendHelpLines(player, "menu.tpa_help_lines");
+            case "land-help" -> runCommand(player, "land help");
+            case "warp" -> new WarpSelectGui(plugin, new WarpCommand(plugin), this).open(player);
+            case "home" -> new HomeSelectGui(plugin, new HomeCommand(plugin), player, this).open(player);
+            case "get-menu-item" -> {
+                player.getInventory().addItem(MenuItemUtil.create(plugin));
+                player.sendMessage(plugin.getConfigManager().getMessage("menuitem.given", player));
+            }
+            default -> plugin.getLogger().warning("menu.items に不明なactionがあります: " + entry.action());
+        }
+    }
+
+    private void runCommand(Player player, String command) {
+        player.closeInventory();
+        player.performCommand(command);
+    }
+
+    private void sendHelpLines(Player player, String messageListKey) {
+        player.closeInventory();
+        for (String line : plugin.getConfigManager().getMessageList(messageListKey)) {
+            player.sendMessage(FormatUtil.text(player, line));
+        }
+    }
+
+    private static Map<Integer, MenuEntry> loadEntries(StellariaCore plugin) {
+        Map<Integer, MenuEntry> entries = new HashMap<>();
+        List<Map<?, ?>> configuredItems = plugin.getConfigManager().getMapList("menu.items");
+        for (Map<?, ?> itemConfig : configuredItems) {
+            Object slotValue = itemConfig.get("slot");
+            Object materialValue = itemConfig.get("material");
+            Object nameValue = itemConfig.get("name");
+            Object actionValue = itemConfig.get("action");
+
+            if (!(slotValue instanceof Number slotNumber)) {
+                plugin.getLogger().warning("menu.items に無効なslot指定があります: " + itemConfig);
+                continue;
+            }
+            Material material = materialValue instanceof String materialName ? Material.matchMaterial(materialName) : null;
+            if (material == null) {
+                plugin.getLogger().warning("menu.items に無効なmaterial指定があります: " + itemConfig);
+                continue;
+            }
+            String name = nameValue instanceof String ? (String) nameValue : "";
+            String action = actionValue instanceof String ? (String) actionValue : "";
+
+            entries.put(slotNumber.intValue(), new MenuEntry(material, name, action));
+        }
+        return entries;
+    }
+
+    private record MenuEntry(Material material, String name, String action) {
+    }
+
+    private static Component messageComponent(StellariaCore plugin, String path, Player player) {
+        return ColorUtil.component(plugin.getConfigManager().getMessage(path, player));
+    }
+}

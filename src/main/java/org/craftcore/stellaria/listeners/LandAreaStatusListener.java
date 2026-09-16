@@ -30,14 +30,15 @@ import java.util.UUID;
  * これが無いと、1つの広いエリア内でチャンク境界を跨ぐたびに（全く同じ内容を）再送してしまい、
  * ちらつきの原因になる。
  *
- * PvP有効エリアに入っている間はボスバーで警告する（BossBarManager経由）。ActionBarと違い
- * ボスバーはチャンネルごとに常設表示できるので、エリアを出た/PvPが無効なエリアに移った
- * 瞬間にclearChannelするだけでよい（flash不要）。
+ * PvP有効エリアに入っている間はボスバーで警告する（BossBarManager経由）。PvP有効エリアから
+ * 出た瞬間だけは、何も表示されないと気付きにくいため{@code land.status_pvp_disabled_notice}を
+ * 数秒間flash表示する（それ以外の遷移では単にclearChannelするだけでよい）。
  */
 public class LandAreaStatusListener implements Listener {
 
     private static final String AREA_STATUS_CHANNEL = "land_area_status";
     private static final String PVP_WARNING_CHANNEL = "land_pvp_warning";
+    private static final long PVP_DISABLED_NOTICE_TICKS = 40L;
 
     /** 直近表示したエリアの状態。未claim地はUNCLAIMED定数で表す。 */
     private record AreaSignature(UUID owner, boolean pvpEnabled, boolean explosionsAllowed,
@@ -101,10 +102,11 @@ public class LandAreaStatusListener implements Listener {
         if (signature.equals(previous)) {
             return;
         }
+        boolean leftPvpArea = previous != null && previous.pvpEnabled() && !signature.pvpEnabled();
 
         if (owner == null) {
             plugin.getActionBarManager().clearChannel(player, AREA_STATUS_CHANNEL);
-            plugin.getBossBarManager().clearChannel(player, PVP_WARNING_CHANNEL);
+            notifyPvpAreaLeft(player, leftPvpArea);
             return;
         }
 
@@ -127,7 +129,17 @@ public class LandAreaStatusListener implements Listener {
                     ColorUtil.component(plugin.getConfigManager().getMessage("land.status_pvp_warning", player)),
                     BossBar.Color.RED, BossBar.Overlay.PROGRESS, 1.0f);
         } else {
-            plugin.getBossBarManager().clearChannel(player, PVP_WARNING_CHANNEL);
+            notifyPvpAreaLeft(player, leftPvpArea);
+        }
+    }
+
+    /** PvP有効エリアから出た瞬間だけ、ボスバーで一時的に通知する（それ以外は単にクリアするだけでよい）。 */
+    private void notifyPvpAreaLeft(Player player, boolean leftPvpArea) {
+        plugin.getBossBarManager().clearChannel(player, PVP_WARNING_CHANNEL);
+        if (leftPvpArea) {
+            plugin.getBossBarManager().flash(player, PVP_WARNING_CHANNEL,
+                    ColorUtil.component(plugin.getConfigManager().getMessage("land.status_pvp_disabled_notice", player)),
+                    BossBar.Color.GREEN, BossBar.Overlay.PROGRESS, 1.0f, PVP_DISABLED_NOTICE_TICKS);
         }
     }
 

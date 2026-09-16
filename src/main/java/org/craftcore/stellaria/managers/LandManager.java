@@ -113,6 +113,8 @@ public class LandManager {
     private final Map<String, Area> areas = new ConcurrentHashMap<>();
     /** stellaria.land.adminを持つプレイヤーが/land bypassで自発的にON/OFFする、保護無視モード。 */
     private final Set<UUID> bypassEnabled = ConcurrentHashMap.newKeySet();
+    /** claimの追加・削除ごとに増やす。境界パーティクルの座標キャッシュを更新するために使う。 */
+    private long claimsVersion;
 
     public LandManager(StellariaCore plugin) {
         this.plugin = plugin;
@@ -234,6 +236,7 @@ public class LandManager {
                 "claimed_at", System.currentTimeMillis()
         ));
         claimsByChunk.put(key, Claim.newClaim(owner, resolution.areaId()));
+        claimsVersion++;
 
         Area area = areas.get(resolution.areaId());
         boolean pvpEnabled = area != null && area.pvpEnabled;
@@ -319,6 +322,7 @@ public class LandManager {
         }
 
         claimsByChunk.remove(key);
+        claimsVersion++;
         DatabaseManager.execute("DELETE FROM land_claims WHERE world = ? AND chunk_x = ? AND chunk_z = ?",
                 key.world(), key.chunkX(), key.chunkZ());
 
@@ -346,6 +350,16 @@ public class LandManager {
     public UUID ownerOf(Location location) {
         Claim claim = claimsByChunk.get(ChunkKey.of(location));
         return claim != null ? claim.owner() : null;
+    }
+
+    /** 指定チャンクが保護済みか。境界パーティクルの外周判定で使用する。 */
+    public boolean isClaimed(ChunkKey key) {
+        return claimsByChunk.containsKey(key);
+    }
+
+    /** claim一覧が変化した世代。呼び出し側はキャッシュの再計算要否だけに用いる。 */
+    public long claimsVersion() {
+        return claimsVersion;
     }
 
     /**

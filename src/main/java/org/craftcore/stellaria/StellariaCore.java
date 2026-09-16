@@ -11,6 +11,8 @@ import org.craftcore.stellaria.commands.KikoriCommand;
 import org.craftcore.stellaria.commands.LandCommand;
 import org.craftcore.stellaria.managers.*;
 import org.craftcore.stellaria.gui.GuiListener;
+import org.craftcore.stellaria.features.Feature;
+import org.craftcore.stellaria.features.KikoriFeature;
 import org.craftcore.stellaria.managers.ActionBarManager;
 import org.craftcore.stellaria.managers.AfkManager;
 import org.craftcore.stellaria.managers.AutoBroadcastManager;
@@ -32,11 +34,15 @@ import org.craftcore.stellaria.listeners.PlayerQuitListener;
 import org.craftcore.stellaria.listeners.KikoriListener;
 import org.craftcore.stellaria.listeners.LandProtectionListener;
 import org.craftcore.stellaria.listeners.LandAreaStatusListener;
+import org.craftcore.stellaria.listeners.VoteListener;
+import org.craftcore.stellaria.listeners.MenuItemListener;
 
 
 import org.craftcore.stellaria.utils.ConsoleUtil;
 
 import net.milkbowl.vault.economy.Economy;
+
+import java.util.List;
 
 
 public class StellariaCore extends JavaPlugin {
@@ -63,6 +69,8 @@ public class StellariaCore extends JavaPlugin {
     private KikoriManager kikoriManager;
     private LandManager landManager;
     private DiscordBotManager discordBotManager;
+    private LandBorderParticleManager landBorderParticleManager;
+    private List<Feature> features;
 
     @Override
     public void onEnable() {
@@ -111,6 +119,7 @@ public class StellariaCore extends JavaPlugin {
         );
 
         DatabaseManager.addColumnIfNotExists("players", "kikori_unlocked INTEGER NOT NULL DEFAULT 0");
+        DatabaseManager.addColumnIfNotExists("players", "hide_balance INTEGER NOT NULL DEFAULT 0");
 
         DatabaseManager.createTableIfNotExists("land_claims",
             "world TEXT NOT NULL",
@@ -147,6 +156,7 @@ public class StellariaCore extends JavaPlugin {
         this.homeManager = new HomeManager(this);
         this.warpManager = new WarpManager(this);
         this.kikoriManager = new KikoriManager(this);
+        this.features = List.of(new KikoriFeature(kikoriManager));
 
         this.discordBotManager = new DiscordBotManager(this);
 
@@ -180,6 +190,7 @@ public class StellariaCore extends JavaPlugin {
         this.economyManager = new EconomyManager(this);
         // LandManagerはEconomyManagerに依存しないが、将来の拡張に備えて構築後に置く
         this.landManager = new LandManager(this);
+        this.landBorderParticleManager = new LandBorderParticleManager(this);
 
         // 3. Vaultがサーバーにあるか確認し、登録する処理
         if (getServer().getPluginManager().getPlugin("Vault") != null) {
@@ -198,6 +209,13 @@ public class StellariaCore extends JavaPlugin {
         // 4. イベントリスナー登録
         getServer().getPluginManager().registerEvents(new PlayerJoinListener(this), this);
         getServer().getPluginManager().registerEvents(new PlayerQuitListener(this), this);
+        if (configManager.getBoolean("vote.enabled", true)) {
+            if (getServer().getPluginManager().getPlugin("NuVotifier") != null) {
+                getServer().getPluginManager().registerEvents(new VoteListener(this), this);
+            } else {
+                getLogger().warning("NuVotifier が見つかりませんでした。投票報酬機能は無効化されます。");
+            }
+        }
 
         // 5. 起動ロゴ表示
         // Initialize managers
@@ -260,6 +278,10 @@ public class StellariaCore extends JavaPlugin {
         if (configManager.getBoolean("discord.bot.enabled",true)){
             discordBotManager.startBot();
         }
+        long landBorderInterval = Math.max(1L, configManager.getInt(
+                "land.border-particle.toggle-interval-ticks", 20));
+        Bukkit.getGlobalRegionScheduler().runAtFixedRate(this,
+                task -> landBorderParticleManager.tick(), landBorderInterval, landBorderInterval);
 
         // 7. チャットフォーマット・メンション
         this.mentionService = new MentionService(this);
@@ -298,6 +320,7 @@ public class StellariaCore extends JavaPlugin {
         getCommand("unmute").setTabCompleter(muteCommand);
         getServer().getPluginManager().registerEvents(new MuteCommandBlockListener(this), this);
         getServer().getPluginManager().registerEvents(new GuiListener(), this);
+        getServer().getPluginManager().registerEvents(new MenuItemListener(this), this);
 
         MessageCommand messageCommand = new MessageCommand(this);
         getCommand("msg").setExecutor(messageCommand);
@@ -319,7 +342,19 @@ public class StellariaCore extends JavaPlugin {
 
         getCommand("colors").setExecutor(new ColorsCommand(this));
 
+        getCommand("adminshop").setExecutor(new AdminShopCommand(this));
+
         getCommand("discord").setExecutor(new DiscordCommand(this));
+
+        getCommand("map").setExecutor(new MapCommand(this));
+
+        HomepageCommand homepageCommand = new HomepageCommand(this);
+        getCommand("homepage").setExecutor(homepageCommand);
+        getCommand("homepage").setTabCompleter(homepageCommand);
+
+        getCommand("enderchest").setExecutor(new EnderChestCommand(this));
+
+        getCommand("vote").setExecutor(new VoteCommand(this));
 
         PlaytimeCommand playtimeCommand = new PlaytimeCommand(this);
         getCommand("playtime").setExecutor(playtimeCommand);
@@ -328,6 +363,16 @@ public class StellariaCore extends JavaPlugin {
         SeenCommand seenCommand = new SeenCommand(this);
         getCommand("seen").setExecutor(seenCommand);
         getCommand("seen").setTabCompleter(seenCommand);
+
+        WorldCommand worldCommand = new WorldCommand(this);
+        getCommand("world").setExecutor(worldCommand);
+        getCommand("world").setTabCompleter(worldCommand);
+
+        ProfileCommand profileCommand = new ProfileCommand(this);
+        getCommand("profile").setExecutor(profileCommand);
+        getCommand("profile").setTabCompleter(profileCommand);
+
+        getCommand("settings").setExecutor(new SettingsCommand(this));
 
         RankingCommand rankingCommand = new RankingCommand(this);
         getCommand("ranking").setExecutor(rankingCommand);
@@ -352,6 +397,16 @@ public class StellariaCore extends JavaPlugin {
         KikoriCommand kikoriCommand = new KikoriCommand(this);
         getCommand("kikori").setExecutor(kikoriCommand);
         getCommand("kikori").setTabCompleter(kikoriCommand);
+
+        FeaturesCommand featuresCommand = new FeaturesCommand(this, features);
+        getCommand("features").setExecutor(featuresCommand);
+        getCommand("features").setTabCompleter(featuresCommand);
+
+        getCommand("menu").setExecutor(new MenuCommand(this));
+
+        getCommand("menuitem").setExecutor(new MenuItemCommand(this));
+
+        getCommand("tphelp").setExecutor(new TpHelpCommand(this));
 
         WeatherVoteCommand weatherVoteCommand = new WeatherVoteCommand(this);
         getCommand("weathervote").setExecutor(weatherVoteCommand);
@@ -457,12 +512,20 @@ public class StellariaCore extends JavaPlugin {
         return this.kikoriManager;
     }
 
+    public List<Feature> getFeatures() {
+        return this.features;
+    }
+
     public LandManager getLandManager() {
         return this.landManager;
     }
 
     public DiscordBotManager getDiscordBotManager() {
         return this.discordBotManager;
+    }
+  
+    public LandBorderParticleManager getLandBorderParticleManager() {
+        return this.landBorderParticleManager;
     }
 
     /**

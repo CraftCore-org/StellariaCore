@@ -150,6 +150,20 @@ colors:
 discord:
   message: "&%9&l| &%fDiscordサーバーはこちら&%7: &%b%link%"
 
+map:
+  message: "&%9&l| &%fマップはこちら&%7: &%b%link%"
+
+homepage:
+  message: "&%9&l| &%fホームページはこちら&%7: &%b%link%"
+  craftcore_message: "&%9&l| &%fCraftCoreのホームページはこちら&%7: &%b%link%"
+
+enderchest:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+
+vote:
+  message: "&%6&l--- サーバー投票 ---\n&%7MinePortal: &%b%mineportal%\n&%7minecraft.jp: &%b%minecraftjp%"
+  reward_received: "&%a投票ありがとうございます！ &%e%amount% &%aを受け取りました。"
+
 playtime:
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   no_permission_others: "&%c他人のプレイ時間を確認する権限がありません。"
@@ -169,6 +183,34 @@ seen:
   offline_self: "&%7最終ログアウト: &%f%time%前"
   offline_other: "&%7%player% &%7の最終ログアウト: &%f%time%前"
 
+world:
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  not_found: "&%c指定されたワールドは見つかりません。"
+
+profile:
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  no_permission_others: "&%c他人のプロフィールを確認する権限がありません。"
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  usage: "&%c使用方法: /profile [プレイヤー名]"
+  player_not_found: "&%c%player% &%7はオフラインまたは存在しません。"
+  balance_hidden: "&%8非公開"
+  gui_title: "&%b&lプロフィール"
+  gui_self: "&%bあなたのプロフィール"
+  gui_hint_title: "&%e他のプレイヤーを見る"
+  gui_hint: "&%7ヒント: &%e/profile <名前> &%7で他のプレイヤーのプロフィールも見られます"
+
+settings:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  usage: "&%c使用方法: /settings"
+  gui_title: "&%b&l設定"
+  balance_visibility: "&%e所持金の公開設定"
+  balance_visible: "&%a現在: 公開"
+  balance_hidden: "&%8現在: 非公開"
+  toggle_hint: "&%7クリックで切り替え"
+  balance_visible_enabled: "&%a所持金を他のプレイヤーに公開しました。"
+  balance_hidden_enabled: "&%a所持金を他のプレイヤーに非公開にしました。"
+
 ranking:
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   usage: "&%c使用方法: /ranking <money|playtime> [ページ]"
@@ -183,6 +225,7 @@ ranking:
   prev_arrow_disabled: "&%8◀"
   next_arrow_disabled: "&%8▶"
   page_indicator: "&%7%page%&%8/&%7%max_page%"
+  balance_hidden: "&%8非公開"
 
 scoreboard:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
@@ -205,8 +248,15 @@ home:
   deleted: "&%aホーム &%f%name% &%aを削除しました。"
   unsafe_warning: "&%c着地点が安全ではありません。もう一度実行すると10秒以内なら強制的にテレポートします。"
   list_header: "&%6&l--- ホーム一覧 ---"
+  list_gui_hint: "&%9[GUI版を開く]"
   list_entry: "&%7- &%f%name%"
   list_empty: "&%7ホームがまだありません。/sethome <名前> で作成できます。"
+  gui_title: "&%9ホーム一覧"
+  gui_entry_lore: "&%7クリックしてテレポート"
+  gui_empty: "&%7ホームがまだありません"
+  gui_previous_page: "&%e前のページ"
+  gui_next_page: "&%e次のページ"
+  gui_page: "&%7ページ %page%/%max_page%"
 
 warp:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
@@ -223,10 +273,23 @@ warp:
   delete_no_permission_others: "&%c他人のワープを削除する権限がありません。"
   unsafe_warning: "&%c着地点が安全ではありません。もう一度実行すると10秒以内なら強制的にテレポートします。"
   list_header: "&%6&l--- ワープ一覧 ---"
+  list_gui_hint: "&%9[GUI版を開く]"
   list_entry: "&%7- &%f%name% &%7(by %owner%)"
   list_empty: "&%7ワープがまだありません。/setwarp <名前> で作成できます。"
+  gui_title: "&%9ワープ一覧"
+  gui_entry_owner: "&%7作成者: &%f%owner%"
+  gui_entry_lore: "&%7クリックしてテレポート"
+  gui_empty: "&%7ワープがまだありません"
+  gui_previous_page: "&%e前のページ"
+  gui_next_page: "&%e次のページ"
+  gui_page: "&%7ページ %page%/%max_page%"
 
 weathervote:
+  gui:
+    title: "&%9&l天気投票"
+    sunny: "&%e晴れ"
+    rain: "&%9雨"
+    thunder: "&%5雷雨"
   start_vote: "&r%player%&%7が&%g%world%&%7の天気を&%g%weather%&%7にしようとしています。\n&%g%votetime%&%7秒後に投票が終了します。"
   vote_end_accept: "&%a賛成&%7が多数のため&%g%world%&%7の天気が&%g%weather%&%7に変更されました。"
   vote_end_deny: "&%c反対&%7が多数のため天気は変更されませんでした。"
@@ -246,6 +309,12 @@ weathervote:
   err_world: "&%cこのワールドは天気を変更できません。"
 
 timevote:
+  gui:
+    title: "&%9&l時間投票"
+    morning: "&%e朝"
+    noon: "&%e昼"
+    evening: "&%g夕方"
+    night: "&%9夜"
   start_vote: "&r%player%&%7が&%g%world%&%7の時間を&%g%time%&%7にしようとしています。\n&%g%votetime%&%7秒後に投票が終了します。"
   vote_end_accept: "&%a賛成&%7が多数のため&%g%world%&%7の時間が&%g%time%&%7に変更されました。"
   vote_end_deny: "&%c反対&%7が多数のため時間は変更されませんでした。"
@@ -278,12 +347,39 @@ kikori:
   artificial_detected: "&%c人工物を検知しました。木こり機能を自動でOFFにします。"
   pass_granted: "&%e次回、人工物を検知しても1回だけ無視して伐採を続行します。"
 
+features:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  usage: "&%c使用方法: /features [buy <id>]"
+  unknown_feature: "&%c指定された機能は見つかりません。"
+  buy_success: "&%a機能を購入しました！"
+  already_unlocked: "&%cこの機能は既に購入済みです。"
+  buy_insufficient_funds: "&%c残高が足りません。（必要: %price%）"
+  enabled: "&%a機能をONにしました。"
+  disabled: "&%7機能をOFFにしました。"
+  gui_title: "&%9便利機能"
+  gui_price: "&%7価格: &%e%price%"
+  gui_enabled: "&%a有効"
+  gui_disabled: "&%7無効"
+  gui_toggle_hint: "&%eクリックして切り替え"
+  gui_purchase_hint: "&%eクリックして購入"
+  confirm_title: "&%2購入の確認"
+  confirm_description: "&%7この機能を &%e%price% &%7で購入しますか？"
+
+adminshop:
+  title: "&%9&l運営ショップ"
+  purchased: "&%a%item% を購入しました。（%price%）"
+  insufficient_funds: "&%c残高が足りません。（必要: %price%）"
+  disabled: "&%c現在このショップは利用できません。"
+
 land:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   no_permission: "&%cこのコマンドを実行する権限がありません。"
-  usage: "&%c使用方法: /land <claim|unclaim|info|list|map|help|area|rule|bypass>"
+  usage: "&%c使用方法: /land <claim|unclaim|info|list|map|border|help|area|rule|bypass>"
   area_usage: "&%c使用方法: /land area <trust|untrust|trustlist|pvp|explosions|doors|chests>"
   rule_usage: "&%c使用方法: /land rule <pvp|explosions|doors|chests> <on|off|default>"
+  border_usage: "&%c使用方法: /land border [on|off] [半径]"
+  border_enabled: "&%aチャンク境界の常時表示をONにしました。&%7（半径: &%f%radius%&%7チャンク）"
+  border_disabled: "&%cチャンク境界の常時表示をOFFにしました。"
   rule_flag_name_pvp: "PvP"
   rule_flag_name_explosions: "爆発"
   rule_flag_name_doors: "ドア"
@@ -316,7 +412,8 @@ land:
   pvp_usage: "&%c使用方法: /land area pvp <on|off>"
   pvp_enabled: "&%aこのエリアでのPvPを有効にしました。"
   pvp_disabled: "&%cこのエリアでのPvPを無効にしました。"
-  pvp_blocked: "&%cここではPvPできません。"
+  pvp_blocked: "" # うるさいため非表示
+#  pvp_blocked: "&%cここではPvPできません。"
   explosions_usage: "&%c使用方法: /land area explosions <on|off>"
   explosions_enabled: "&%aこのエリアでの爆発によるブロック破壊を許可しました。"
   explosions_disabled: "&%cこのエリアでの爆発によるブロック破壊を無効にしました。"
@@ -351,6 +448,7 @@ land:
   status_chests_open: " &%7| &%aチェスト開放"
   status_explosions_allowed: " &%7| &%c爆発OK"
   status_pvp_warning: "&%c&l⚔ PvP有効エリア &%7このエリアでは戦闘できます"
+  status_pvp_disabled_notice: "&%a&l✔ PvP無効エリアに入りました"
   map_header: "&%9&l--- 周辺エリアマップ ---"
   map_legend:
     - "&%a■&%7 自分の土地　&%b■&%7 信頼されてる土地　&%c■&%7 他人の土地"
@@ -365,5 +463,36 @@ land:
     - "&%7PvPはサーバー全体でデフォルト無効です。&%e/land area pvp on &%7で自分のエリア内だけ有効化できます"
     - "&%7爆発・ドア開放・チェスト開放もデフォルト無効（保護あり）です。同じく&%e/land area <explosions|doors|chests> on &%7で有効化できます"
     - "&%7&%e/land map &%7で周辺チャンクの保護状態を一覧できます"
+    - "&%7&%e/land border [on|off] [半径] &%7で保護済みチャンクの境界を常時表示できます"
     - "&%7個々のチャンクだけエリアと違う設定にしたい時は&%e/land rule <pvp|explosions|doors|chests> <on|off|default>"
     - "&%7&%7（defaultで個別設定を解除すると、またエリアの設定に従います）"
+
+menu:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  title: "&%9&lすてらりあ &%bメニュー"
+  profile: "&%bプロフィール"
+  profile_hint: "&%7ヒント: &%e/profile <名前> &%7で他のプレイヤーのプロフィールも見られます"
+  discord: "&%9Discord"
+  vote: "&%aサーバー投票"
+  world: "&%eワールド移動"
+  weathervote: "&%b天気投票"
+  timevote: "&%6時間投票"
+  enderchest: "&%8エンダーチェスト"
+  features: "&%c便利機能"
+  map: "&%2マップ"
+  tpa_help: "&%dテレポートリクエストの使い方"
+  land_help: "&%a土地保護のヘルプ"
+  warp: "&%3ワープ"
+  home: "&%9ホーム"
+  tpa_help_lines:
+    - "&%9&l| &%bテレポートリクエストの使い方"
+    - "&%7/tpa <プレイヤー> &%7で相手に自分の元へのテレポートを申請します"
+    - "&%7/tphere <プレイヤー> &%7で相手を自分の元へ呼び出します"
+    - "&%7申請を受けたら&%e/tpaccept &%7または&%e/tpdeny &%7（呼び出しは&%e/tphaccept&%7/&%e/tphdeny&%7）で応答します"
+
+menuitem:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  name: "&%9&lすてらりあ &%bメニュー"
+  lore:
+    - "&%7右クリックでメニューを開きます"
+  given: "&%aメニューを開くアイテムを渡しました。"
