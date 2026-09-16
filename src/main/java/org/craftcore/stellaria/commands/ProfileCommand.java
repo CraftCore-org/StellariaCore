@@ -77,10 +77,18 @@ public class ProfileCommand implements CommandExecutor, TabCompleter {
     public static List<String> buildProfileInfoLines(StellariaCore plugin, Player viewer, OfflinePlayer target) {
         EconomyManager economy = plugin.getEconomyManager();
         String playtime = DurationParser.formatDuration(plugin.getPlaytimeManager().getPlaytimeSeconds(target.getUniqueId()));
-        boolean hideBalance = economy.isHideBalance(target) && !viewer.getUniqueId().equals(target.getUniqueId());
-        String balance = hideBalance
-                ? plugin.getConfigManager().getMessage("profile.balance_hidden", null)
-                : economy.formatExact(economy.getBalance(target));
+        boolean isSelf = viewer.getUniqueId().equals(target.getUniqueId());
+        boolean hideBalance = economy.isHideBalance(target) && !isSelf;
+        String balance;
+        if (hideBalance) {
+            balance = plugin.getConfigManager().getMessage("profile.balance_hidden", null);
+        } else if (isSelf && economy.isHideBalance(target)) {
+            // 自分自身には金額を見せつつ、他人には非公開設定にしていることを併記する。
+            balance = economy.formatExact(economy.getBalance(target))
+                    + plugin.getConfigManager().getMessage("profile.balance_self_hidden_suffix", null);
+        } else {
+            balance = economy.formatExact(economy.getBalance(target));
+        }
 
         return plugin.getConfigManager().getStringList("profile.info-lines").stream()
                 .map(line -> line

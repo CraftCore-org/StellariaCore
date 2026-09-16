@@ -6,6 +6,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.commands.HomeCommand;
 import org.craftcore.stellaria.commands.WarpCommand;
@@ -53,6 +54,9 @@ public class MenuGui extends Gui {
             ItemStack item = new ItemStack(menuEntry.material());
             ItemMeta meta = item.getItemMeta();
             meta.displayName(ColorUtil.component(menuEntry.name()));
+            if (meta instanceof SkullMeta skullMeta && menuEntry.material() == Material.PLAYER_HEAD) {
+                skullMeta.setOwningPlayer(viewer);
+            }
             item.setItemMeta(meta);
             getInventory().setItem(slot, item);
         }
@@ -88,10 +92,7 @@ public class MenuGui extends Gui {
             case "land-help" -> runCommand(player, "land help");
             case "warp" -> new WarpSelectGui(plugin, new WarpCommand(plugin), this).open(player);
             case "home" -> new HomeSelectGui(plugin, new HomeCommand(plugin), player, this).open(player);
-            case "get-menu-item" -> {
-                player.getInventory().addItem(MenuItemUtil.create(plugin));
-                player.sendMessage(plugin.getConfigManager().getMessage("menuitem.given", player));
-            }
+            case "get-menu-item" -> MenuItemUtil.give(plugin, player);
             default -> plugin.getLogger().warning("menu.items に不明なactionがあります: " + entry.action());
         }
     }

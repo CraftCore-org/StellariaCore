@@ -27,8 +27,7 @@ public class MenuItemCommand implements CommandExecutor {
             return true;
         }
 
-        player.getInventory().addItem(MenuItemUtil.create(plugin));
-        player.sendMessage(plugin.getConfigManager().getMessage("menuitem.given", player));
+        MenuItemUtil.give(plugin, player);
         return true;
     }
 }

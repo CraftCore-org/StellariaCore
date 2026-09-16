@@ -370,3 +370,6 @@ menu:
       material: COMPASS
       name: "&%9メニューアイテムを入手"
       action: "get-menu-item"
+
+menuitem:
+  cooldown-seconds: 10 # メニューアイテムの再入手クールダウン

@@ -15,7 +15,7 @@ import java.util.List;
 /** 所持金の公開設定を切り替える個人設定画面。 */
 public final class SettingsGui extends Gui {
 
-    private static final int BALANCE_VISIBILITY_SLOT = 4;
+    private static final int BALANCE_VISIBILITY_SLOT = 13;
 
     private final StellariaCore plugin;
     private boolean hideBalance;
@@ -26,7 +26,7 @@ public final class SettingsGui extends Gui {
 
     /** メニュー画面などから開く場合に親画面を渡す。 */
     public SettingsGui(StellariaCore plugin, Player player, @Nullable Gui parent) {
-        super(9, messageComponent(plugin, "settings.gui_title", player), parent);
+        super(27, messageComponent(plugin, "settings.gui_title", player), parent);
         this.plugin = plugin;
         this.hideBalance = plugin.getEconomyManager().isHideBalance(player);
         populate(player);

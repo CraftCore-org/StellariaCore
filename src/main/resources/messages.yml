@@ -195,7 +195,8 @@ profile:
   usage: "&%c使用方法: /profile [プレイヤー名]"
   player_not_found: "&%c%player% &%7はオフラインまたは存在しません。"
   balance_hidden: "&%8非公開"
-  gui_title: "&%b&lプロフィール"
+  balance_self_hidden_suffix: " &%8(非公開)"
+  gui_title: "&%9&lプロフィール"
   gui_self: "&%bあなたのプロフィール"
   gui_hint_title: "&%e他のプレイヤーを見る"
   gui_hint: "&%7ヒント: &%e/profile <名前> &%7で他のプレイヤーのプロフィールも見られます"
@@ -203,7 +204,7 @@ profile:
 settings:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   usage: "&%c使用方法: /settings"
-  gui_title: "&%b&l設定"
+  gui_title: "&%9&l設定"
   balance_visibility: "&%e所持金の公開設定"
   balance_visible: "&%a現在: 公開"
   balance_hidden: "&%8現在: 非公開"
@@ -502,3 +503,5 @@ menuitem:
   lore:
     - "&%7右クリックでメニューを開きます"
   given: "&%aメニューを開くアイテムを渡しました。"
+  already_have: "&%cすでにメニューアイテムを持っています。"
+  cooldown: "&%cメニューアイテムの再入手はあと%seconds%秒お待ちください。"

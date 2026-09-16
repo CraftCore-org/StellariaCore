@@ -8,6 +8,7 @@ import org.craftcore.stellaria.commands.WeatherVoteCommand;
 import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.DurationParser;
 import org.craftcore.stellaria.utils.FormatUtil;
+import org.craftcore.stellaria.utils.WorldNameUtil;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -85,6 +86,7 @@ public class PlaceholderManager {
         if (template.contains("%money%") && shouldHideBalance(player, viewer)) {
             money = plugin.getConfigManager().getMessage("profile.balance_hidden", player);
         }
+        String worldDisplayName = WorldNameUtil.displayName(plugin.getConfigManager(), player.getWorld());
 
         return template
                 .replace("%afk%", resolveAfkTag(player))
@@ -92,12 +94,12 @@ public class PlaceholderManager {
                 .replace("%max_online%", String.valueOf(Bukkit.getMaxPlayers()))
                 .replace("%tps%", String.format(Locale.ROOT, "%.1f", Math.min(20.0, Bukkit.getTPS()[0])))
                 .replace("%ping%", String.valueOf(player.getPing()))
-                .replace("%world%", player.getWorld().getName())
+                .replace("%world%", worldDisplayName)
                 .replace("%server%", plugin.getConfigManager().getString("server.name", ""))
                 .replace("%x%", String.valueOf(x))
                 .replace("%y%", String.valueOf(y))
                 .replace("%z%", String.valueOf(z))
-                .replace("%location%", player.getWorld().getName() + " (" + x + ", " + y + ", " + z + ")")
+                .replace("%location%", worldDisplayName + " (" + x + ", " + y + ", " + z + ")")
                 .replace("%date%", LocalDateTime.now().format(DATE_FORMAT))
                 .replace("%time%", LocalDateTime.now().format(TIME_FORMAT))
                 .replace("%money%", money)
