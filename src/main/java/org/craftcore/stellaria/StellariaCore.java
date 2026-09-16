@@ -32,6 +32,7 @@ import org.craftcore.stellaria.listeners.PlayerQuitListener;
 import org.craftcore.stellaria.listeners.KikoriListener;
 import org.craftcore.stellaria.listeners.LandProtectionListener;
 import org.craftcore.stellaria.listeners.LandAreaStatusListener;
+import org.craftcore.stellaria.listeners.VoteListener;
 
 
 import org.craftcore.stellaria.utils.ConsoleUtil;
@@ -195,6 +196,13 @@ public class StellariaCore extends JavaPlugin {
         // 4. イベントリスナー登録
         getServer().getPluginManager().registerEvents(new PlayerJoinListener(this), this);
         getServer().getPluginManager().registerEvents(new PlayerQuitListener(this), this);
+        if (configManager.getBoolean("vote.enabled", true)) {
+            if (getServer().getPluginManager().getPlugin("NuVotifier") != null) {
+                getServer().getPluginManager().registerEvents(new VoteListener(this), this);
+            } else {
+                getLogger().warning("NuVotifier が見つかりませんでした。投票報酬機能は無効化されます。");
+            }
+        }
 
         // 5. 起動ロゴ表示
         // Initialize managers
@@ -313,6 +321,8 @@ public class StellariaCore extends JavaPlugin {
         getCommand("colors").setExecutor(new ColorsCommand(this));
 
         getCommand("discord").setExecutor(new DiscordCommand(this));
+
+        getCommand("vote").setExecutor(new VoteCommand(this));
 
         PlaytimeCommand playtimeCommand = new PlaytimeCommand(this);
         getCommand("playtime").setExecutor(playtimeCommand);

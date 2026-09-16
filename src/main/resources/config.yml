@@ -7,6 +7,14 @@ server:
 discord:
   invite: "https://discord.gg/ssaREjBJXg" # /discord で案内するサーバー招待リンク
 
+vote:
+  enabled: true
+  reward:
+    money: 500
+  sites:
+    mineportal: "https://example.com/mineportal" # TODO: 実際の投票URLに差し替え
+    minecraftjp: "https://example.com/minecraftjp" # TODO: 実際の投票URLに差し替え
+
 rank:
   enabled: true
   default:

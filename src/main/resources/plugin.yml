@@ -6,7 +6,7 @@ description: Feature plugin for Stellaria MC
 api-version: 1.21
 
 depend: [Citizens, packetevents, Vault, PlaceholderAPI]
-softdepend: [LuckPerms]
+softdepend: [LuckPerms, NuVotifier]
 
 commands:
   tpa:
@@ -40,6 +40,7 @@ commands:
     permission: stellaria.chat.color
   discord:
     aliases: [dc]
+  vote:
   playtime:
   seen:
   ranking:

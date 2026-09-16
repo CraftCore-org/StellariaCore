@@ -14,6 +14,7 @@ repositories {
     maven("https://repo.codemc.io/repository/maven-releases/")             // PacketEvents
     maven("https://repo.codemc.org/repository/maven-public")               // VaultUnlocked
     maven("https://repo.extendedclip.com/content/repositories/placeholderapi/") // PlaceholderAPI
+    maven("https://jitpack.io")                                             // NuVotifier
 }
 
 dependencies {
@@ -25,6 +26,7 @@ dependencies {
     compileOnly("net.milkbowl.vault:VaultUnlockedAPI:2.9")
     compileOnly("me.clip:placeholderapi:2.11.6")
     compileOnly("net.luckperms:api:5.4")
+    compileOnly("com.github.nuvotifier:nuvotifier:2.7.2")
     implementation("org.xerial:sqlite-jdbc:3.46.1.0")
     
 }
