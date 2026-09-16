@@ -45,6 +45,11 @@ economy:
 
 world:
   gui-title: "&%9ワールドを選択"
+  gui-rows: 0 # 1〜6で固定行数。0または範囲外ならワールド数から自動計算（例: 6）
+  # Bukkit上のワールド名をGUIに表示する名前へ置き換える（未設定のワールドは元の名前を表示）
+  #   world: "生活ワールド"
+  #   world_nether: "ネザー"
+  display-names: {}
 
 home:
   max-per-player: 5

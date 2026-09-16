@@ -10,6 +10,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.ColorUtil;
+import org.craftcore.stellaria.utils.WorldNameUtil;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -20,12 +21,13 @@ import java.util.List;
  */
 public class WorldSelectGui extends Gui {
 
-    private static final int WORLDS_PER_PAGE = 45;
-    private static final int PREVIOUS_PAGE_SLOT = 45;
-    private static final int NEXT_PAGE_SLOT = 53;
+    private static final int DEFAULT_WORLDS_PER_PAGE = 45;
+    private static final int DEFAULT_PREVIOUS_PAGE_SLOT = 45;
+    private static final int DEFAULT_NEXT_PAGE_SLOT = 53;
 
     private final StellariaCore plugin;
     private final List<World> worlds;
+    private final Layout layout;
     private final int page;
     private final int pageCount;
     private final @Nullable Gui parent;
@@ -41,42 +43,42 @@ public class WorldSelectGui extends Gui {
     }
 
     private WorldSelectGui(StellariaCore plugin, @Nullable Gui parent, int page) {
-        super(inventorySize(Bukkit.getWorlds().size()),
+        this(plugin, parent, page, Layout.create(plugin, Bukkit.getWorlds().size()));
+    }
+
+    private WorldSelectGui(StellariaCore plugin, @Nullable Gui parent, int page, Layout layout) {
+        super(layout.inventorySize(),
                 ColorUtil.component(plugin.getConfigManager().getString("world.gui-title", "&%9ワールドを選択")),
-                parent, backButtonSlot(inventorySize(Bukkit.getWorlds().size())));
+                parent, layout.backButtonSlot());
         this.plugin = plugin;
         this.parent = parent;
+        this.layout = layout;
         this.worlds = List.copyOf(Bukkit.getWorlds());
-        this.pageCount = Math.max(1, (worlds.size() + WORLDS_PER_PAGE - 1) / WORLDS_PER_PAGE);
+        this.pageCount = Math.max(1, (worlds.size() + layout.worldsPerPage() - 1) / layout.worldsPerPage());
         this.page = Math.clamp(page, 0, pageCount - 1);
         populate();
     }
 
-    private static int inventorySize(int worldCount) {
-        if (worldCount > WORLDS_PER_PAGE) {
+    private static int autoInventorySize(int worldCount) {
+        if (worldCount > DEFAULT_WORLDS_PER_PAGE) {
             return 54;
         }
         return Math.max(9, ((Math.max(1, worldCount) + 8) / 9) * 9);
     }
 
-    /** 54枠（ページング矢印あり）の時だけ矢印と被らない48番、それ以外は末尾スロット。 */
-    private static int backButtonSlot(int size) {
-        return size == 54 ? 48 : size - 1;
-    }
-
     private void populate() {
-        int start = page * WORLDS_PER_PAGE;
-        int end = Math.min(start + WORLDS_PER_PAGE, worlds.size());
+        int start = page * layout.worldsPerPage();
+        int end = Math.min(start + layout.worldsPerPage(), worlds.size());
         for (int index = start; index < end; index++) {
             getInventory().setItem(index - start, worldItem(worlds.get(index)));
         }
 
         if (pageCount > 1) {
             if (page > 0) {
-                getInventory().setItem(PREVIOUS_PAGE_SLOT, navigationItem(Material.ARROW, "&%f← 前のページ"));
+                getInventory().setItem(layout.previousPageSlot(), navigationItem(Material.ARROW, "&%f← 前のページ"));
             }
             if (page < pageCount - 1) {
-                getInventory().setItem(NEXT_PAGE_SLOT, navigationItem(Material.ARROW, "&%f次のページ →"));
+                getInventory().setItem(layout.nextPageSlot(), navigationItem(Material.ARROW, "&%f次のページ →"));
             }
         }
     }
@@ -84,7 +86,7 @@ public class WorldSelectGui extends Gui {
     private ItemStack worldItem(World world) {
         ItemStack item = new ItemStack(iconFor(world.getEnvironment()));
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.text(world.getName()));
+        meta.displayName(Component.text(WorldNameUtil.displayName(plugin.getConfigManager(), world)));
         meta.lore(List.of(Component.text(world.getEnvironment().name())));
         item.setItemMeta(meta);
         return item;
@@ -119,19 +121,50 @@ public class WorldSelectGui extends Gui {
         }
 
         int slot = event.getSlot();
-        if (pageCount > 1 && slot == PREVIOUS_PAGE_SLOT && page > 0) {
+        if (pageCount > 1 && slot == layout.previousPageSlot() && page > 0) {
             new WorldSelectGui(plugin, parent, page - 1).open(player);
             return;
         }
-        if (pageCount > 1 && slot == NEXT_PAGE_SLOT && page < pageCount - 1) {
+        if (pageCount > 1 && slot == layout.nextPageSlot() && page < pageCount - 1) {
             new WorldSelectGui(plugin, parent, page + 1).open(player);
             return;
         }
 
-        int worldIndex = page * WORLDS_PER_PAGE + slot;
-        if (slot < WORLDS_PER_PAGE && worldIndex < worlds.size()) {
+        int worldIndex = page * layout.worldsPerPage() + slot;
+        if (slot < layout.worldsPerPage() && worldIndex < worlds.size()) {
             player.teleportAsync(worlds.get(worldIndex).getSpawnLocation());
             player.closeInventory();
+        }
+    }
+
+    private record Layout(int inventorySize, int worldsPerPage, int previousPageSlot, int nextPageSlot, int backButtonSlot) {
+
+        private static Layout create(StellariaCore plugin, int worldCount) {
+            int configuredRows = plugin.getConfigManager().getInt("world.gui-rows", 0, true);
+            if (configuredRows >= 1 && configuredRows <= 6) {
+                return configuredLayout(configuredRows, worldCount);
+            }
+
+            int inventorySize = autoInventorySize(worldCount);
+            if (worldCount > DEFAULT_WORLDS_PER_PAGE) {
+                return new Layout(inventorySize, DEFAULT_WORLDS_PER_PAGE,
+                        DEFAULT_PREVIOUS_PAGE_SLOT, DEFAULT_NEXT_PAGE_SLOT, 48);
+            }
+            return new Layout(inventorySize, DEFAULT_WORLDS_PER_PAGE, -1, -1, inventorySize - 1);
+        }
+
+        private static Layout configuredLayout(int rows, int worldCount) {
+            int inventorySize = rows * 9;
+            if (worldCount <= inventorySize) {
+                return new Layout(inventorySize, inventorySize, -1, -1, inventorySize - 1);
+            }
+
+            if (rows == 1) {
+                return new Layout(inventorySize, 3, 6, 8, 3);
+            }
+
+            int footerStart = inventorySize - 9;
+            return new Layout(inventorySize, footerStart, footerStart, inventorySize - 1, footerStart + 3);
         }
     }
 }
