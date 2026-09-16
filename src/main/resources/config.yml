@@ -376,6 +376,10 @@ menu:
       material: COMPASS
       name: "&%9メニューアイテムを入手"
       action: "get-menu-item"
+    - slot: 22
+      material: SKELETON_SKULL
+      name: "&%dヘッドショップ"
+      action: "headshop"
 
 menuitem:
   cooldown-seconds: 10 # メニューアイテムの再入手クールダウン

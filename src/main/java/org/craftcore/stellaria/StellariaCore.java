@@ -466,6 +466,10 @@ public class StellariaCore extends JavaPlugin {
         getCommand("chunkborder").setExecutor(chunkBorderCommand);
         getCommand("chunkborder").setTabCompleter(chunkBorderCommand);
 
+        HeadshopCommand headshopCommand = new HeadshopCommand(this);
+        getCommand("headshop").setExecutor(headshopCommand);
+        getCommand("headshop").setTabCompleter(headshopCommand);
+
         this.autoBroadcastManager = new AutoBroadcastManager(this);
         autoBroadcastManager.start();
 
