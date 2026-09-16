@@ -395,3 +395,18 @@ headshop:
   normal-price: 500
   player-head-markup: 300
   player-head-recent-days: 30
+
+sudo:
+  blacklist:
+    - "stop"
+    - "op"
+    - "deop"
+    - "ban"
+    - "ban-ip"
+    - "pardon"
+    - "whitelist"
+    - "save-all"
+    - "save-off"
+    - "save-on"
+    - "reload"
+    - "sudo"

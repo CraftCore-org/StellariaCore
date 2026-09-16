@@ -594,3 +594,9 @@ lock:
   cannot_trust_self: "&%c自分自身を共同利用者には追加できません。"
   protected: "&%cこのコンテナは保護されています。"
   double_chest_denied: "&%c保護されたチェストを二連チェストにできません。"
+
+sudo:
+  usage: "&%c使用方法: /sudo <プレイヤー> <コマンド>"
+  player_not_found: "&%cオンラインのプレイヤーが見つかりません: &%e%target%"
+  blacklisted: "&%cこのコマンドは/sudoでは実行できません: &%e%command%"
+  executed: "&%a%target% &%aとして実行しました: &%e%command%"
