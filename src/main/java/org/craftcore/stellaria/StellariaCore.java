@@ -162,6 +162,20 @@ public class StellariaCore extends JavaPlugin {
             "radius INTEGER NOT NULL"
         );
 
+        DatabaseManager.createTableIfNotExists("headshop_pool",
+            "id INTEGER PRIMARY KEY AUTOINCREMENT",
+            "display_name TEXT NOT NULL",
+            "texture TEXT NOT NULL",
+            "added_by TEXT NOT NULL",
+            "added_at INTEGER NOT NULL"
+        );
+
+        DatabaseManager.createTableIfNotExists("headshop_rotation",
+            "date TEXT NOT NULL",
+            "pool_id INTEGER NOT NULL",
+            "PRIMARY KEY (date, pool_id)"
+        );
+
         this.afkManager = new AfkManager(this);
         this.playtimeManager = new PlaytimeManager(this);
         this.rankManager = new RankManager(this);
