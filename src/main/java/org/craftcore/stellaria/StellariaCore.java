@@ -476,6 +476,10 @@ public class StellariaCore extends JavaPlugin {
         getCommand("headshop").setExecutor(headshopCommand);
         getCommand("headshop").setTabCompleter(headshopCommand);
 
+        SudoCommand sudoCommand = new SudoCommand(this);
+        getCommand("sudo").setExecutor(sudoCommand);
+        getCommand("sudo").setTabCompleter(sudoCommand);
+
         this.autoBroadcastManager = new AutoBroadcastManager(this);
         autoBroadcastManager.start();
 

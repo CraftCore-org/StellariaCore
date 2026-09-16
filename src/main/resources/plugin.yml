@@ -81,6 +81,8 @@ commands:
   chunkborder:
   headshop:
     permission: stellaria.headshop
+  sudo:
+    permission: stellaria.sudo
 
 permissions:
   stellaria.msg:
@@ -114,6 +116,8 @@ permissions:
   stellaria.headshop:
     default: true
   stellaria.headshop.admin:
+    default: op
+  stellaria.sudo:
     default: op
   stellaria.admin:
     description: Stellaria運営用コマンドの一括権限。個々の権限はここから継承される。

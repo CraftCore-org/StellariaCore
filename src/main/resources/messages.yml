@@ -570,3 +570,9 @@ headshop:
       - "&%7頭アイテムをカーソルに乗せた状態で"
       - "&%7空きスロットをクリックすると登録されます"
       - "&%7既存の頭は &%eShiftクリック &%7で削除できます"
+
+sudo:
+  usage: "&%c使用方法: /sudo <プレイヤー> <コマンド>"
+  player_not_found: "&%cオンラインのプレイヤーが見つかりません: &%e%target%"
+  blacklisted: "&%cこのコマンドは/sudoでは実行できません: &%e%command%"
+  executed: "&%a%target% &%aとして実行しました: &%e%command%"
