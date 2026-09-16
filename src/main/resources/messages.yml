@@ -179,6 +179,11 @@ seen:
   offline_self: "&%7最終ログアウト: &%f%time%前"
   offline_other: "&%7%player% &%7の最終ログアウト: &%f%time%前"
 
+world:
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  not_found: "&%c指定されたワールドは見つかりません。"
+
 ranking:
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   usage: "&%c使用方法: /ranking <money|playtime> [ページ]"

@@ -36,6 +36,8 @@ commands:
     permission: stellaria.eco
   balance:
     aliases: [money, bal]
+  world:
+    permission: stellaria.world
   colors:
     permission: stellaria.chat.color
   adminshop:
@@ -75,6 +77,8 @@ permissions:
   stellaria.pay:
     default: true
   stellaria.balance:
+    default: true
+  stellaria.world:
     default: true
   stellaria.playtime:
     default: true
