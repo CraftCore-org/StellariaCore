@@ -60,6 +60,8 @@ public class ChatListener implements Listener {
             return;
         }
 
+        plugin.getDiscordBotManager().mcChatToDiscord(event);
+
         String format = config.getString("chat.format", "{placeholder}{sender}&%7: &%f{message}");
         String placeholderTemplate = config.getString("chat.placeholder", "");
         Component placeholder = ColorUtil.component(plugin.getPlaceholderManager().resolve(placeholderTemplate, sender));

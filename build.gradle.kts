@@ -26,7 +26,7 @@ dependencies {
     compileOnly("me.clip:placeholderapi:2.11.6")
     compileOnly("net.luckperms:api:5.4")
     implementation("org.xerial:sqlite-jdbc:3.46.1.0")
-    
+    implementation("net.dv8tion:JDA:6.6.0")
 }
 
 tasks.withType<JavaCompile> {

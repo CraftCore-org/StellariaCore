@@ -6,6 +6,19 @@ server:
 
 discord:
   invite: "https://discord.gg/ssaREjBJXg" # /discord で案内するサーバー招待リンク
+  bot:
+    enabled: true
+    token: ""
+    admin-guild-id: ""
+    server-guild-id: ""
+    serverchat-channel-id: [""]
+    serverconsole-channel-id: [""]
+    serverstartlog-format: "✅ サーバーが起動しました。"
+    serverstoplog-format: "❌ サーバーが停止しました。"
+    serverchat-format: "%player%: %message%"
+    discordchat-format: "&%7[&%9Discord&%7] &%7%username%&%8: &r%message%"
+    joinlog-format: "%player%が参加しました。"
+    quitlog-format: "%player%が退出しました。"
 
 rank:
   enabled: true

@@ -62,6 +62,7 @@ public class StellariaCore extends JavaPlugin {
     private NametagManager nametagManager;
     private KikoriManager kikoriManager;
     private LandManager landManager;
+    private DiscordBotManager discordBotManager;
 
     @Override
     public void onEnable() {
@@ -146,6 +147,8 @@ public class StellariaCore extends JavaPlugin {
         this.homeManager = new HomeManager(this);
         this.warpManager = new WarpManager(this);
         this.kikoriManager = new KikoriManager(this);
+
+        this.discordBotManager = new DiscordBotManager(this);
 
         this.muteManager = new MuteManager(this);
         muteManager.loadAll();
@@ -252,6 +255,10 @@ public class StellariaCore extends JavaPlugin {
 
         if (configManager.getBoolean("kikori.enabled", true)) {
             Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> kikoriManager.tick(), 200L, 200L);
+        }
+
+        if (configManager.getBoolean("discord.bot.enabled",true)){
+            discordBotManager.startBot();
         }
 
         // 7. チャットフォーマット・メンション
@@ -370,6 +377,9 @@ public class StellariaCore extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (configManager.getBoolean("discord.bot.enabled",true)){
+            discordBotManager.stop();
+        }
         // プラグイン停止時は Vault から自動解除されるため、DB切断だけでOK
         DatabaseManager.disconnect();
         ConsoleUtil.printDisabledMessage();
@@ -449,6 +459,10 @@ public class StellariaCore extends JavaPlugin {
 
     public LandManager getLandManager() {
         return this.landManager;
+    }
+
+    public DiscordBotManager getDiscordBotManager() {
+        return this.discordBotManager;
     }
 
     /**
