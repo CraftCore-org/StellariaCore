@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS headshop_rotation (
 - 中央の行（スロット11・12・13・14・15）に本日の5ヘッド。ロアに価格を表示
 - クリック購入: `EconomyManager.has()`で事前チェック→`withdrawPlayer()`→`transactionSuccess()`が真ならプレイヤーへ頭のアイテムを付与し購入成功メッセージ、偽なら残高不足メッセージ（`AdminShopGui`の既存フローを踏襲）
 - スロット22（最下段中央）に「プレイヤーヘッド一覧」ボタン → クリックで`HeadshopPlayerHeadsGui`を開く
-- 枠は他GUIと同様にガラスパネルで埋める
+- それ以外のスロットは空のまま（`MenuGui`/`WarpSelectGui`等の既存GUIと同様、枠を装飾パネルで埋める慣習は無いため踏襲しない）
 
 ## プレイヤーヘッドGUI（`HeadshopPlayerHeadsGui`）
 
