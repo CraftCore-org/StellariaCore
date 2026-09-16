@@ -49,11 +49,15 @@ public class ActionBarManager {
         channelsFor(player).put(channelId, new ChannelEntry(content, expiresAt));
     }
 
-    /** チャンネルを即座に消す（TPAキャンセル時など）。 */
+    /**
+     * チャンネルを即座に消す（TPAキャンセル時など）。
+     * 全チャンネルが無くなった場合は、次のtick()を待たず空のアクションバーを即時送信する
+     * — Minecraftのアクションバーは能動的に上書きしない限り一定時間表示され続けるため。
+     */
     public void clearChannel(Player player, String channelId) {
         LinkedHashMap<String, ChannelEntry> playerChannels = channels.get(player.getUniqueId());
-        if (playerChannels != null) {
-            playerChannels.remove(channelId);
+        if (playerChannels != null && playerChannels.remove(channelId) != null && playerChannels.isEmpty()) {
+            player.sendActionBar(Component.empty());
         }
     }
 
@@ -73,8 +77,11 @@ public class ActionBarManager {
             if (playerChannels == null || playerChannels.isEmpty()) {
                 continue;
             }
-            playerChannels.entrySet().removeIf(entry -> entry.getValue().isExpired(now));
+            boolean anyExpired = playerChannels.entrySet().removeIf(entry -> entry.getValue().isExpired(now));
             if (playerChannels.isEmpty()) {
+                if (anyExpired) {
+                    player.sendActionBar(Component.empty());
+                }
                 continue;
             }
             player.sendActionBar(join(playerChannels.values(), separator));

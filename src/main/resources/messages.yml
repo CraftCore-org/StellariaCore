@@ -352,6 +352,7 @@ land:
   status_chests_open: " &%7| &%aチェスト開放"
   status_explosions_allowed: " &%7| &%c爆発OK"
   status_pvp_warning: "&%c&l⚔ PvP有効エリア &%7このエリアでは戦闘できます"
+  status_pvp_disabled_notice: "&%a&l✔ PvP無効エリアに入りました"
   map_header: "&%9&l--- 周辺エリアマップ ---"
   map_legend:
     - "&%a■&%7 自分の土地　&%b■&%7 信頼されてる土地　&%c■&%7 他人の土地"
