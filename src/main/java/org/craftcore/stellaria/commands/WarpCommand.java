@@ -1,5 +1,7 @@
 package org.craftcore.stellaria.commands;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -11,6 +13,7 @@ import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.gui.WarpSelectGui;
 import org.craftcore.stellaria.managers.WarpManager;
+import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
 import org.craftcore.stellaria.utils.ParticleUtil;
 import org.craftcore.stellaria.utils.TabCompleteUtil;
@@ -158,12 +161,15 @@ public class WarpCommand implements CommandExecutor, TabCompleter {
             return;
         }
         player.sendMessage(plugin.getConfigManager().getMessage("warp.list_header", player));
+        player.sendMessage(ColorUtil.component(plugin.getConfigManager().getMessage("warp.list_gui_hint", player))
+                .clickEvent(ClickEvent.runCommand("/warps gui")));
         for (WarpManager.WarpEntry warp : warps) {
             String ownerName = warp.ownerName() != null ? warp.ownerName() : "?";
             String line = plugin.getConfigManager().getMessage("warp.list_entry", player);
             line = FormatUtil.replace(line, "%name%", warp.name());
             line = FormatUtil.replace(line, "%owner%", ownerName);
-            player.sendMessage(line);
+            Component entry = ColorUtil.component(line);
+            player.sendMessage(entry.clickEvent(ClickEvent.runCommand("/warp " + warp.name())));
         }
     }
 

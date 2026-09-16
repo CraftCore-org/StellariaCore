@@ -1,5 +1,7 @@
 package org.craftcore.stellaria.commands;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -11,6 +13,7 @@ import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.gui.HomeSelectGui;
 import org.craftcore.stellaria.managers.HomeManager;
+import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
 import org.craftcore.stellaria.utils.ParticleUtil;
 import org.craftcore.stellaria.utils.TabCompleteUtil;
@@ -147,9 +150,12 @@ public class HomeCommand implements CommandExecutor, TabCompleter {
             return;
         }
         player.sendMessage(plugin.getConfigManager().getMessage("home.list_header", player));
+        player.sendMessage(ColorUtil.component(plugin.getConfigManager().getMessage("home.list_gui_hint", player))
+                .clickEvent(ClickEvent.runCommand("/homes gui")));
         for (String name : names) {
-            player.sendMessage(FormatUtil.replace(
+            Component entry = ColorUtil.component(FormatUtil.replace(
                     plugin.getConfigManager().getMessage("home.list_entry", player), "%name%", name));
+            player.sendMessage(entry.clickEvent(ClickEvent.runCommand("/home " + name)));
         }
     }
 
