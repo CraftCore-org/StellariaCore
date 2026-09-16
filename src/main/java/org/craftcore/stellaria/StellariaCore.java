@@ -35,6 +35,7 @@ import org.craftcore.stellaria.listeners.KikoriListener;
 import org.craftcore.stellaria.listeners.LandProtectionListener;
 import org.craftcore.stellaria.listeners.LandAreaStatusListener;
 import org.craftcore.stellaria.listeners.VoteListener;
+import org.craftcore.stellaria.listeners.MenuItemListener;
 
 
 import org.craftcore.stellaria.utils.ConsoleUtil;
@@ -313,6 +314,7 @@ public class StellariaCore extends JavaPlugin {
         getCommand("unmute").setTabCompleter(muteCommand);
         getServer().getPluginManager().registerEvents(new MuteCommandBlockListener(this), this);
         getServer().getPluginManager().registerEvents(new GuiListener(), this);
+        getServer().getPluginManager().registerEvents(new MenuItemListener(this), this);
 
         MessageCommand messageCommand = new MessageCommand(this);
         getCommand("msg").setExecutor(messageCommand);
@@ -395,6 +397,8 @@ public class StellariaCore extends JavaPlugin {
         getCommand("features").setTabCompleter(featuresCommand);
 
         getCommand("menu").setExecutor(new MenuCommand(this));
+
+        getCommand("menuitem").setExecutor(new MenuItemCommand(this));
 
         getCommand("tphelp").setExecutor(new TpHelpCommand(this));
 

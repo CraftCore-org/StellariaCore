@@ -10,6 +10,7 @@ softdepend: [LuckPerms, NuVotifier]
 
 commands:
   menu:
+  menuitem:
   tphelp:
   tpa:
   tpaccept:
