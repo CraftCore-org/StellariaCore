@@ -85,19 +85,19 @@ public class MenuGui extends Gui {
             case SLOT_PROFILE -> runCommand(player, "profile");
             case SLOT_DISCORD -> runCommand(player, "discord");
             case SLOT_VOTE -> runCommand(player, "vote");
-            case SLOT_WORLD -> new WorldSelectGui(plugin).open(player);
+            case SLOT_WORLD -> new WorldSelectGui(plugin, this).open(player);
             case SLOT_WEATHER_VOTE -> new WeatherVoteGui(plugin, player).open(player);
             case SLOT_TIME_VOTE -> new TimeVoteGui(plugin, player).open(player);
             case SLOT_ENDERCHEST -> {
                 player.closeInventory();
                 player.openInventory(player.getEnderChest());
             }
-            case SLOT_FEATURES -> new FeaturesGui(plugin, plugin.getFeatures(), player).open(player);
+            case SLOT_FEATURES -> new FeaturesGui(plugin, plugin.getFeatures(), player, this).open(player);
             case SLOT_MAP -> runCommand(player, "map");
             case SLOT_TPA_HELP -> sendHelpLines(player, "menu.tpa_help_lines");
             case SLOT_LAND_HELP -> runCommand(player, "land help");
-            case SLOT_WARP -> new WarpSelectGui(plugin, new WarpCommand(plugin)).open(player);
-            case SLOT_HOME -> new HomeSelectGui(plugin, new HomeCommand(plugin), player).open(player);
+            case SLOT_WARP -> new WarpSelectGui(plugin, new WarpCommand(plugin), this).open(player);
+            case SLOT_HOME -> new HomeSelectGui(plugin, new HomeCommand(plugin), player, this).open(player);
             default -> {
             }
         }

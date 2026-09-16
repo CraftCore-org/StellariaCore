@@ -11,6 +11,7 @@ import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.commands.WarpCommand;
 import org.craftcore.stellaria.managers.WarpManager;
 import org.craftcore.stellaria.utils.FormatUtil;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -21,21 +22,29 @@ public final class WarpSelectGui extends Gui {
     private static final int PREVIOUS_SLOT = 45;
     private static final int PAGE_SLOT = 49;
     private static final int NEXT_SLOT = 53;
+    private static final int BACK_BUTTON_SLOT = 48;
 
     private final StellariaCore plugin;
     private final WarpCommand warpCommand;
     private final List<WarpManager.WarpEntry> warps;
     private final int page;
     private final int maxPage;
+    private final @Nullable Gui parent;
 
     public WarpSelectGui(StellariaCore plugin, WarpCommand warpCommand) {
-        this(plugin, warpCommand, plugin.getWarpManager().listAll(), 0);
+        this(plugin, warpCommand, null, plugin.getWarpManager().listAll(), 0);
     }
 
-    private WarpSelectGui(StellariaCore plugin, WarpCommand warpCommand, List<WarpManager.WarpEntry> warps, int page) {
-        super(54, title(plugin));
+    /** メニュー画面から開く場合、戻るボタンを出すために親画面を渡す。 */
+    public WarpSelectGui(StellariaCore plugin, WarpCommand warpCommand, @Nullable Gui parent) {
+        this(plugin, warpCommand, parent, plugin.getWarpManager().listAll(), 0);
+    }
+
+    private WarpSelectGui(StellariaCore plugin, WarpCommand warpCommand, @Nullable Gui parent, List<WarpManager.WarpEntry> warps, int page) {
+        super(54, title(plugin), parent, BACK_BUTTON_SLOT);
         this.plugin = plugin;
         this.warpCommand = warpCommand;
+        this.parent = parent;
         this.warps = warps;
         this.maxPage = Math.max(0, (warps.size() - 1) / CONTENT_SLOTS);
         this.page = Math.clamp(page, 0, maxPage);
@@ -78,19 +87,23 @@ public final class WarpSelectGui extends Gui {
         if (!(event.getWhoClicked() instanceof Player player) || event.getRawSlot() < 0 || event.getRawSlot() >= getInventory().getSize()) {
             return;
         }
+        if (handleBackButton(event, player)) {
+            return;
+        }
 
         int slot = event.getRawSlot();
         if (slot == PREVIOUS_SLOT && page > 0) {
-            new WarpSelectGui(plugin, warpCommand, warps, page - 1).open(player);
+            new WarpSelectGui(plugin, warpCommand, parent, warps, page - 1).open(player);
             return;
         }
         if (slot == NEXT_SLOT && page < maxPage) {
-            new WarpSelectGui(plugin, warpCommand, warps, page + 1).open(player);
+            new WarpSelectGui(plugin, warpCommand, parent, warps, page + 1).open(player);
             return;
         }
         if (slot < CONTENT_SLOTS) {
             int index = page * CONTENT_SLOTS + slot;
             if (index < warps.size()) {
+                player.closeInventory();
                 warpCommand.teleportToWarp(player, warps.get(index).name());
             }
         }

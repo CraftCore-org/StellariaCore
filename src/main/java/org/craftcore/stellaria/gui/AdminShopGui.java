@@ -9,6 +9,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.ColorUtil;
+import org.craftcore.stellaria.utils.GuiItemUtil;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,11 +26,16 @@ public class AdminShopGui extends Gui {
     private final Map<Integer, ShopItem> itemsBySlot = new HashMap<>();
 
     public AdminShopGui(StellariaCore plugin, Player player) {
-        this(plugin, player, loadItems(plugin));
+        this(plugin, player, null, loadItems(plugin));
     }
 
-    private AdminShopGui(StellariaCore plugin, Player player, List<ShopItem> shopItems) {
-        super(inventorySize(shopItems.size()), ColorUtil.component(plugin.getConfigManager().getMessage("adminshop.title", player)));
+    /** メニュー画面から開く場合、戻るボタンを出すために親画面を渡す。 */
+    public AdminShopGui(StellariaCore plugin, Player player, @Nullable Gui parent) {
+        this(plugin, player, parent, loadItems(plugin));
+    }
+
+    private AdminShopGui(StellariaCore plugin, Player player, @Nullable Gui parent, List<ShopItem> shopItems) {
+        super(inventorySize(shopItems.size()), ColorUtil.component(plugin.getConfigManager().getMessage("adminshop.title", player)), parent);
         this.plugin = plugin;
 
         for (int slot = 0; slot < shopItems.size() && slot < MAX_SLOTS; slot++) {
@@ -43,6 +50,9 @@ public class AdminShopGui extends Gui {
         event.setCancelled(true);
 
         if (event.getClickedInventory() != getInventory()) {
+            return;
+        }
+        if (event.getWhoClicked() instanceof Player p && handleBackButton(event, p)) {
             return;
         }
 
@@ -65,7 +75,7 @@ public class AdminShopGui extends Gui {
     }
 
     private ItemStack createDisplayItem(ShopItem shopItem) {
-        ItemStack itemStack = new ItemStack(shopItem.material());
+        ItemStack itemStack = GuiItemUtil.cleanIcon(shopItem.material());
         ItemMeta meta = itemStack.getItemMeta();
         meta.lore(List.of(ColorUtil.component("&%7価格: &%e" + plugin.getEconomyManager().format(shopItem.price()))));
         itemStack.setItemMeta(meta);

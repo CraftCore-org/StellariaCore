@@ -44,7 +44,7 @@ economy:
   default-balance: 1000 # 新規プレイヤーの初期所持金
 
 world:
-  gui-title: "&%bワールドを選択"
+  gui-title: "&%9ワールドを選択"
 
 home:
   max-per-player: 5

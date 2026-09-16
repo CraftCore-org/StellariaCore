@@ -9,6 +9,8 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.features.Feature;
 import org.craftcore.stellaria.utils.ColorUtil;
+import org.craftcore.stellaria.utils.GuiItemUtil;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,7 +22,12 @@ public class FeaturesGui extends Gui {
     private final List<Feature> features;
 
     public FeaturesGui(StellariaCore plugin, List<Feature> features, Player player) {
-        super(27, messageComponent(plugin, "features.gui_title", null));
+        this(plugin, features, player, null);
+    }
+
+    /** メニュー画面から開く場合、戻るボタンを出すために親画面を渡す。 */
+    public FeaturesGui(StellariaCore plugin, List<Feature> features, Player player, @Nullable Gui parent) {
+        super(27, messageComponent(plugin, "features.gui_title", null), parent);
         this.plugin = plugin;
         this.features = List.copyOf(features);
         populate(player);
@@ -30,6 +37,9 @@ public class FeaturesGui extends Gui {
     public void onClick(InventoryClickEvent event) {
         event.setCancelled(true);
         if (!(event.getWhoClicked() instanceof Player player) || event.getRawSlot() >= getInventory().getSize()) {
+            return;
+        }
+        if (handleBackButton(event, player)) {
             return;
         }
 
@@ -56,7 +66,7 @@ public class FeaturesGui extends Gui {
     private void populate(Player player) {
         for (int index = 0; index < features.size() && index < 7; index++) {
             Feature feature = features.get(index);
-            ItemStack item = new ItemStack(feature.icon());
+            ItemStack item = GuiItemUtil.cleanIcon(feature.icon());
             ItemMeta meta = item.getItemMeta();
             meta.displayName(feature.displayName());
 

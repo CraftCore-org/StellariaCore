@@ -10,6 +10,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.ColorUtil;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -27,16 +28,24 @@ public class WorldSelectGui extends Gui {
     private final List<World> worlds;
     private final int page;
     private final int pageCount;
+    private final @Nullable Gui parent;
 
     /** 先頭ページのワールド選択GUIを作成する。 */
     public WorldSelectGui(StellariaCore plugin) {
-        this(plugin, 0);
+        this(plugin, null, 0);
     }
 
-    private WorldSelectGui(StellariaCore plugin, int page) {
+    /** メニュー画面から開く場合、戻るボタンを出すために親画面を渡す。 */
+    public WorldSelectGui(StellariaCore plugin, @Nullable Gui parent) {
+        this(plugin, parent, 0);
+    }
+
+    private WorldSelectGui(StellariaCore plugin, @Nullable Gui parent, int page) {
         super(inventorySize(Bukkit.getWorlds().size()),
-                ColorUtil.component(plugin.getConfigManager().getString("world.gui-title", "&%bワールドを選択")));
+                ColorUtil.component(plugin.getConfigManager().getString("world.gui-title", "&%9ワールドを選択")),
+                parent, backButtonSlot(inventorySize(Bukkit.getWorlds().size())));
         this.plugin = plugin;
+        this.parent = parent;
         this.worlds = List.copyOf(Bukkit.getWorlds());
         this.pageCount = Math.max(1, (worlds.size() + WORLDS_PER_PAGE - 1) / WORLDS_PER_PAGE);
         this.page = Math.clamp(page, 0, pageCount - 1);
@@ -48,6 +57,11 @@ public class WorldSelectGui extends Gui {
             return 54;
         }
         return Math.max(9, ((Math.max(1, worldCount) + 8) / 9) * 9);
+    }
+
+    /** 54枠（ページング矢印あり）の時だけ矢印と被らない48番、それ以外は末尾スロット。 */
+    private static int backButtonSlot(int size) {
+        return size == 54 ? 48 : size - 1;
     }
 
     private void populate() {
@@ -100,14 +114,17 @@ public class WorldSelectGui extends Gui {
         if (event.getClickedInventory() != getInventory() || !(event.getWhoClicked() instanceof Player player)) {
             return;
         }
+        if (handleBackButton(event, player)) {
+            return;
+        }
 
         int slot = event.getSlot();
         if (pageCount > 1 && slot == PREVIOUS_PAGE_SLOT && page > 0) {
-            new WorldSelectGui(plugin, page - 1).open(player);
+            new WorldSelectGui(plugin, parent, page - 1).open(player);
             return;
         }
         if (pageCount > 1 && slot == NEXT_PAGE_SLOT && page < pageCount - 1) {
-            new WorldSelectGui(plugin, page + 1).open(player);
+            new WorldSelectGui(plugin, parent, page + 1).open(player);
             return;
         }
 
