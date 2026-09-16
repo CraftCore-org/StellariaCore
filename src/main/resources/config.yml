@@ -8,11 +8,11 @@ discord:
   invite: "https://discord.gg/ssaREjBJXg" # /discord で案内するサーバー招待リンク
 
 map:
-  link: "https://example.com/map" # TODO: 実際のマップURLに差し替え
+  link: "https://map.craftcore.org" #
 
 homepage:
-  link: "https://example.com"
-  craftcore-link: "https://example.com/craftcore" # TODO: 実URLに差し替え
+  link: "https://craftcore.org/stellaria"
+  craftcore-link: "https://craftcore.org" #
 
 vote:
   enabled: true
@@ -120,7 +120,6 @@ scoreboard:
   hide-numbers: true
   lines:
     - ""
-    - " &%bオンライン&%7: &%f%online%&%7/&%f%max_online%"
     - " &%bワールド&%7: &%f%world%"
     - " &%b座標&%7: &%f%x%&%7,&%f %y%&%7,&%f %z%"
     - " &%b所持金&%7: &%f%money%"
