@@ -75,12 +75,21 @@ CREATE TABLE IF NOT EXISTS headshop_rotation (
 
 ### 日替わりロジック（`HeadshopManager`）
 
-1. 1分毎のティックで、サーバーのローカル時刻が`headshop.reset-time`（デフォルト`"12:00"`、`HH:mm`形式）以降か判定
-2. 以降かつ、`headshop_rotation`に本日の日付（`LocalDate.now().toString()`）の行がまだ無ければ抽選を実行
-3. `headshop_rotation`から直近の日付（本日より前で最大のもの）の`pool_id`一覧を取得し、これを除外候補とする
+「本日」は暦日（`LocalDate.now()`）ではなく、`reset-time`を境にした**ショップの1日（shopDate）**で数える。
+`shopDate()`は「`reset-time`より前なら前日、`reset-time`以降なら当日」を返すヘルパーで、**書き込み側
+（抽選の生成）と読み込み側（`getTodayHeads()`）の両方がこの同じ`shopDate()`を使う**。
+
+（実装時の注記: 初期実装では書き込み側だけが`reset-time`を過ぎたかどうかで抽選をガードし、
+読み込み側は無条件で暦日キーを見ていたため、`reset-time`より前は「今日の日付の行がまだ無い」状態で
+メインGUIが空表示になる不整合が発生した。両者が同じ`shopDate()`を使うことでこれを防ぐ。）
+
+1. 1分毎のティックで`shopDate()`を求める
+2. `headshop_rotation`に`shopDate()`の行がまだ無ければ抽選を実行（`reset-time`より前なら前日分がまだ無いかを見ることになり、通常は前日分が既にあるので抽選は走らない。初回起動時など前日分も無ければ、その時点で前日分としてすぐ生成する——`reset-time`前でも空表示にならない）
+3. `headshop_rotation`から直近の日付（`shopDate()`より前で最大のもの）の`pool_id`一覧を取得し、これを除外候補とする
 4. `headshop_pool`全件から除外候補を除いた集合から5件をランダム抽選。**除外後の候補が5件未満ならフォールバックとして除外を無視し**、プール全体から抽選する（コンソールに警告ログを出す。プールが5件未満の場合はある分だけ抽選する）
-5. 抽選結果を`headshop_rotation`にINSERT
-6. `getTodayHeads()`は毎回このテーブルをJOINして`headshop_pool`から表示用データを取得する（再起動しても同じ5件が維持される。インメモリキャッシュは持たない）
+5. 抽選結果を`headshop_rotation`に`shopDate()`をキーにしてINSERT
+6. `getTodayHeads()`は毎回`shopDate()`をキーにこのテーブルをJOINして`headshop_pool`から表示用データを取得する（再起動しても同じ5件が維持される。インメモリキャッシュは持たない）
+7. プールが空で抽選できない場合の警告ログは、同じ`shopDate()`の間は1回だけ出す（毎分再試行するたびに出し続けない）
 
 ## メインGUI（`HeadshopGui`、3行=27スロット）
 
@@ -174,6 +183,7 @@ headshop:
 - `./gradlew build`が通ること
 - **プール登録**: `/headshop admin`を開き、頭アイテムをカーソルに乗せた状態で空きスロットをクリック→`headshop_pool`に登録されること。同じアイテムをもう一度登録しようとすると`duplicate`表示になること。シフトクリックで削除できること
 - **日替わり抽選**: `headshop.reset-time`を数分後の時刻に設定して再起動→時刻到達後にメインGUIの5枠が埋まること。前日の`headshop_rotation`と重複しないこと（プールを10件程度用意してテスト）
+- **reset-time前の表示**: `headshop.reset-time`を過ぎる前（例: サーバー起動直後でまだ当日のreset-timeに達していない時間帯）に`/headshop`を開いても、前日分（または初回起動なら直近生成分）のヘッドが表示され、空欄にならないこと
 - **メインGUI購入**: 所持金を用意して本日のヘッドを購入→残高が減り、頭アイテムが付与されること。残高不足で`insufficient-funds`表示になること
 - **プレイヤーヘッドGUI**: オンライン中のプレイヤーの頭が一覧に出ること、購入時に価格が`normal-price + player-head-markup`になっていること、ヒントアイテムに`reset-time`の値が表示されていること
 - **`/menu`連携**: `/menu`からヘッドショップのボタンでメインGUIが開けること

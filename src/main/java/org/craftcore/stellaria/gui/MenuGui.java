@@ -93,6 +93,7 @@ public class MenuGui extends Gui {
             case "warp" -> new WarpSelectGui(plugin, new WarpCommand(plugin), this).open(player);
             case "home" -> new HomeSelectGui(plugin, new HomeCommand(plugin), player, this).open(player);
             case "get-menu-item" -> MenuItemUtil.give(plugin, player);
+            case "headshop" -> new HeadshopGui(plugin, player, this).open(player);
             default -> plugin.getLogger().warning("menu.items に不明なactionがあります: " + entry.action());
         }
     }
