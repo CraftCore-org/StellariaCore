@@ -227,6 +227,11 @@ warp:
   list_empty: "&%7ワープがまだありません。/setwarp <名前> で作成できます。"
 
 weathervote:
+  gui:
+    title: "&%6&l天気投票"
+    sunny: "&%e晴れ"
+    rain: "&%9雨"
+    thunder: "&%5雷雨"
   start_vote: "&r%player%&%7が&%g%world%&%7の天気を&%g%weather%&%7にしようとしています。\n&%g%votetime%&%7秒後に投票が終了します。"
   vote_end_accept: "&%a賛成&%7が多数のため&%g%world%&%7の天気が&%g%weather%&%7に変更されました。"
   vote_end_deny: "&%c反対&%7が多数のため天気は変更されませんでした。"
@@ -246,6 +251,12 @@ weathervote:
   err_world: "&%cこのワールドは天気を変更できません。"
 
 timevote:
+  gui:
+    title: "&%6&l時間投票"
+    morning: "&%e朝"
+    noon: "&%e昼"
+    evening: "&%g夕方"
+    night: "&%9夜"
   start_vote: "&r%player%&%7が&%g%world%&%7の時間を&%g%time%&%7にしようとしています。\n&%g%votetime%&%7秒後に投票が終了します。"
   vote_end_accept: "&%a賛成&%7が多数のため&%g%world%&%7の時間が&%g%time%&%7に変更されました。"
   vote_end_deny: "&%c反対&%7が多数のため時間は変更されませんでした。"

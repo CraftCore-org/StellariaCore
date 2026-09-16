@@ -12,6 +12,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.gui.TimeVoteGui;
 import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
 import org.jetbrains.annotations.NotNull;
@@ -101,8 +102,8 @@ public class TimeVoteCommand implements CommandExecutor, TabCompleter {
         Player player = (Player) sender;
         if (command.getName().equalsIgnoreCase("timevote")){
             if (args.length == 0){
-                sender.sendMessage(plugin.getConfigManager().getMessage("timevote.err_args",(OfflinePlayer) sender));
-                return false;
+                new TimeVoteGui(plugin, player).open(player);
+                return true;
             }
             if (isVoting) {
                 player.sendMessage(FormatUtil.text((OfflinePlayer) sender, plugin.getConfigManager().getMessage("timevote.err_voting",(OfflinePlayer) sender)));
