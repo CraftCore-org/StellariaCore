@@ -11,6 +11,8 @@ import org.craftcore.stellaria.commands.KikoriCommand;
 import org.craftcore.stellaria.commands.LandCommand;
 import org.craftcore.stellaria.managers.*;
 import org.craftcore.stellaria.gui.GuiListener;
+import org.craftcore.stellaria.features.Feature;
+import org.craftcore.stellaria.features.KikoriFeature;
 import org.craftcore.stellaria.managers.ActionBarManager;
 import org.craftcore.stellaria.managers.AfkManager;
 import org.craftcore.stellaria.managers.AutoBroadcastManager;
@@ -38,6 +40,8 @@ import org.craftcore.stellaria.utils.ConsoleUtil;
 
 import net.milkbowl.vault.economy.Economy;
 
+import java.util.List;
+
 
 public class StellariaCore extends JavaPlugin {
 
@@ -62,6 +66,7 @@ public class StellariaCore extends JavaPlugin {
     private NametagManager nametagManager;
     private KikoriManager kikoriManager;
     private LandManager landManager;
+    private List<Feature> features;
 
     @Override
     public void onEnable() {
@@ -146,6 +151,7 @@ public class StellariaCore extends JavaPlugin {
         this.homeManager = new HomeManager(this);
         this.warpManager = new WarpManager(this);
         this.kikoriManager = new KikoriManager(this);
+        this.features = List.of(new KikoriFeature(kikoriManager));
 
         this.muteManager = new MuteManager(this);
         muteManager.loadAll();
@@ -346,6 +352,10 @@ public class StellariaCore extends JavaPlugin {
         getCommand("kikori").setExecutor(kikoriCommand);
         getCommand("kikori").setTabCompleter(kikoriCommand);
 
+        FeaturesCommand featuresCommand = new FeaturesCommand(this, features);
+        getCommand("features").setExecutor(featuresCommand);
+        getCommand("features").setTabCompleter(featuresCommand);
+
         WeatherVoteCommand weatherVoteCommand = new WeatherVoteCommand(this);
         getCommand("weathervote").setExecutor(weatherVoteCommand);
         getCommand("weathervote").setTabCompleter(weatherVoteCommand);
@@ -445,6 +455,10 @@ public class StellariaCore extends JavaPlugin {
 
     public KikoriManager getKikoriManager() {
         return this.kikoriManager;
+    }
+
+    public List<Feature> getFeatures() {
+        return this.features;
     }
 
     public LandManager getLandManager() {

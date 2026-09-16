@@ -278,6 +278,24 @@ kikori:
   artificial_detected: "&%c人工物を検知しました。木こり機能を自動でOFFにします。"
   pass_granted: "&%e次回、人工物を検知しても1回だけ無視して伐採を続行します。"
 
+features:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  usage: "&%c使用方法: /features [buy <id>]"
+  unknown_feature: "&%c指定された機能は見つかりません。"
+  buy_success: "&%a機能を購入しました！"
+  already_unlocked: "&%cこの機能は既に購入済みです。"
+  buy_insufficient_funds: "&%c残高が足りません。（必要: %price%）"
+  enabled: "&%a機能をONにしました。"
+  disabled: "&%7機能をOFFにしました。"
+  gui_title: "&%2便利機能"
+  gui_price: "&%7価格: &%e%price%"
+  gui_enabled: "&%a有効"
+  gui_disabled: "&%7無効"
+  gui_toggle_hint: "&%eクリックして切り替え"
+  gui_purchase_hint: "&%eクリックして購入"
+  confirm_title: "&%2購入の確認"
+  confirm_description: "&%7この機能を &%e%price% &%7で購入しますか？"
+
 land:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   no_permission: "&%cこのコマンドを実行する権限がありません。"
