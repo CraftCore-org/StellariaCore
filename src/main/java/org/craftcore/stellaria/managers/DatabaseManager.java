@@ -367,12 +367,13 @@ public final class DatabaseManager {
      * });
      * }</pre>
      */
-    public static void transaction(Consumer<Connection> action) {
+    public static boolean transaction(Consumer<Connection> action) {
         Connection conn = raw();
         try {
             conn.setAutoCommit(false);
             action.accept(conn);
             conn.commit();
+            return true;
         } catch (Exception e) {
             try {
                 conn.rollback();
@@ -380,6 +381,7 @@ public final class DatabaseManager {
             } catch (SQLException rollbackError) {
                 plugin.getLogger().severe("ロールバックにも失敗: " + rollbackError.getMessage());
             }
+            return false;
         } finally {
             try {
                 conn.setAutoCommit(true);

@@ -81,6 +81,8 @@ commands:
   chunkborder:
   headshop:
     permission: stellaria.headshop
+  lock:
+  unlock:
 
 permissions:
   stellaria.msg:
@@ -115,6 +117,10 @@ permissions:
     default: true
   stellaria.headshop.admin:
     default: op
+  stellaria.lock:
+    default: true
+  stellaria.lock.admin:
+    default: op
   stellaria.admin:
     description: Stellaria運営用コマンドの一括権限。個々の権限はここから継承される。
     default: op
@@ -125,6 +131,7 @@ permissions:
       stellaria.eco: true
       stellaria.chat.color: true
       stellaria.heal: true
+      stellaria.lock.admin: true
   stellaria.reload:
     default: false
   stellaria.broadcast:

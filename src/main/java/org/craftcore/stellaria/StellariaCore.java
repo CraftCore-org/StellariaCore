@@ -37,6 +37,7 @@ import org.craftcore.stellaria.listeners.KikoriListener;
 import org.craftcore.stellaria.listeners.MineListener;
 import org.craftcore.stellaria.listeners.LandProtectionListener;
 import org.craftcore.stellaria.listeners.LandAreaStatusListener;
+import org.craftcore.stellaria.listeners.ContainerLockListener;
 import org.craftcore.stellaria.listeners.VoteListener;
 import org.craftcore.stellaria.listeners.MenuItemListener;
 
@@ -73,6 +74,7 @@ public class StellariaCore extends JavaPlugin {
     private KikoriManager kikoriManager;
     private MineManager mineManager;
     private LandManager landManager;
+    private ContainerLockManager containerLockManager;
     private DiscordBotManager discordBotManager;
     private LandBorderParticleManager landBorderParticleManager;
     private List<Feature> features;
@@ -182,6 +184,9 @@ public class StellariaCore extends JavaPlugin {
             "pool_id INTEGER NOT NULL",
             "PRIMARY KEY (date, pool_id)"
         );
+        DatabaseManager.createTableIfNotExists("container_locks", "lock_id TEXT PRIMARY KEY", "owner_uuid TEXT NOT NULL", "created_at INTEGER NOT NULL");
+        DatabaseManager.createTableIfNotExists("container_lock_blocks", "world TEXT NOT NULL", "x INTEGER NOT NULL", "y INTEGER NOT NULL", "z INTEGER NOT NULL", "lock_id TEXT NOT NULL", "PRIMARY KEY (world, x, y, z)");
+        DatabaseManager.createTableIfNotExists("container_lock_members", "lock_id TEXT NOT NULL", "member_uuid TEXT NOT NULL", "PRIMARY KEY (lock_id, member_uuid)");
 
         this.afkManager = new AfkManager(this);
         this.playtimeManager = new PlaytimeManager(this);
@@ -225,6 +230,7 @@ public class StellariaCore extends JavaPlugin {
         this.economyManager = new EconomyManager(this);
         // LandManagerはEconomyManagerに依存しないが、将来の拡張に備えて構築後に置く
         this.landManager = new LandManager(this);
+        this.containerLockManager = new ContainerLockManager(this);
         this.landBorderParticleManager = new LandBorderParticleManager(this);
 
         // 3. Vaultがサーバーにあるか確認し、登録する処理
@@ -263,6 +269,7 @@ public class StellariaCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new KikoriListener(this), this);
         getServer().getPluginManager().registerEvents(new MineListener(this), this);
         getServer().getPluginManager().registerEvents(new LandProtectionListener(this), this);
+        getServer().getPluginManager().registerEvents(new ContainerLockListener(this), this);
         getServer().getPluginManager().registerEvents(new LandAreaStatusListener(this), this);
 
         // 6. Scoreboard/Tablist/Belowname のインスタンス化とtick開始
@@ -475,6 +482,10 @@ public class StellariaCore extends JavaPlugin {
         HeadshopCommand headshopCommand = new HeadshopCommand(this);
         getCommand("headshop").setExecutor(headshopCommand);
         getCommand("headshop").setTabCompleter(headshopCommand);
+        LockCommand lockCommand = new LockCommand(this);
+        getCommand("lock").setExecutor(lockCommand);
+        getCommand("lock").setTabCompleter(lockCommand);
+        getCommand("unlock").setExecutor(lockCommand);
 
         this.autoBroadcastManager = new AutoBroadcastManager(this);
         autoBroadcastManager.start();
@@ -580,6 +591,10 @@ public class StellariaCore extends JavaPlugin {
 
     public LandManager getLandManager() {
         return this.landManager;
+    }
+
+    public ContainerLockManager getContainerLockManager() {
+        return this.containerLockManager;
     }
 
     public DiscordBotManager getDiscordBotManager() {
