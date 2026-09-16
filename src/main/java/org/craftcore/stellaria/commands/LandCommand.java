@@ -279,7 +279,7 @@ public class LandCommand implements CommandExecutor, TabCompleter {
 
         String action = args[1].toLowerCase();
         if (action.equals("off") && args.length == 2) {
-            plugin.getLandBorderParticleManager().disable(player.getUniqueId());
+            plugin.getLandBorderParticleManager().disableAndForget(player.getUniqueId());
             player.sendMessage(plugin.getConfigManager().getMessage("land.border_disabled", player));
             return;
         }

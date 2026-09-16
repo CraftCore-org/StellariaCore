@@ -43,6 +43,7 @@ public class PlayerJoinListener implements Listener {
 
         playJoinEffect(player);
         plugin.getPlaytimeManager().onJoin(player);
+        plugin.getLandBorderParticleManager().restoreOnJoin(player);
 
         // すでにレコードがあるかチェック
         boolean exists = DatabaseManager.exists("players", "uuid = ?", uuid);

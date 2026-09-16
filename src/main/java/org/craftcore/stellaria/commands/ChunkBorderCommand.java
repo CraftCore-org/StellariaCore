@@ -46,7 +46,7 @@ public class ChunkBorderCommand implements CommandExecutor, TabCompleter {
 
         String action = args[0].toLowerCase();
         if (action.equals("off") && args.length == 1) {
-            manager.disable(player.getUniqueId());
+            manager.disableAndForget(player.getUniqueId());
             player.sendMessage(plugin.getConfigManager().getMessage("chunkborder.disabled", player));
             return true;
         }

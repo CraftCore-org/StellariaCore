@@ -80,11 +80,12 @@ public class LandBorderParticleManager {
         this.plugin = plugin;
     }
 
-    /** 表示をONにする。他のモードで表示中だった場合は置き換わる。 */
+    /** 表示をONにする。他のモードで表示中だった場合は置き換わる。DBにも永続化する。 */
     public void enable(Player player, int radius, Mode mode) {
         DisplayState state = new DisplayState(radius, mode);
         state.cache = buildCache(LandManager.ChunkKey.of(player.getLocation()), radius, mode);
         displays.put(player.getUniqueId(), state);
+        persist(player.getUniqueId(), mode, radius);
     }
 
     /**
@@ -97,14 +98,59 @@ public class LandBorderParticleManager {
         DisplayState existing = displays.get(uuid);
         if (existing != null && existing.mode == mode) {
             displays.remove(uuid);
+            forget(uuid);
             return false;
         }
         enable(player, radius, mode);
         return true;
     }
 
+    /** ログアウト時のクリーンアップ専用。DBの永続状態はそのまま残す（再ログインで復元するため）。 */
     public void disable(UUID uuid) {
         displays.remove(uuid);
+    }
+
+    /** ユーザーが明示的にOFFを指示した時用。メモリとDBの両方から消す。 */
+    public void disableAndForget(UUID uuid) {
+        displays.remove(uuid);
+        forget(uuid);
+    }
+
+    /**
+     * ログイン時にDBの永続状態を読み込んで表示を復元する。非同期でDBを読み、
+     * 見つかればプレイヤー自身のリージョンスレッドに戻ってから{@link #enable}する。
+     */
+    public void restoreOnJoin(Player player) {
+        UUID uuid = player.getUniqueId();
+        DatabaseManager.queryOneAsync(
+                "SELECT mode, radius FROM land_border_displays WHERE uuid = ?",
+                rs -> new DisplayState(rs.getInt("radius"), Mode.valueOf(rs.getString("mode"))),
+                state -> {
+                    if (state == null) {
+                        return;
+                    }
+                    player.getScheduler().run(plugin, task -> {
+                        if (player.isOnline()) {
+                            enable(player, state.radius, state.mode);
+                        }
+                    }, null);
+                },
+                uuid.toString()
+        );
+    }
+
+    private void persist(UUID uuid, Mode mode, int radius) {
+        DatabaseManager.executeAsync(
+                "INSERT OR REPLACE INTO land_border_displays (uuid, mode, radius) VALUES (?, ?, ?)",
+                uuid.toString(), mode.name(), radius
+        );
+    }
+
+    private void forget(UUID uuid) {
+        DatabaseManager.executeAsync(
+                "DELETE FROM land_border_displays WHERE uuid = ?",
+                uuid.toString()
+        );
     }
 
     /** 指定モードで現在ONかどうか（別モードでONの場合はfalse）。 */
