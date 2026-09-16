@@ -42,7 +42,7 @@ gui/
 
 1. `headshop_pool` / `headshop_rotation` テーブル作成
 2. `HeadshopManager`を構築（`plugin`保持、キャッシュは「本日のローテーション5件」のみ・都度DBから読む）し、`runAtFixedRate`で1分毎に日替わりチェックを開始
-3. `HeadshopCommand`を`headshop`コマンドに登録（`CommandExecutor`のみ、GUI操作がメインなのでtab補完はサブコマンド`admin`のみ対応）
+3. `HeadshopCommand`（`CommandExecutor`と`TabCompleter`の両方を実装、`HomeCommand`/`WarpCommand`と同じ形）を`headshop`コマンドに登録。タブ補完は1個目の引数で`admin`のみ候補に出す
 4. `config.yml`の`menu.items`に1エントリ追加、`MenuGui.onClick()`に`case "headshop"`を追加
 
 退出時のクリーンアップは不要（GUIは`InventoryCloseEvent`で自然に閉じる、プレイヤーごとの一時状態を持たない）。
