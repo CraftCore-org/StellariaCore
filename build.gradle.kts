@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "org.craftcore.stellaria"
-version = "1.0.49"
+version = "1.0.50"
 
 repositories {
     mavenCentral()
