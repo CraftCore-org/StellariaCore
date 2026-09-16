@@ -49,7 +49,7 @@ gui/
 
 `plugin.yml`の`commands:`に`headshop`を追加。権限:
 - `stellaria.headshop`（デフォルト`true`）— `/headshop`本体・購入
-- `stellaria.headshop.admin`（デフォルト`op`、`stellaria.admin`の子）— `/headshop admin`
+- `stellaria.headshop.admin`（デフォルト`op`）— `/headshop admin`。`stellaria.land.admin`と同様、独立した権限として定義する（`stellaria.admin`の子には入れない。子リストは`reload`/`broadcast`/`mute`/`eco`/`chat.color`/`heal`の初期からの少数のみで、`land.admin`等の新しい管理系権限は単独の`default: op`として追加されている現行の慣習に合わせる）
 
 ## データ永続化
 
