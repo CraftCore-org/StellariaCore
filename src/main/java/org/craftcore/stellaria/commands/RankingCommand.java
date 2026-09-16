@@ -87,9 +87,11 @@ public class RankingCommand implements CommandExecutor, TabCompleter {
         }
         int rank = offset + 1;
         for (EconomyManager.BalanceEntry entry : entries) {
-            String value = economy.isHideBalance(Bukkit.getOfflinePlayer(entry.uuid()))
-                    ? plugin.getConfigManager().getMessage("ranking.balance_hidden", null)
-                    : economy.formatExact(entry.coins());
+            if (economy.isHideBalance(Bukkit.getOfflinePlayer(entry.uuid()))) {
+                rank++;
+                continue;
+            }
+            String value = economy.formatExact(entry.coins());
             sender.sendMessage(plugin.getConfigManager().getMessage("ranking.money_entry", null)
                     .replace("%rank%", String.valueOf(rank))
                     .replace("%player%", entry.name())
