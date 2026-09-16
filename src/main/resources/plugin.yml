@@ -40,6 +40,10 @@ commands:
     permission: stellaria.chat.color
   discord:
     aliases: [dc]
+  map:
+  homepage:
+  enderchest:
+    aliases: [ec]
   playtime:
   seen:
   ranking:
