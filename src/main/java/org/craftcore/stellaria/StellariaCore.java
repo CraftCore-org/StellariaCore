@@ -322,6 +322,10 @@ public class StellariaCore extends JavaPlugin {
         getCommand("seen").setExecutor(seenCommand);
         getCommand("seen").setTabCompleter(seenCommand);
 
+        WorldCommand worldCommand = new WorldCommand(this);
+        getCommand("world").setExecutor(worldCommand);
+        getCommand("world").setTabCompleter(worldCommand);
+
         RankingCommand rankingCommand = new RankingCommand(this);
         getCommand("ranking").setExecutor(rankingCommand);
         getCommand("ranking").setTabCompleter(rankingCommand);
