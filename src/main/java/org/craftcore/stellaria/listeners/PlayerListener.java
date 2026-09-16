@@ -31,6 +31,7 @@ public class PlayerListener implements Listener {
         plugin.getBossBarManager().removePlayer(event.getPlayer().getUniqueId());
         plugin.getKikoriManager().removePlayer(event.getPlayer().getUniqueId());
         plugin.getLandManager().removeBypassState(event.getPlayer().getUniqueId());
+        plugin.getLandBorderParticleManager().disable(event.getPlayer().getUniqueId());
     }
 
     @EventHandler

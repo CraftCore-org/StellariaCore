@@ -36,7 +36,7 @@ import java.util.UUID;
 public class LandCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> SUBCOMMANDS = List.of(
-            "claim", "unclaim", "info", "list", "map", "help", "area", "rule", "bypass");
+            "claim", "unclaim", "info", "list", "map", "border", "help", "area", "rule", "bypass");
     private static final List<String> AREA_SUBCOMMANDS = List.of(
             "trust", "untrust", "trustlist", "pvp", "explosions", "doors", "chests");
     private static final List<String> AREA_FLAG_SUBCOMMANDS = List.of("pvp", "explosions", "doors", "chests");
@@ -68,6 +68,7 @@ public class LandCommand implements CommandExecutor, TabCompleter {
             case "info" -> handleInfo(player);
             case "list" -> handleList(player);
             case "map" -> handleMap(player);
+            case "border" -> handleBorder(player, args);
             case "help" -> handleHelp(player);
             case "area" -> handleArea(player, args);
             case "rule" -> handleRule(player, args);
@@ -241,6 +242,54 @@ public class LandCommand implements CommandExecutor, TabCompleter {
         for (String line : plugin.getConfigManager().getMessageList("land.help")) {
             player.sendMessage(FormatUtil.text(player, line));
         }
+    }
+
+    /** /land border [on|off] [半径]。引数なしは現在の状態を反転する。 */
+    private void handleBorder(Player player, String[] args) {
+        int defaultRadius = Math.max(1, plugin.getConfigManager().getInt(
+                "land.border-particle.toggle-radius-default", 3));
+        if (args.length == 1) {
+            boolean enabled = plugin.getLandBorderParticleManager().toggle(player, defaultRadius);
+            sendBorderState(player, enabled, defaultRadius);
+            return;
+        }
+
+        String action = args[1].toLowerCase();
+        if (action.equals("off") && args.length == 2) {
+            plugin.getLandBorderParticleManager().disable(player.getUniqueId());
+            player.sendMessage(plugin.getConfigManager().getMessage("land.border_disabled", player));
+            return;
+        }
+        if (!action.equals("on") || args.length > 3) {
+            sendUsage(player, "land.border_usage");
+            return;
+        }
+
+        int radius = args.length == 3 ? parseBorderRadius(player, args[2]) : defaultRadius;
+        if (radius < 1) {
+            return;
+        }
+        plugin.getLandBorderParticleManager().enable(player, radius);
+        sendBorderState(player, true, radius);
+    }
+
+    private int parseBorderRadius(Player player, String value) {
+        try {
+            int radius = Integer.parseInt(value);
+            if (radius >= 1) {
+                return radius;
+            }
+        } catch (NumberFormatException ignored) {
+            // 下のusageへ統一する。
+        }
+        sendUsage(player, "land.border_usage");
+        return -1;
+    }
+
+    private void sendBorderState(Player player, boolean enabled, int radius) {
+        String message = plugin.getConfigManager().getMessage(
+                enabled ? "land.border_enabled" : "land.border_disabled", player);
+        player.sendMessage(FormatUtil.replace(message, "%radius%", String.valueOf(radius)));
     }
 
     private static final String BYPASS_ACTIONBAR_CHANNEL = "land_bypass";
@@ -532,6 +581,9 @@ public class LandCommand implements CommandExecutor, TabCompleter {
             if (args.length == 3 && RULE_FLAG_SUBCOMMANDS.contains(args[1].toLowerCase())) {
                 return TabCompleteUtil.filterStartsWith(RULE_VALUES, args[2]);
             }
+        }
+        if (args[0].equalsIgnoreCase("border") && args.length == 2) {
+            return TabCompleteUtil.filterStartsWith(ON_OFF, args[1]);
         }
         return List.of();
     }

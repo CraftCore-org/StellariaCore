@@ -67,6 +67,7 @@ public class StellariaCore extends JavaPlugin {
     private NametagManager nametagManager;
     private KikoriManager kikoriManager;
     private LandManager landManager;
+    private LandBorderParticleManager landBorderParticleManager;
     private List<Feature> features;
 
     @Override
@@ -185,6 +186,7 @@ public class StellariaCore extends JavaPlugin {
         this.economyManager = new EconomyManager(this);
         // LandManagerはEconomyManagerに依存しないが、将来の拡張に備えて構築後に置く
         this.landManager = new LandManager(this);
+        this.landBorderParticleManager = new LandBorderParticleManager(this);
 
         // 3. Vaultがサーバーにあるか確認し、登録する処理
         if (getServer().getPluginManager().getPlugin("Vault") != null) {
@@ -268,6 +270,11 @@ public class StellariaCore extends JavaPlugin {
         if (configManager.getBoolean("kikori.enabled", true)) {
             Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> kikoriManager.tick(), 200L, 200L);
         }
+
+        long landBorderInterval = Math.max(1L, configManager.getInt(
+                "land.border-particle.toggle-interval-ticks", 20));
+        Bukkit.getGlobalRegionScheduler().runAtFixedRate(this,
+                task -> landBorderParticleManager.tick(), landBorderInterval, landBorderInterval);
 
         // 7. チャットフォーマット・メンション
         this.mentionService = new MentionService(this);
@@ -498,6 +505,10 @@ public class StellariaCore extends JavaPlugin {
 
     public LandManager getLandManager() {
         return this.landManager;
+    }
+
+    public LandBorderParticleManager getLandBorderParticleManager() {
+        return this.landBorderParticleManager;
     }
 
     /**

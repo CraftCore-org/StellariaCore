@@ -374,9 +374,12 @@ adminshop:
 land:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   no_permission: "&%cこのコマンドを実行する権限がありません。"
-  usage: "&%c使用方法: /land <claim|unclaim|info|list|map|help|area|rule|bypass>"
+  usage: "&%c使用方法: /land <claim|unclaim|info|list|map|border|help|area|rule|bypass>"
   area_usage: "&%c使用方法: /land area <trust|untrust|trustlist|pvp|explosions|doors|chests>"
   rule_usage: "&%c使用方法: /land rule <pvp|explosions|doors|chests> <on|off|default>"
+  border_usage: "&%c使用方法: /land border [on|off] [半径]"
+  border_enabled: "&%aチャンク境界の常時表示をONにしました。&%7（半径: &%f%radius%&%7チャンク）"
+  border_disabled: "&%cチャンク境界の常時表示をOFFにしました。"
   rule_flag_name_pvp: "PvP"
   rule_flag_name_explosions: "爆発"
   rule_flag_name_doors: "ドア"
@@ -460,6 +463,7 @@ land:
     - "&%7PvPはサーバー全体でデフォルト無効です。&%e/land area pvp on &%7で自分のエリア内だけ有効化できます"
     - "&%7爆発・ドア開放・チェスト開放もデフォルト無効（保護あり）です。同じく&%e/land area <explosions|doors|chests> on &%7で有効化できます"
     - "&%7&%e/land map &%7で周辺チャンクの保護状態を一覧できます"
+    - "&%7&%e/land border [on|off] [半径] &%7で保護済みチャンクの境界を常時表示できます"
     - "&%7個々のチャンクだけエリアと違う設定にしたい時は&%e/land rule <pvp|explosions|doors|chests> <on|off|default>"
     - "&%7&%7（defaultで個別設定を解除すると、またエリアの設定に従います）"
 
