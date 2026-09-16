@@ -281,3 +281,6 @@ land:
     color: "#55FF55"
     size: 1.0
     duration-seconds: 3
+    # /land border の常時表示用設定。半径はプレイヤーの現在地を中心にしたチャンク単位。
+    toggle-radius-default: 3
+    toggle-interval-ticks: 20
