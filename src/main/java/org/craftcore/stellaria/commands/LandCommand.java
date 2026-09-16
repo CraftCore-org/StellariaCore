@@ -74,6 +74,7 @@ public class LandCommand implements CommandExecutor, TabCompleter {
             case "area" -> handleArea(player, args);
             case "rule" -> handleRule(player, args);
             case "bypass" -> handleBypass(player);
+            case "unclaimable" -> handleUnclaimable(player, args);
             default -> sendUsage(player, "land.usage");
         }
         return true;
@@ -101,6 +102,8 @@ public class LandCommand implements CommandExecutor, TabCompleter {
                         plugin.getConfigManager().getMessage("land.already_claimed", player),
                         "%owner%", ownerName(owner)));
             }
+            case UNCLAIMABLE -> player.sendMessage(
+                    plugin.getConfigManager().getMessage("land.claim_unavailable", player));
             case LIMIT_REACHED -> player.sendMessage(FormatUtil.replace(
                     plugin.getConfigManager().getMessage("land.limit_reached", player),
                     "%max%", String.valueOf(plugin.getConfigManager().getInt("land.max-chunks-per-player", 20))));
@@ -141,6 +144,10 @@ public class LandCommand implements CommandExecutor, TabCompleter {
     private void handleInfo(Player player) {
         Location location = player.getLocation();
         LandManager land = plugin.getLandManager();
+        if (land.isUnclaimable(LandManager.ChunkKey.of(location))) {
+            player.sendMessage(plugin.getConfigManager().getMessage("land.info_unclaimable", player));
+            return;
+        }
         UUID owner = land.ownerOf(location);
         if (owner == null) {
             player.sendMessage(plugin.getConfigManager().getMessage("land.info_unclaimed", player));
@@ -223,6 +230,10 @@ public class LandCommand implements CommandExecutor, TabCompleter {
                     continue;
                 }
                 Location cell = new Location(world, (center.chunkX() + dx) * 16.0, 64, (center.chunkZ() + dz) * 16.0);
+                if (land.isUnclaimable(new LandManager.ChunkKey(world.getName(), center.chunkX() + dx, center.chunkZ() + dz))) {
+                    row.append("&%5■");
+                    continue;
+                }
                 UUID owner = land.ownerOf(cell);
                 if (owner == null) {
                     row.append("&%8■");
@@ -342,6 +353,29 @@ public class LandCommand implements CommandExecutor, TabCompleter {
         } else {
             plugin.getActionBarManager().clearChannel(player, BYPASS_ACTIONBAR_CHANNEL);
         }
+    }
+
+    /** /land unclaimable <on|off>。運営用の隠しサブコマンドのため、補完・helpには載せない。 */
+    private void handleUnclaimable(Player player, String[] args) {
+        if (!player.hasPermission("stellaria.land.admin")) {
+            player.sendMessage(plugin.getConfigManager().getMessage("land.no_permission", player));
+            return;
+        }
+        if (args.length != 2 || (!args[1].equalsIgnoreCase("on") && !args[1].equalsIgnoreCase("off"))) {
+            sendUsage(player, "land.unclaimable_usage");
+            return;
+        }
+
+        boolean enabled = args[1].equalsIgnoreCase("on");
+        LandManager.UnclaimableChunkResult result = plugin.getLandManager().setUnclaimable(
+                LandManager.ChunkKey.of(player.getLocation()), enabled);
+        String messageKey = switch (result) {
+            case SUCCESS -> enabled ? "land.unclaimable_enabled" : "land.unclaimable_disabled";
+            case ALREADY_CLAIMED -> "land.unclaimable_claimed";
+            case ALREADY_UNCLAIMABLE -> "land.unclaimable_already_enabled";
+            case NOT_UNCLAIMABLE -> "land.unclaimable_already_disabled";
+        };
+        player.sendMessage(plugin.getConfigManager().getMessage(messageKey, player));
     }
 
     // ------------------------------------------------------------------

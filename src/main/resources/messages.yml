@@ -458,6 +458,14 @@ land:
   bypass_enabled: "&%a土地保護のbypassモードをONにしました。全てのclaimを無視して操作できます。"
   bypass_disabled: "&%c土地保護のbypassモードをOFFにしました。"
   bypass_indicator: "&%c&l[BYPASS] &%7土地保護を無視中"
+  claim_unavailable: "&%cこのチャンクは保護できません。"
+  info_unclaimable: "&%5このチャンクは運営により保護不可に設定されています。"
+  unclaimable_usage: "&%c使用方法: /land unclaimable <on|off>"
+  unclaimable_enabled: "&%aこのチャンクを保護不可に設定しました。"
+  unclaimable_disabled: "&%aこのチャンクの保護不可設定を解除しました。"
+  unclaimable_claimed: "&%c保護済みのチャンクは保護不可に設定できません。先にclaimを解除してください。"
+  unclaimable_already_enabled: "&%eこのチャンクは既に保護不可です。"
+  unclaimable_already_disabled: "&%eこのチャンクは保護不可に設定されていません。"
   protected_block: "&%cここはあなたの土地ではありません。"
   status_owner: "&%b保護者&%7: &%f%owner%"
   status_doors_open: " &%7| &%aドア開放"
@@ -474,7 +482,7 @@ land:
   map_axis: "&%7↑Z-(北)　←X-(西)　X+(東)→　↓Z+(南)"
   map_legend:
     - "&%a■&%7 自分の土地　&%b■&%7 信頼されてる土地　&%c■&%7 他人の土地"
-    - "&%8■&%7 未保護　&%e■&%7 現在地"
+    - "&%8■&%7 未保護　&%5■&%7 保護不可　&%e■&%7 現在地"
   list: "&%b保護中のチャンク&%7: &%f%chunks%&%7/&%f%max% &%7（エリア数: &%f%areas%&%7）"
   help:
     - "&%9&l━━━ &%bland機能の説明 &%9&l━━━"

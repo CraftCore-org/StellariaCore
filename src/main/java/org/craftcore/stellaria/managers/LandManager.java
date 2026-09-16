@@ -88,9 +88,11 @@ public class LandManager {
         }
     }
 
-    public enum ClaimResult { SUCCESS, ALREADY_CLAIMED, LIMIT_REACHED, INSUFFICIENT_FUNDS, WORLD_DISABLED }
+    public enum ClaimResult { SUCCESS, ALREADY_CLAIMED, UNCLAIMABLE, LIMIT_REACHED, INSUFFICIENT_FUNDS, WORLD_DISABLED }
 
     public enum ActionResult { SUCCESS, NOT_CLAIMED, NOT_OWNER, SELF_TARGET }
+
+    public enum UnclaimableChunkResult { SUCCESS, ALREADY_CLAIMED, ALREADY_UNCLAIMABLE, NOT_UNCLAIMABLE }
 
     /** エリアのトグル可能な設定項目。/land area <flag> on|off の対象を1つのメソッドにまとめるための列挙。 */
     public enum AreaFlag { PVP, EXPLOSIONS, DOORS, CHESTS }
@@ -111,6 +113,7 @@ public class LandManager {
     private final StellariaCore plugin;
     private final Map<ChunkKey, Claim> claimsByChunk = new ConcurrentHashMap<>();
     private final Map<String, Area> areas = new ConcurrentHashMap<>();
+    private final UnclaimableChunkRegistry unclaimableChunks = new UnclaimableChunkRegistry();
     /** stellaria.land.adminを持つプレイヤーが/land bypassで自発的にON/OFFする、保護無視モード。 */
     private final Set<UUID> bypassEnabled = ConcurrentHashMap.newKeySet();
     /** claimの追加・削除ごとに増やす。境界パーティクルの座標キャッシュを更新するために使う。 */
@@ -169,6 +172,13 @@ public class LandManager {
                             row.doorsOverride(), row.chestsOverride()));
         }
 
+        List<ChunkKey> unclaimableRows = DatabaseManager.query(
+                "SELECT world, chunk_x, chunk_z FROM land_unclaimable_chunks",
+                rs -> new ChunkKey(rs.getString("world"), rs.getInt("chunk_x"), rs.getInt("chunk_z")));
+        for (ChunkKey key : unclaimableRows) {
+            unclaimableChunks.mark(key);
+        }
+
         List<TrustRow> trustRows = DatabaseManager.query(
                 "SELECT territory_id, trusted_uuid FROM land_trusts",
                 rs -> new TrustRow(rs.getString("territory_id"), UUID.fromString(rs.getString("trusted_uuid"))));
@@ -208,6 +218,9 @@ public class LandManager {
         }
         if (claimsByChunk.containsKey(key)) {
             return ClaimOutcome.of(ClaimResult.ALREADY_CLAIMED);
+        }
+        if (unclaimableChunks.isMarked(key)) {
+            return ClaimOutcome.of(ClaimResult.UNCLAIMABLE);
         }
 
         UUID owner = player.getUniqueId();
@@ -355,6 +368,36 @@ public class LandManager {
     /** 指定チャンクが保護済みか。境界パーティクルの外周判定で使用する。 */
     public boolean isClaimed(ChunkKey key) {
         return claimsByChunk.containsKey(key);
+    }
+
+    /** 指定チャンクが運営によって保護不可に設定されているか。 */
+    public boolean isUnclaimable(ChunkKey key) {
+        return unclaimableChunks.isMarked(key);
+    }
+
+    /**
+     * 指定チャンクの保護不可設定を変更する。既にclaim済みのチャンクは設定できない。
+     * 呼び出し側で管理者権限を確認する。
+     */
+    public UnclaimableChunkResult setUnclaimable(ChunkKey key, boolean enabled) {
+        if (enabled) {
+            if (claimsByChunk.containsKey(key)) {
+                return UnclaimableChunkResult.ALREADY_CLAIMED;
+            }
+            if (!unclaimableChunks.mark(key)) {
+                return UnclaimableChunkResult.ALREADY_UNCLAIMABLE;
+            }
+            DatabaseManager.insert("land_unclaimable_chunks", Map.of(
+                    "world", key.world(), "chunk_x", key.chunkX(), "chunk_z", key.chunkZ()));
+            return UnclaimableChunkResult.SUCCESS;
+        }
+
+        if (!unclaimableChunks.unmark(key)) {
+            return UnclaimableChunkResult.NOT_UNCLAIMABLE;
+        }
+        DatabaseManager.execute("DELETE FROM land_unclaimable_chunks WHERE world = ? AND chunk_x = ? AND chunk_z = ?",
+                key.world(), key.chunkX(), key.chunkZ());
+        return UnclaimableChunkResult.SUCCESS;
     }
 
     /** 指定チャンクのエリアID。未claimならnull。境界パーティクルでエリアごとの色分けに使う。 */
