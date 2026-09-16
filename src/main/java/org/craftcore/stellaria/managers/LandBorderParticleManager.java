@@ -89,6 +89,12 @@ public class LandBorderParticleManager {
         return displays.containsKey(player.getUniqueId());
     }
 
+    /** 現在キャッシュしている境界パーティクルの表示点数（診断用）。表示OFFなら0。 */
+    public int currentPointCount(UUID uuid) {
+        DisplayState state = displays.get(uuid);
+        return state != null && state.cache != null ? state.cache.points().size() : 0;
+    }
+
     /** GlobalRegionSchedulerから設定間隔ごとに呼ぶ。 */
     public void tick() {
         LandManager land = plugin.getLandManager();
@@ -209,12 +215,16 @@ public class LandBorderParticleManager {
         }
     }
 
+    /**
+     * {@code point}の座標はチャンク境界そのもの（16の倍数）なので、ブロック中心に寄せる
+     * +0.5オフセットは付けない（付けると境界線がブロック半分ズレて見える）。
+     */
     private void spawn(Player player, Particle particle, Particle.DustOptions dust, BorderPoint point, int y) {
         if (dust != null) {
-            player.spawnParticle(Particle.DUST, point.x() + 0.5, y, point.z() + 0.5,
+            player.spawnParticle(Particle.DUST, point.x(), y, point.z(),
                     1, 0, 0, 0, 0, dust);
         } else {
-            player.spawnParticle(particle, point.x() + 0.5, y, point.z() + 0.5,
+            player.spawnParticle(particle, point.x(), y, point.z(),
                     1, 0, 0, 0, 0);
         }
     }

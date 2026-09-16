@@ -325,6 +325,13 @@ public class LandCommand implements CommandExecutor, TabCompleter {
         String message = plugin.getConfigManager().getMessage(
                 enabled ? "land.border_enabled" : "land.border_disabled", player);
         player.sendMessage(FormatUtil.replace(message, "%radius%", String.valueOf(radius)));
+
+        if (enabled) {
+            int points = plugin.getLandBorderParticleManager().currentPointCount(player.getUniqueId());
+            if (points == 0) {
+                player.sendMessage(plugin.getConfigManager().getMessage("land.border_no_claims_nearby", player));
+            }
+        }
     }
 
     private static final String BYPASS_ACTIONBAR_CHANNEL = "land_bypass";

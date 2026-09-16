@@ -381,6 +381,7 @@ land:
   border_usage: "&%c使用方法: /land border [on|off] [半径]"
   border_enabled: "&%aチャンク境界の常時表示をONにしました。&%7（半径: &%f%radius%&%7チャンク）"
   border_disabled: "&%cチャンク境界の常時表示をOFFにしました。"
+  border_no_claims_nearby: "&%7（今いる場所の周辺には保護済みのチャンクが見つかりませんでした。近づくと表示されます）"
   rule_flag_name_pvp: "PvP"
   rule_flag_name_explosions: "爆発"
   rule_flag_name_doors: "ドア"
