@@ -68,6 +68,7 @@ public class StellariaCore extends JavaPlugin {
     private NametagManager nametagManager;
     private KikoriManager kikoriManager;
     private LandManager landManager;
+    private DiscordBotManager discordBotManager;
     private LandBorderParticleManager landBorderParticleManager;
     private List<Feature> features;
 
@@ -156,6 +157,8 @@ public class StellariaCore extends JavaPlugin {
         this.warpManager = new WarpManager(this);
         this.kikoriManager = new KikoriManager(this);
         this.features = List.of(new KikoriFeature(kikoriManager));
+
+        this.discordBotManager = new DiscordBotManager(this);
 
         this.muteManager = new MuteManager(this);
         muteManager.loadAll();
@@ -272,6 +275,9 @@ public class StellariaCore extends JavaPlugin {
             Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> kikoriManager.tick(), 200L, 200L);
         }
 
+        if (configManager.getBoolean("discord.bot.enabled",true)){
+            discordBotManager.startBot();
+        }
         long landBorderInterval = Math.max(1L, configManager.getInt(
                 "land.border-particle.toggle-interval-ticks", 20));
         Bukkit.getGlobalRegionScheduler().runAtFixedRate(this,
@@ -426,6 +432,9 @@ public class StellariaCore extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (configManager.getBoolean("discord.bot.enabled",true)){
+            discordBotManager.stop();
+        }
         // プラグイン停止時は Vault から自動解除されるため、DB切断だけでOK
         DatabaseManager.disconnect();
         ConsoleUtil.printDisabledMessage();
@@ -511,6 +520,10 @@ public class StellariaCore extends JavaPlugin {
         return this.landManager;
     }
 
+    public DiscordBotManager getDiscordBotManager() {
+        return this.discordBotManager;
+    }
+  
     public LandBorderParticleManager getLandBorderParticleManager() {
         return this.landBorderParticleManager;
     }

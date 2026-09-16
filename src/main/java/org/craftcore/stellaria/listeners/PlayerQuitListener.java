@@ -25,6 +25,8 @@ public class PlayerQuitListener implements Listener {
             event.setQuitMessage(null);
         }
 
+        plugin.getDiscordBotManager().sendPlayerQuitLog(event);
+
         plugin.getPlaytimeManager().onQuit(player);
         plugin.getScoreboardManager().forget(player);
     }
