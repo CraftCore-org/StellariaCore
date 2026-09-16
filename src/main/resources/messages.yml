@@ -188,6 +188,16 @@ world:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   not_found: "&%c指定されたワールドは見つかりません。"
 
+profile:
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  no_permission_others: "&%c他人のプロフィールを確認する権限がありません。"
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  usage: "&%c使用方法: /profile [プレイヤー]、/profile <hide|show>"
+  player_not_found: "&%c%player% &%7はオフラインまたは存在しません。"
+  balance_hidden: "&%8非公開"
+  balance_hidden_enabled: "&%a所持金を他のプレイヤーに非公開にしました。"
+  balance_hidden_disabled: "&%a所持金を公開しました。"
+
 ranking:
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   usage: "&%c使用方法: /ranking <money|playtime> [ページ]"
@@ -202,6 +212,7 @@ ranking:
   prev_arrow_disabled: "&%8◀"
   next_arrow_disabled: "&%8▶"
   page_indicator: "&%7%page%&%8/&%7%max_page%"
+  balance_hidden: "&%8非公開"
 
 scoreboard:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"

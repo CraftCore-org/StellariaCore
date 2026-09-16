@@ -50,6 +50,8 @@ commands:
   vote:
   playtime:
   seen:
+  profile:
+    permission: stellaria.profile
   ranking:
     aliases: [rank]
   scoreboard:
@@ -84,6 +86,8 @@ permissions:
   stellaria.playtime:
     default: true
   stellaria.seen:
+    default: true
+  stellaria.profile:
     default: true
   stellaria.ranking:
     default: true

@@ -2,6 +2,7 @@ package org.craftcore.stellaria.commands;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -86,10 +87,13 @@ public class RankingCommand implements CommandExecutor, TabCompleter {
         }
         int rank = offset + 1;
         for (EconomyManager.BalanceEntry entry : entries) {
+            String value = economy.isHideBalance(Bukkit.getOfflinePlayer(entry.uuid()))
+                    ? plugin.getConfigManager().getMessage("ranking.balance_hidden", null)
+                    : economy.formatExact(entry.coins());
             sender.sendMessage(plugin.getConfigManager().getMessage("ranking.money_entry", null)
                     .replace("%rank%", String.valueOf(rank))
                     .replace("%player%", entry.name())
-                    .replace("%value%", economy.formatExact(entry.coins())));
+                    .replace("%value%", value));
             rank++;
         }
         return true;
