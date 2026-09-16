@@ -379,8 +379,8 @@ land:
   area_usage: "&%c使用方法: /land area <trust|untrust|trustlist|pvp|explosions|doors|chests>"
   rule_usage: "&%c使用方法: /land rule <pvp|explosions|doors|chests> <on|off|default>"
   border_usage: "&%c使用方法: /land border [on|off] [半径]"
-  border_enabled: "&%aチャンク境界の常時表示をONにしました。&%7（半径: &%f%radius%&%7チャンク）"
-  border_disabled: "&%cチャンク境界の常時表示をOFFにしました。"
+  border_enabled: "&%a保護チャンク境界の常時表示をONにしました。&%7（半径: &%f%radius%&%7チャンク）"
+  border_disabled: "&%c保護チャンク境界の常時表示をOFFにしました。"
   border_no_claims_nearby: "&%7（今いる場所の周辺には保護済みのチャンクが見つかりませんでした。近づくと表示されます）"
   rule_flag_name_pvp: "PvP"
   rule_flag_name_explosions: "爆発"
@@ -478,7 +478,7 @@ land:
 chunkborder:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   usage: "&%c使用方法: /chunkborder [on|off] [半径]"
-  enabled: "&%aチャンク境界の常時表示をONにしました。&%7（半径: &%f%radius%&%7チャンク、保護状態は問いません）"
+  enabled: "&%aチャンク境界の常時表示をONにしました。&%7（半径: &%f%radius%&%7チャンク）"
   disabled: "&%cチャンク境界の常時表示をOFFにしました。"
 
 menu:
