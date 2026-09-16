@@ -11,6 +11,7 @@ import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.inventory.ItemStack;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.TreeUtil;
+import org.craftcore.stellaria.utils.WorldBlacklistUtil;
 
 /**
  * 木こり機能（/kikori）用のブロックイベント処理。
@@ -43,6 +44,9 @@ public class KikoriListener implements Listener {
         plugin.getKikoriManager().unmarkArtificialLog(block);
 
         Player player = event.getPlayer();
+        if (WorldBlacklistUtil.isBlacklisted(plugin.getConfigManager().getStringList("kikori.disabled-worlds", true), block.getWorld().getName())) {
+            return;
+        }
         if (!plugin.getKikoriManager().isEnabled(player.getUniqueId())) {
             return;
         }

@@ -236,6 +236,7 @@ scoreboard:
   shown: "&%aスコアボードを表示しました。"
 
 home:
+  world_disabled: "&%cこのワールドではホームを利用できません。"
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   usage_sethome: "&%c使用方法: /sethome <名前>"
@@ -260,6 +261,7 @@ home:
   gui_page: "&%7ページ %page%/%max_page%"
 
 warp:
+  world_disabled: "&%cこのワールドではワープを利用できません。"
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   usage_setwarp: "&%c使用方法: /setwarp <名前>"
@@ -286,6 +288,7 @@ warp:
   gui_page: "&%7ページ %page%/%max_page%"
 
 weathervote:
+  world_disabled: "&%cこのワールドでは天気投票を利用できません。"
   gui:
     title: "&%9&l天気投票"
     sunny: "&%e晴れ"
@@ -310,6 +313,7 @@ weathervote:
   err_world: "&%cこのワールドは天気を変更できません。"
 
 timevote:
+  world_disabled: "&%cこのワールドでは時間投票を利用できません。"
   gui:
     title: "&%9&l時間投票"
     morning: "&%e朝"
@@ -335,6 +339,7 @@ timevote:
   err_world: "&%cこのワールドは時間を変更できません。"
 
 kikori:
+  world_disabled: "&%cこのワールドでは木こり機能を利用できません。"
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   usage: "&%c使用方法: /kikori [on|off|buy]"
@@ -349,6 +354,7 @@ kikori:
   pass_granted: "&%e次回、人工物を検知しても1回だけ無視して伐採を続行します。"
 
 mine:
+  world_disabled: "&%cこのワールドでは鉱石一括破壊機能を利用できません。"
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   usage: "&%c使用方法: /mine [on|off|buy]"
@@ -387,6 +393,7 @@ adminshop:
   disabled: "&%c現在このショップは利用できません。"
 
 land:
+  world_disabled: "&%cこのワールドでは土地保護を利用できません。"
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   usage: "&%c使用方法: /land <claim|unclaim|info|list|map|border|help|area|rule|bypass>"
@@ -570,3 +577,20 @@ headshop:
       - "&%7頭アイテムをカーソルに乗せた状態で"
       - "&%7空きスロットをクリックすると登録されます"
       - "&%7既存の頭は &%eShiftクリック &%7で削除できます"
+
+lock:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  usage: "&%c使用方法: /lock [trust|untrust <player>]"
+  look_at_container: "&%cチェスト、樽、またはシュルカーボックスを見て実行してください。"
+  created: "&%aこのコンテナを保護しました。"
+  already_locked: "&%cこのコンテナは既に &%e%owner% &%cさんに保護されています。"
+  unlocked: "&%aこのコンテナの保護を解除しました。"
+  not_locked: "&%cこのコンテナは保護されていません。"
+  not_owner: "&%cこのコンテナの所有者ではありません。"
+  trusted: "&%a%player% &%aさんに利用を許可しました。"
+  untrusted: "&%a%player% &%aさんの利用許可を解除しました。"
+  already_trusted: "&%cそのプレイヤーは既に許可されています。"
+  not_trusted: "&%cそのプレイヤーは許可されていません。"
+  cannot_trust_self: "&%c自分自身を共同利用者には追加できません。"
+  protected: "&%cこのコンテナは保護されています。"
+  double_chest_denied: "&%c保護されたチェストを二連チェストにできません。"

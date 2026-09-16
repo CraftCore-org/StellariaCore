@@ -8,6 +8,7 @@ import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.managers.MineManager;
 import org.craftcore.stellaria.utils.TabCompleteUtil;
+import org.craftcore.stellaria.utils.WorldBlacklistUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -34,6 +35,10 @@ public class MineCommand implements CommandExecutor, TabCompleter {
         }
         if (!player.hasPermission("stellaria.mine")) {
             player.sendMessage(plugin.getConfigManager().getMessage("mine.no_permission", player));
+            return true;
+        }
+        if (WorldBlacklistUtil.isBlacklisted(plugin.getConfigManager().getStringList("mine.disabled-worlds", true), player.getWorld().getName())) {
+            player.sendMessage(plugin.getConfigManager().getMessage("mine.world_disabled", player));
             return true;
         }
 

@@ -15,6 +15,7 @@ import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.gui.TimeVoteGui;
 import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
+import org.craftcore.stellaria.utils.WorldBlacklistUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -100,6 +101,10 @@ public class TimeVoteCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String @NotNull [] args) {
         Player player = (Player) sender;
+        if (WorldBlacklistUtil.isBlacklisted(plugin.getConfigManager().getStringList("timevote.disabled-worlds", true), player.getWorld().getName())) {
+            player.sendMessage(plugin.getConfigManager().getMessage("timevote.world_disabled", player));
+            return true;
+        }
         if (command.getName().equalsIgnoreCase("timevote")){
             if (args.length == 0){
                 new TimeVoteGui(plugin, player).open(player);

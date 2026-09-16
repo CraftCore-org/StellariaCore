@@ -10,6 +10,7 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.inventory.ItemStack;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.OreUtil;
+import org.craftcore.stellaria.utils.WorldBlacklistUtil;
 
 /**
  * 鉱石一括破壊機能（/mine）用のブロックイベント処理。
@@ -42,6 +43,9 @@ public class MineListener implements Listener {
         plugin.getMineManager().unmarkArtificialOre(block);
 
         Player player = event.getPlayer();
+        if (WorldBlacklistUtil.isBlacklisted(plugin.getConfigManager().getStringList("mine.disabled-worlds", true), block.getWorld().getName())) {
+            return;
+        }
         if (!plugin.getMineManager().isEnabled(player.getUniqueId())) {
             return;
         }

@@ -61,6 +61,10 @@ public class LandCommand implements CommandExecutor, TabCompleter {
             player.sendMessage(plugin.getConfigManager().getMessage("land.no_permission", player));
             return true;
         }
+        if (plugin.getLandManager().isWorldDisabled(player.getWorld().getName())) {
+            player.sendMessage(plugin.getConfigManager().getMessage("land.world_disabled", player));
+            return true;
+        }
 
         String sub = args.length > 0 ? args[0].toLowerCase() : "";
         switch (sub) {

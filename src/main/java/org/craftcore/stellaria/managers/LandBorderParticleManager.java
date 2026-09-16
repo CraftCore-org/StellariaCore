@@ -179,6 +179,9 @@ public class LandBorderParticleManager {
                 iterator.remove();
                 continue;
             }
+            if (land.isWorldDisabled(player.getWorld().getName())) {
+                continue;
+            }
 
             DisplayState state = entry.getValue();
             LandManager.ChunkKey center = LandManager.ChunkKey.of(player.getLocation());

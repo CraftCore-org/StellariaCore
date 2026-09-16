@@ -16,6 +16,7 @@ import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.gui.WeatherVoteGui;
 import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
+import org.craftcore.stellaria.utils.WorldBlacklistUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -102,6 +103,10 @@ public class WeatherVoteCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String @NotNull [] args) {
         Player player = (Player) sender;
+        if (WorldBlacklistUtil.isBlacklisted(plugin.getConfigManager().getStringList("weathervote.disabled-worlds", true), player.getWorld().getName())) {
+            player.sendMessage(plugin.getConfigManager().getMessage("weathervote.world_disabled", player));
+            return true;
+        }
         if (command.getName().equalsIgnoreCase("weathervote")){
             if (args.length == 0){
                 new WeatherVoteGui(plugin, player).open(player);

@@ -8,6 +8,7 @@ import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.managers.KikoriManager;
 import org.craftcore.stellaria.utils.TabCompleteUtil;
+import org.craftcore.stellaria.utils.WorldBlacklistUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -34,6 +35,10 @@ public class KikoriCommand implements CommandExecutor, TabCompleter {
         }
         if (!player.hasPermission("stellaria.kikori")) {
             player.sendMessage(plugin.getConfigManager().getMessage("kikori.no_permission", player));
+            return true;
+        }
+        if (WorldBlacklistUtil.isBlacklisted(plugin.getConfigManager().getStringList("kikori.disabled-worlds", true), player.getWorld().getName())) {
+            player.sendMessage(plugin.getConfigManager().getMessage("kikori.world_disabled", player));
             return true;
         }
 

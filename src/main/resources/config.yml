@@ -65,6 +65,7 @@ world:
   display-names: {}
 
 home:
+  disabled-worlds: []
   max-per-player: 5
   cost: 0 # /sethome 1回あたりの消費コイン数（0なら無料）
   teleport-effect:
@@ -76,6 +77,7 @@ home:
     points: 30
 
 warp:
+  disabled-worlds: []
   max-per-player: 5
   cost: 0 # /setwarp 1回あたりの消費コイン数（0なら無料）
   teleport-effect:
@@ -266,16 +268,19 @@ elevator:
   ignoreblocks: ["&CARPET","&_SIGN","&TORCH","&BANNER","&BUTTON","&LEVER","&_DOOR"]# エレベーターブロックの上2ブロックに置いてあっても移動ができるブロック
 
 weathervote:
+  disabled-worlds: []
   votetime: 15
   worldname: #ワールドの表示名 指定されていないワールドは投票不可能
     world: "生活ワールド"
 
 timevote:
+  disabled-worlds: []
   votetime: 15
   worldname: #ワールドの表示名 指定されていないワールドは投票不可能
     world: "生活ワールド"
 
 kikori:
+  disabled-worlds: []
   enabled: true
   price: 2000
   timeout-seconds: 300
@@ -283,13 +288,14 @@ kikori:
   leaf-radius: 4
 
 mine:
+  disabled-worlds: []
   enabled: true
   price: 3000
   timeout-seconds: 300
   max-ores: 128
 
 land:
-  enabled-worlds: ["world"]
+  disabled-worlds: []
   cost-per-chunk: 500
   max-chunks-per-player: 20
   refund-on-unclaim: true

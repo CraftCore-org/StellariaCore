@@ -18,6 +18,7 @@ import org.craftcore.stellaria.utils.FormatUtil;
 import org.craftcore.stellaria.utils.ParticleUtil;
 import org.craftcore.stellaria.utils.TabCompleteUtil;
 import org.craftcore.stellaria.utils.TeleportSafetyUtil;
+import org.craftcore.stellaria.utils.WorldBlacklistUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
@@ -48,6 +49,10 @@ public class HomeCommand implements CommandExecutor, TabCompleter {
         }
         if (!player.hasPermission("stellaria.home")) {
             player.sendMessage(plugin.getConfigManager().getMessage("home.no_permission", player));
+            return true;
+        }
+        if (WorldBlacklistUtil.isBlacklisted(plugin.getConfigManager().getStringList("home.disabled-worlds", true), player.getWorld().getName())) {
+            player.sendMessage(plugin.getConfigManager().getMessage("home.world_disabled", player));
             return true;
         }
 
@@ -97,6 +102,10 @@ public class HomeCommand implements CommandExecutor, TabCompleter {
         if (destination == null) {
             player.sendMessage(FormatUtil.replace(
                     plugin.getConfigManager().getMessage("home.not_found", player), "%name%", name));
+            return;
+        }
+        if (WorldBlacklistUtil.isBlacklisted(plugin.getConfigManager().getStringList("home.disabled-worlds", true), destination.getWorld().getName())) {
+            player.sendMessage(plugin.getConfigManager().getMessage("home.world_disabled", player));
             return;
         }
         TeleportSafetyUtil.Result result = TeleportSafetyUtil.attempt(player, destination, PENDING_CONFIRM);

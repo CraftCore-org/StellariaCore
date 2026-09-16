@@ -4,6 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.utils.WorldBlacklistUtil;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -212,8 +213,7 @@ public class LandManager {
     public ClaimOutcome claim(Player player) {
         ChunkKey key = ChunkKey.of(player.getLocation());
 
-        List<String> enabledWorlds = plugin.getConfigManager().getStringList("land.enabled-worlds");
-        if (!enabledWorlds.contains(key.world())) {
+        if (isWorldDisabled(key.world())) {
             return ClaimOutcome.of(ClaimResult.WORLD_DISABLED);
         }
         if (claimsByChunk.containsKey(key)) {
@@ -361,13 +361,21 @@ public class LandManager {
 
     /** 現在地のオーナー。未claimならnull。 */
     public UUID ownerOf(Location location) {
+        if (isWorldDisabled(location.getWorld().getName())) {
+            return null;
+        }
         Claim claim = claimsByChunk.get(ChunkKey.of(location));
         return claim != null ? claim.owner() : null;
     }
 
     /** 指定チャンクが保護済みか。境界パーティクルの外周判定で使用する。 */
     public boolean isClaimed(ChunkKey key) {
-        return claimsByChunk.containsKey(key);
+        return !isWorldDisabled(key.world()) && claimsByChunk.containsKey(key);
+    }
+
+    public boolean isWorldDisabled(String worldName) {
+        return WorldBlacklistUtil.isBlacklisted(
+                plugin.getConfigManager().getStringList("land.disabled-worlds", true), worldName);
     }
 
     /** 指定チャンクが運営によって保護不可に設定されているか。 */
@@ -402,6 +410,9 @@ public class LandManager {
 
     /** 指定チャンクのエリアID。未claimならnull。境界パーティクルでエリアごとの色分けに使う。 */
     public String areaIdOf(ChunkKey key) {
+        if (isWorldDisabled(key.world())) {
+            return null;
+        }
         Claim claim = claimsByChunk.get(key);
         return claim != null ? claim.areaId() : null;
     }
@@ -416,6 +427,9 @@ public class LandManager {
      * bypassモード中の管理者・未claim地・オーナー本人・エリアの信頼リストのいずれかでtrue。
      */
     public boolean canBuild(Location location, Player player) {
+        if (isWorldDisabled(location.getWorld().getName())) {
+            return true;
+        }
         if (player.hasPermission("stellaria.land.admin") && hasBypassEnabled(player)) {
             return true;
         }
@@ -435,6 +449,9 @@ public class LandManager {
      * /land rule設定（pvpOverride）があればそれを優先し、無ければエリアのpvp_enabledに従う。
      */
     public boolean isPvpAllowed(Location location) {
+        if (isWorldDisabled(location.getWorld().getName())) {
+            return true;
+        }
         Claim claim = claimsByChunk.get(ChunkKey.of(location));
         if (claim == null) {
             return false;
@@ -448,6 +465,9 @@ public class LandManager {
 
     /** この場所で爆発ダメージが許可されているか。未claim地は保護対象外なので常にtrue。個別設定があれば優先。 */
     public boolean explosionsAllowed(Location location) {
+        if (isWorldDisabled(location.getWorld().getName())) {
+            return true;
+        }
         Claim claim = claimsByChunk.get(ChunkKey.of(location));
         if (claim == null) {
             return true;
@@ -461,6 +481,9 @@ public class LandManager {
 
     /** この場所のドア・トラップドア・フェンスゲートを非オーナーでも開閉できるか。未claim地は常にtrue。個別設定があれば優先。 */
     public boolean doorsOpenToOthers(Location location) {
+        if (isWorldDisabled(location.getWorld().getName())) {
+            return true;
+        }
         Claim claim = claimsByChunk.get(ChunkKey.of(location));
         if (claim == null) {
             return true;
@@ -474,6 +497,9 @@ public class LandManager {
 
     /** この場所のチェスト等の収納・作業台系ブロックを非オーナーでも開閉できるか。未claim地は常にtrue。個別設定があれば優先。 */
     public boolean chestsOpenToOthers(Location location) {
+        if (isWorldDisabled(location.getWorld().getName())) {
+            return true;
+        }
         Claim claim = claimsByChunk.get(ChunkKey.of(location));
         if (claim == null) {
             return true;
