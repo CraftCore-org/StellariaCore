@@ -37,6 +37,7 @@ import org.craftcore.stellaria.listeners.KikoriListener;
 import org.craftcore.stellaria.listeners.MineListener;
 import org.craftcore.stellaria.listeners.LandProtectionListener;
 import org.craftcore.stellaria.listeners.LandAreaStatusListener;
+import org.craftcore.stellaria.listeners.VanishListener;
 import org.craftcore.stellaria.listeners.ContainerLockListener;
 import org.craftcore.stellaria.listeners.VoteListener;
 import org.craftcore.stellaria.listeners.MenuItemListener;
@@ -70,6 +71,7 @@ public class StellariaCore extends JavaPlugin {
     private HomeManager homeManager;
     private WarpManager warpManager;
     private HeadshopManager headshopManager;
+    private VanishManager vanishManager;
     private NametagManager nametagManager;
     private KikoriManager kikoriManager;
     private MineManager mineManager;
@@ -194,6 +196,7 @@ public class StellariaCore extends JavaPlugin {
         this.homeManager = new HomeManager(this);
         this.warpManager = new WarpManager(this);
         this.headshopManager = new HeadshopManager(this);
+        this.vanishManager = new VanishManager(this);
         this.kikoriManager = new KikoriManager(this);
         this.mineManager = new MineManager(this);
         this.features = List.of(new KikoriFeature(kikoriManager), new MineFeature(mineManager));
@@ -271,6 +274,7 @@ public class StellariaCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new LandProtectionListener(this), this);
         getServer().getPluginManager().registerEvents(new ContainerLockListener(this), this);
         getServer().getPluginManager().registerEvents(new LandAreaStatusListener(this), this);
+        getServer().getPluginManager().registerEvents(new VanishListener(this), this);
 
         // 6. Scoreboard/Tablist/Belowname のインスタンス化とtick開始
         this.placeholderManager = new PlaceholderManager(this);
@@ -482,6 +486,8 @@ public class StellariaCore extends JavaPlugin {
         HeadshopCommand headshopCommand = new HeadshopCommand(this);
         getCommand("headshop").setExecutor(headshopCommand);
         getCommand("headshop").setTabCompleter(headshopCommand);
+
+        getCommand("vanish").setExecutor(new VanishCommand(this));
         LockCommand lockCommand = new LockCommand(this);
         getCommand("lock").setExecutor(lockCommand);
         getCommand("lock").setTabCompleter(lockCommand);
@@ -571,6 +577,10 @@ public class StellariaCore extends JavaPlugin {
 
     public HeadshopManager getHeadshopManager() {
         return this.headshopManager;
+    }
+
+    public VanishManager getVanishManager() {
+        return this.vanishManager;
     }
 
     public NametagManager getNametagManager() {

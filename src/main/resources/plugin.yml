@@ -81,6 +81,8 @@ commands:
   chunkborder:
   headshop:
     permission: stellaria.headshop
+  vanish:
+    permission: stellaria.vanish
   lock:
   unlock:
 
@@ -116,6 +118,8 @@ permissions:
   stellaria.headshop:
     default: true
   stellaria.headshop.admin:
+    default: op
+  stellaria.vanish:
     default: op
   stellaria.lock:
     default: true

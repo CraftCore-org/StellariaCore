@@ -594,3 +594,9 @@ lock:
   cannot_trust_self: "&%c自分自身を共同利用者には追加できません。"
   protected: "&%cこのコンテナは保護されています。"
   double_chest_denied: "&%c保護されたチェストを二連チェストにできません。"
+
+vanish:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  enabled: "&%aVanishを有効にしました。"
+  disabled: "&%cVanishを無効にしました。"
+  action-bar: "&%c&l[VANISH] &%7現在ステルス中"
