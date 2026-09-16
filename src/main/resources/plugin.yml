@@ -38,6 +38,7 @@ commands:
     aliases: [money, bal]
   colors:
     permission: stellaria.chat.color
+  adminshop:
   discord:
     aliases: [dc]
   playtime:

@@ -63,6 +63,20 @@ first-join-kit:
     - "COOKED_BEEF:16"
     - "OAK_LOG:16"
 
+adminshop:
+  enabled: true
+  items:
+    - material: BREAD
+      price: 10
+    - material: CARROT
+      price: 8
+    - material: POTATO
+      price: 8
+    - material: COOKED_BEEF
+      price: 40
+    - material: OAK_LOG
+      price: 20
+
 action-bar:
   enabled: true
   update-interval-ticks: 5
