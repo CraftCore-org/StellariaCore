@@ -54,6 +54,7 @@ commands:
   seen:
   profile:
     permission: stellaria.profile
+  settings:
   ranking:
     aliases: [rank]
   scoreboard:
