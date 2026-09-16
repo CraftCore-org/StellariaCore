@@ -13,29 +13,37 @@ public class WeatherVoteGui extends Gui {
     private final StellariaCore plugin;
 
     public WeatherVoteGui(StellariaCore plugin, Player player) {
-        super(9, ColorUtil.component(plugin.getConfigManager().getMessage("weathervote.gui.title", player)));
+        this(plugin, player, null);
+    }
+
+    public WeatherVoteGui(StellariaCore plugin, Player player, Gui parent) {
+        super(27, ColorUtil.component(plugin.getConfigManager().getMessage("weathervote.gui.title", player)), parent);
         this.plugin = plugin;
 
-        getInventory().setItem(2, button(Material.SUNFLOWER, "weathervote.gui.sunny", player));
-        getInventory().setItem(4, button(Material.WATER_BUCKET, "weathervote.gui.rain", player));
-        getInventory().setItem(6, button(Material.LIGHTNING_ROD, "weathervote.gui.thunder", player));
+        getInventory().setItem(11, button(Material.SUNFLOWER, "weathervote.gui.sunny", player));
+        getInventory().setItem(13, button(Material.WATER_BUCKET, "weathervote.gui.rain", player));
+        getInventory().setItem(15, button(Material.LIGHTNING_ROD, "weathervote.gui.thunder", player));
     }
 
     @Override
     public void onClick(InventoryClickEvent event) {
         event.setCancelled(true);
 
+        Player player = (Player) event.getWhoClicked();
+        if (handleBackButton(event, player)) {
+            return;
+        }
+
         String weather = switch (event.getRawSlot()) {
-            case 2 -> "晴れ";
-            case 4 -> "雨";
-            case 6 -> "雷雨";
+            case 11 -> "晴れ";
+            case 13 -> "雨";
+            case 15 -> "雷雨";
             default -> null;
         };
         if (weather == null) {
             return;
         }
 
-        Player player = (Player) event.getWhoClicked();
         player.closeInventory();
         player.performCommand("weathervote " + weather);
     }

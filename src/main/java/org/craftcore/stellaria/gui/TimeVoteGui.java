@@ -13,31 +13,39 @@ public class TimeVoteGui extends Gui {
     private final StellariaCore plugin;
 
     public TimeVoteGui(StellariaCore plugin, Player player) {
-        super(9, ColorUtil.component(plugin.getConfigManager().getMessage("timevote.gui.title", player)));
+        this(plugin, player, null);
+    }
+
+    public TimeVoteGui(StellariaCore plugin, Player player, Gui parent) {
+        super(27, ColorUtil.component(plugin.getConfigManager().getMessage("timevote.gui.title", player)), parent);
         this.plugin = plugin;
 
-        getInventory().setItem(1, button(Material.SUNFLOWER, "timevote.gui.morning", player));
-        getInventory().setItem(3, button(Material.CLOCK, "timevote.gui.noon", player));
-        getInventory().setItem(5, button(Material.ORANGE_DYE, "timevote.gui.evening", player));
-        getInventory().setItem(7, button(Material.BLACK_DYE, "timevote.gui.night", player));
+        getInventory().setItem(10, button(Material.SUNFLOWER, "timevote.gui.morning", player));
+        getInventory().setItem(12, button(Material.CLOCK, "timevote.gui.noon", player));
+        getInventory().setItem(14, button(Material.ORANGE_DYE, "timevote.gui.evening", player));
+        getInventory().setItem(16, button(Material.BLACK_DYE, "timevote.gui.night", player));
     }
 
     @Override
     public void onClick(InventoryClickEvent event) {
         event.setCancelled(true);
 
+        Player player = (Player) event.getWhoClicked();
+        if (handleBackButton(event, player)) {
+            return;
+        }
+
         String time = switch (event.getRawSlot()) {
-            case 1 -> "朝";
-            case 3 -> "昼";
-            case 5 -> "夕方";
-            case 7 -> "夜";
+            case 10 -> "朝";
+            case 12 -> "昼";
+            case 14 -> "夕方";
+            case 16 -> "夜";
             default -> null;
         };
         if (time == null) {
             return;
         }
 
-        Player player = (Player) event.getWhoClicked();
         player.closeInventory();
         player.performCommand("timevote " + time);
     }
