@@ -385,6 +385,8 @@ public class StellariaCore extends JavaPlugin {
         getCommand("features").setExecutor(featuresCommand);
         getCommand("features").setTabCompleter(featuresCommand);
 
+        getCommand("menu").setExecutor(new MenuCommand(this));
+
         WeatherVoteCommand weatherVoteCommand = new WeatherVoteCommand(this);
         getCommand("weathervote").setExecutor(weatherVoteCommand);
         getCommand("weathervote").setTabCompleter(weatherVoteCommand);

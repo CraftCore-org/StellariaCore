@@ -9,6 +9,7 @@ depend: [Citizens, packetevents, Vault, PlaceholderAPI]
 softdepend: [LuckPerms, NuVotifier]
 
 commands:
+  menu:
   tpa:
   tpaccept:
   tpdeny:
