@@ -39,6 +39,8 @@ public class PlayerJoinListener implements Listener {
             event.setJoinMessage(null);
         }
 
+        plugin.getDiscordBotManager().sendPlayerJoinLog(event);
+
         playJoinEffect(player);
         plugin.getPlaytimeManager().onJoin(player);
 

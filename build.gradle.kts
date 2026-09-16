@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "org.craftcore.stellaria"
-version = "1.0.51"
+version = "1.0.52"
 
 repositories {
     mavenCentral()
@@ -25,6 +25,9 @@ dependencies {
     compileOnly("com.github.retrooper:packetevents-spigot:2.13.0")
     compileOnly("net.milkbowl.vault:VaultUnlockedAPI:2.9")
     compileOnly("me.clip:placeholderapi:2.11.6")
+    compileOnly("net.luckperms:api:5.4")
+    implementation("org.xerial:sqlite-jdbc:3.46.1.0")
+    implementation("net.dv8tion:JDA:6.6.0")
     compileOnly("net.luckperms:api:5.4")
     compileOnly("com.github.nuvotifier:nuvotifier:2.7.2")
     implementation("org.xerial:sqlite-jdbc:3.46.1.0")
