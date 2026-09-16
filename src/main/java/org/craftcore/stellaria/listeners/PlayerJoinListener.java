@@ -9,7 +9,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
 import org.craftcore.stellaria.StellariaCore;
-import org.craftcore.stellaria.managers.EconomyManager;
 import org.craftcore.stellaria.managers.DatabaseManager;
 import org.craftcore.stellaria.utils.ParticleUtil;
 
@@ -42,9 +41,6 @@ public class PlayerJoinListener implements Listener {
         playJoinEffect(player);
         plugin.getPlaytimeManager().onJoin(player);
 
-        EconomyManager eco = plugin.getEconomyManager();
-
-        double balance = eco.getBalance(player);
         // すでにレコードがあるかチェック
         boolean exists = DatabaseManager.exists("players", "uuid = ?", uuid);
 
@@ -55,6 +51,10 @@ public class PlayerJoinListener implements Listener {
                 "name", event.getPlayer().getName(),
                 "coins", defaultBalance
             ));
+        }
+
+        // 投票報酬によりログイン前からレコードがある場合でも、初回キットは配布する。
+        if (!player.hasPlayedBefore()) {
             giveFirstJoinKit(player);
         }
     }

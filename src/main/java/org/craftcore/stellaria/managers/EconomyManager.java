@@ -173,6 +173,24 @@ public class EconomyManager extends AbstractEconomy {
         return new EconomyResponse(amount, newBalance, EconomyResponse.ResponseType.SUCCESS, null);
     }
 
+    /**
+     * 未ログインの投票者など、players テーブルにまだ行がないプレイヤーにも入金できるようにする。
+     * 初期所持金を持つ行を先に作るため、初回ログイン時にも通常どおり初期残高を維持できる。
+     */
+    public void ensurePlayerRecord(OfflinePlayer player) {
+        String name = player.getName();
+        if (name == null || name.isBlank()) {
+            name = player.getUniqueId().toString();
+        }
+
+        DatabaseManager.execute(
+            "INSERT OR IGNORE INTO players (uuid, name, coins) VALUES (?, ?, ?)",
+            player.getUniqueId().toString(),
+            name,
+            plugin.getConfigManager().getInt("economy.default-balance", 1000)
+        );
+    }
+
     @Override
     public EconomyResponse depositPlayer(String playerName, double amount) {
         return depositPlayer(Bukkit.getOfflinePlayer(playerName), amount);

@@ -160,6 +160,10 @@ homepage:
 enderchest:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
 
+vote:
+  message: "&%6&l--- サーバー投票 ---\n&%7MinePortal: &%b%mineportal%\n&%7minecraft.jp: &%b%minecraftjp%"
+  reward_received: "&%a投票ありがとうございます！ &%e%amount% &%aを受け取りました。"
+
 playtime:
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   no_permission_others: "&%c他人のプレイ時間を確認する権限がありません。"
