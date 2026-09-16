@@ -18,6 +18,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /** /headshop のメインGUIから開く、実在プレイヤーの頭を割増価格で購入できる一覧画面。 */
 public final class HeadshopPlayerHeadsGui extends Gui {
@@ -112,7 +113,7 @@ public final class HeadshopPlayerHeadsGui extends Gui {
     private ItemStack hintItem() {
         ItemStack item = new ItemStack(Material.WRITTEN_BOOK);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(ColorUtil.component("&%bヒント"));
+        meta.displayName(ColorUtil.component(plugin.getConfigManager().getMessage("headshop.hint-title", null)));
         String resetTime = plugin.getConfigManager().getString("headshop.reset-time", "12:00");
         List<Component> lore = new ArrayList<>();
         for (String line : plugin.getConfigManager().getMessageList("headshop.player-heads-hint")) {
@@ -168,7 +169,15 @@ public final class HeadshopPlayerHeadsGui extends Gui {
         SkullMeta meta = (SkullMeta) item.getItemMeta();
         meta.setOwningPlayer(Bukkit.getOfflinePlayer(recentPlayer.uuid()));
         item.setItemMeta(meta);
-        player.getInventory().addItem(item);
+
+        Map<Integer, ItemStack> leftover = player.getInventory().addItem(item);
+        if (!leftover.isEmpty()) {
+            plugin.getEconomyManager().depositPlayer(player, price);
+            player.sendMessage(FormatUtil.replace(
+                    plugin.getConfigManager().getMessage("headshop.inventory-full", player),
+                    "%price%", plugin.getEconomyManager().format(price)));
+            return;
+        }
 
         Component purchasedMessage = ColorUtil.component(FormatUtil.replace(
                 plugin.getConfigManager().getMessage("headshop.purchased", player),

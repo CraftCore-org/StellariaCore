@@ -55,12 +55,7 @@ public final class HeadshopAdminGui extends Gui {
     private void populate() {
         int first = page * CONTENT_SLOTS;
         for (int slot = 0; slot < CONTENT_SLOTS && first + slot < pool.size(); slot++) {
-            HeadshopManager.PoolHead head = pool.get(first + slot);
-            ItemStack item = plugin.getHeadshopManager().createHeadItem(head);
-            ItemMeta meta = item.getItemMeta();
-            meta.lore(List.of(ColorUtil.component("&%cShiftクリックで削除")));
-            item.setItemMeta(meta);
-            getInventory().setItem(slot, item);
+            getInventory().setItem(slot, poolEntryItem(pool.get(first + slot)));
         }
 
         if (page > 0) {
@@ -71,6 +66,14 @@ public final class HeadshopAdminGui extends Gui {
             getInventory().setItem(NEXT_SLOT, message(Material.ARROW, "headshop.gui-next-page"));
         }
         getInventory().setItem(HINT_SLOT, hintItem());
+    }
+
+    private ItemStack poolEntryItem(HeadshopManager.PoolHead head) {
+        ItemStack item = plugin.getHeadshopManager().createHeadItem(head);
+        ItemMeta meta = item.getItemMeta();
+        meta.lore(List.of(ColorUtil.component(plugin.getConfigManager().getMessage("headshop.admin.remove-hint", null))));
+        item.setItemMeta(meta);
+        return item;
     }
 
     private ItemStack pageIndicator() {
@@ -95,7 +98,7 @@ public final class HeadshopAdminGui extends Gui {
     private ItemStack hintItem() {
         ItemStack item = new ItemStack(Material.WRITTEN_BOOK);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(ColorUtil.component("&%bヒント"));
+        meta.displayName(ColorUtil.component(plugin.getConfigManager().getMessage("headshop.hint-title", null)));
         List<Component> lore = new ArrayList<>();
         for (String line : plugin.getConfigManager().getMessageList("headshop.admin.hint")) {
             lore.add(ColorUtil.component(line));
@@ -136,15 +139,17 @@ public final class HeadshopAdminGui extends Gui {
                 player.sendMessage(FormatUtil.replace(
                         plugin.getConfigManager().getMessage("headshop.admin.removed", player),
                         "%item%", head.displayName()));
-                new HeadshopAdminGui(plugin, parent, page).open(player);
+                // 一覧全体を作り直すとコンテナが閉じてカーソルのアイテムが失われる恐れがあるため、
+                // このスロットだけをその場で空にする（ページ送り等で開き直せば一覧は自然に最新化される）。
+                getInventory().setItem(slot, null);
             }
             return;
         }
 
-        registerFromCursor(player, event.getCursor());
+        registerFromCursor(player, event.getCursor(), slot);
     }
 
-    private void registerFromCursor(Player player, @Nullable ItemStack cursor) {
+    private void registerFromCursor(Player player, @Nullable ItemStack cursor, int slot) {
         if (cursor == null || cursor.getType() != Material.PLAYER_HEAD || !(cursor.getItemMeta() instanceof SkullMeta skullMeta)) {
             player.sendMessage(plugin.getConfigManager().getMessage("headshop.admin.invalid_head", player));
             return;
@@ -167,6 +172,8 @@ public final class HeadshopAdminGui extends Gui {
         player.sendMessage(FormatUtil.replace(
                 plugin.getConfigManager().getMessage("headshop.admin.added", player),
                 "%item%", displayName));
-        new HeadshopAdminGui(plugin, parent, page).open(player);
+        // 一覧全体を作り直すとコンテナが閉じてカーソルのアイテムが失われる恐れがあるため、
+        // このスロットだけをその場で登録済み表示に差し替える（pool一覧自体の更新は次に開き直した時に反映される）。
+        getInventory().setItem(slot, poolEntryItem(new HeadshopManager.PoolHead(0, displayName, texture)));
     }
 }

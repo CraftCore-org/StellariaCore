@@ -11,6 +11,7 @@ import com.destroystokyo.paper.profile.ProfileProperty;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.ColorUtil;
 
+import java.nio.charset.StandardCharsets;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -29,6 +30,11 @@ import java.util.UUID;
  * DatabaseManager経由で読み書きする。日替わり抽選は自前の ScheduledTask で1分毎にチェックし、
  * headshop.reset-time を過ぎた最初のtickで当日分を生成する（AutoBroadcastManagerと同じ、
  * 自前でタスクを持ち start() で登録する形）。
+ *
+ * 「本日」は暦日ではなく reset-time を境にした「ショップの1日」（shopDate）で数える：
+ * reset-time 前は前日分、reset-time 以降は当日分を指す。書き込み（generateRotation）と
+ * 読み込み（getTodayHeads）の両方が同じ shopDate() を使うことで、reset-time 前に
+ * 「今日の日付の行がまだ無い」状態で空表示になる不整合を防ぐ。
  */
 public class HeadshopManager {
 
@@ -43,6 +49,7 @@ public class HeadshopManager {
 
     private final StellariaCore plugin;
     private ScheduledTask task;
+    private String emptyPoolWarnedDate;
 
     public HeadshopManager(StellariaCore plugin) {
         this.plugin = plugin;
@@ -57,15 +64,22 @@ public class HeadshopManager {
         checkRotation();
     }
 
+    /**
+     * reset-timeを境にした「ショップの1日」を返す。reset-time前は前日、reset-time以降は当日。
+     * generateRotation()（書き込み）とgetTodayHeads()（読み込み）の両方がこれを使うことで、
+     * キーのずれによる「reset-time前は空表示になる」不整合を防ぐ。
+     */
+    private LocalDate shopDate() {
+        LocalDate today = LocalDate.now();
+        return LocalTime.now().isBefore(resetTime()) ? today.minusDays(1) : today;
+    }
+
     private void checkRotation() {
-        String today = LocalDate.now().toString();
-        if (DatabaseManager.exists("headshop_rotation", "date = ?", today)) {
+        String shopDate = shopDate().toString();
+        if (DatabaseManager.exists("headshop_rotation", "date = ?", shopDate)) {
             return;
         }
-        if (LocalTime.now().isBefore(resetTime())) {
-            return;
-        }
-        generateRotation(today);
+        generateRotation(shopDate);
     }
 
     private LocalTime resetTime() {
@@ -78,17 +92,20 @@ public class HeadshopManager {
         }
     }
 
-    private void generateRotation(String today) {
+    private void generateRotation(String shopDate) {
         List<PoolHead> pool = listPool();
         if (pool.isEmpty()) {
-            plugin.getLogger().warning("headshop_pool が空のため、本日の日替わりヘッドを生成できません。");
+            if (!shopDate.equals(emptyPoolWarnedDate)) {
+                plugin.getLogger().warning("headshop_pool が空のため、本日の日替わりヘッドを生成できません。");
+                emptyPoolWarnedDate = shopDate;
+            }
             return;
         }
 
         String previousDate = DatabaseManager.queryOne(
                 "SELECT date FROM headshop_rotation WHERE date < ? ORDER BY date DESC LIMIT 1",
                 rs -> rs.getString("date"),
-                today
+                shopDate
         );
         Set<Integer> excluded = new HashSet<>();
         if (previousDate != null) {
@@ -107,18 +124,18 @@ public class HeadshopManager {
 
         Collections.shuffle(candidates);
         for (PoolHead head : candidates.subList(0, Math.min(ROTATION_SIZE, candidates.size()))) {
-            DatabaseManager.insert("headshop_rotation", Map.of("date", today, "pool_id", head.id()));
+            DatabaseManager.insert("headshop_rotation", Map.of("date", shopDate, "pool_id", head.id()));
         }
     }
 
-    /** 本日ローテーションに選ばれた頭の一覧（headshop_rotationとheadshop_poolのJOIN）。 */
+    /** 本日（shopDate）のローテーションに選ばれた頭の一覧（headshop_rotationとheadshop_poolのJOIN）。 */
     public List<PoolHead> getTodayHeads() {
         return DatabaseManager.query(
                 "SELECT headshop_pool.id AS id, headshop_pool.display_name AS display_name, headshop_pool.texture AS texture " +
                         "FROM headshop_rotation JOIN headshop_pool ON headshop_pool.id = headshop_rotation.pool_id " +
                         "WHERE headshop_rotation.date = ?",
                 HeadshopManager::mapPoolHead,
-                LocalDate.now().toString()
+                shopDate().toString()
         );
     }
 
@@ -143,7 +160,9 @@ public class HeadshopManager {
         ));
     }
 
+    /** プールから削除する。参照が残らないよう、このheadを含む過去のheadshop_rotation行も一緒に削除する。 */
     public void removeFromPool(int id) {
+        DatabaseManager.execute("DELETE FROM headshop_rotation WHERE pool_id = ?", id);
         DatabaseManager.execute("DELETE FROM headshop_pool WHERE id = ?", id);
     }
 
@@ -177,11 +196,15 @@ public class HeadshopManager {
         return result;
     }
 
-    /** texture(base64) からPLAYER_HEADのItemStackを作る（プールの日替わりヘッド用、実プレイヤーの頭ではない）。 */
+    /**
+     * texture(base64) からPLAYER_HEADのItemStackを作る（プールの日替わりヘッド用、実プレイヤーの頭ではない）。
+     * プロフィールUUIDはtextureから決定的に導出する（毎回ランダムだと同じ頭を複数買ってもスタックしないため）。
+     */
     public ItemStack createHeadItem(PoolHead head) {
         ItemStack item = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta meta = (SkullMeta) item.getItemMeta();
-        PlayerProfile profile = Bukkit.createProfile(UUID.randomUUID());
+        UUID profileId = UUID.nameUUIDFromBytes(head.texture().getBytes(StandardCharsets.UTF_8));
+        PlayerProfile profile = Bukkit.createProfile(profileId);
         profile.setProperty(new ProfileProperty("textures", head.texture()));
         meta.setPlayerProfile(profile);
         meta.displayName(ColorUtil.component(head.displayName()));

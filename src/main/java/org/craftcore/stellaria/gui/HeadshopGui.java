@@ -22,6 +22,7 @@ import java.util.Map;
 public class HeadshopGui extends Gui {
 
     private static final int[] HEAD_SLOTS = {11, 12, 13, 14, 15};
+    private static final int EMPTY_HINT_SLOT = 13;
     private static final int PLAYER_HEADS_BUTTON_SLOT = 22;
 
     private final StellariaCore plugin;
@@ -45,10 +46,14 @@ public class HeadshopGui extends Gui {
     private void populate(Player viewer) {
         int price = plugin.getConfigManager().getInt("headshop.normal-price", 500);
         List<HeadshopManager.PoolHead> heads = plugin.getHeadshopManager().getTodayHeads();
-        for (int i = 0; i < heads.size() && i < HEAD_SLOTS.length; i++) {
-            HeadshopManager.PoolHead head = heads.get(i);
-            headsBySlot.put(HEAD_SLOTS[i], head);
-            getInventory().setItem(HEAD_SLOTS[i], createDisplayItem(head, price));
+        if (heads.isEmpty()) {
+            getInventory().setItem(EMPTY_HINT_SLOT, emptyHintItem(viewer));
+        } else {
+            for (int i = 0; i < heads.size() && i < HEAD_SLOTS.length; i++) {
+                HeadshopManager.PoolHead head = heads.get(i);
+                headsBySlot.put(HEAD_SLOTS[i], head);
+                getInventory().setItem(HEAD_SLOTS[i], createDisplayItem(head, price));
+            }
         }
         getInventory().setItem(PLAYER_HEADS_BUTTON_SLOT, playerHeadsButtonItem(viewer));
     }
@@ -57,6 +62,14 @@ public class HeadshopGui extends Gui {
         ItemStack item = plugin.getHeadshopManager().createHeadItem(head);
         ItemMeta meta = item.getItemMeta();
         meta.lore(List.of(ColorUtil.component("&%7価格: &%e" + plugin.getEconomyManager().format(price))));
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private ItemStack emptyHintItem(Player viewer) {
+        ItemStack item = new ItemStack(Material.BARRIER);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(ColorUtil.component(plugin.getConfigManager().getMessage("headshop.shop-empty", viewer)));
         item.setItemMeta(meta);
         return item;
     }
@@ -104,7 +117,15 @@ public class HeadshopGui extends Gui {
         }
 
         ItemStack item = plugin.getHeadshopManager().createHeadItem(head);
-        player.getInventory().addItem(item);
+        Map<Integer, ItemStack> leftover = player.getInventory().addItem(item);
+        if (!leftover.isEmpty()) {
+            plugin.getEconomyManager().depositPlayer(player, price);
+            player.sendMessage(FormatUtil.replace(
+                    plugin.getConfigManager().getMessage("headshop.inventory-full", player),
+                    "%price%", plugin.getEconomyManager().format(price)));
+            return;
+        }
+
         Component purchasedMessage = ColorUtil.component(FormatUtil.replace(
                 plugin.getConfigManager().getMessage("headshop.purchased", player),
                 "%price%", plugin.getEconomyManager().format(price)))
