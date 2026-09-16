@@ -9,6 +9,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.gui.WarpSelectGui;
 import org.craftcore.stellaria.managers.WarpManager;
 import org.craftcore.stellaria.utils.FormatUtil;
 import org.craftcore.stellaria.utils.ParticleUtil;
@@ -51,7 +52,7 @@ public class WarpCommand implements CommandExecutor, TabCompleter {
             case "setwarp" -> handleSetWarp(player, args);
             case "warp" -> handleWarp(player, args);
             case "delwarp" -> handleDelWarp(player, args);
-            case "warps" -> handleWarps(player);
+            case "warps" -> handleWarps(player, args);
             default -> { }
         }
         return true;
@@ -82,7 +83,13 @@ public class WarpCommand implements CommandExecutor, TabCompleter {
             player.sendMessage(plugin.getConfigManager().getMessage("warp.usage_warp", player));
             return;
         }
-        String name = args[0];
+        teleportToWarp(player, args[0]);
+    }
+
+    /**
+     * 名前付きワープへ移動する。/warp とGUI選択のどちらからも呼ばれ、危険地点の確認状態も共有する。
+     */
+    public void teleportToWarp(Player player, String name) {
         Location destination = plugin.getWarpManager().get(name);
         if (destination == null) {
             player.sendMessage(FormatUtil.replace(
@@ -139,7 +146,12 @@ public class WarpCommand implements CommandExecutor, TabCompleter {
                 plugin.getConfigManager().getMessage("warp.deleted", player), "%name%", name));
     }
 
-    private void handleWarps(Player player) {
+    private void handleWarps(Player player, String[] args) {
+        if (args.length == 1 && args[0].equalsIgnoreCase("gui")) {
+            new WarpSelectGui(plugin, this).open(player);
+            return;
+        }
+
         List<WarpManager.WarpEntry> warps = plugin.getWarpManager().listAll();
         if (warps.isEmpty()) {
             player.sendMessage(plugin.getConfigManager().getMessage("warp.list_empty", player));
@@ -157,6 +169,9 @@ public class WarpCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String @NotNull [] args) {
+        if (command.getName().equals("warps")) {
+            return args.length == 1 ? TabCompleteUtil.filterStartsWith(List.of("gui"), args[0]) : List.of();
+        }
         if (args.length != 1 || command.getName().equals("setwarp")) {
             return List.of();
         }

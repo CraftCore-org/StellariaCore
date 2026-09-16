@@ -207,6 +207,12 @@ home:
   list_header: "&%6&l--- ホーム一覧 ---"
   list_entry: "&%7- &%f%name%"
   list_empty: "&%7ホームがまだありません。/sethome <名前> で作成できます。"
+  gui_title: "&%6ホーム一覧"
+  gui_entry_lore: "&%7クリックしてテレポート"
+  gui_empty: "&%7ホームがまだありません"
+  gui_previous_page: "&%e前のページ"
+  gui_next_page: "&%e次のページ"
+  gui_page: "&%7ページ %page%/%max_page%"
 
 warp:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
@@ -225,6 +231,13 @@ warp:
   list_header: "&%6&l--- ワープ一覧 ---"
   list_entry: "&%7- &%f%name% &%7(by %owner%)"
   list_empty: "&%7ワープがまだありません。/setwarp <名前> で作成できます。"
+  gui_title: "&%6ワープ一覧"
+  gui_entry_owner: "&%7作成者: &%f%owner%"
+  gui_entry_lore: "&%7クリックしてテレポート"
+  gui_empty: "&%7ワープがまだありません"
+  gui_previous_page: "&%e前のページ"
+  gui_next_page: "&%e次のページ"
+  gui_page: "&%7ページ %page%/%max_page%"
 
 weathervote:
   start_vote: "&r%player%&%7が&%g%world%&%7の天気を&%g%weather%&%7にしようとしています。\n&%g%votetime%&%7秒後に投票が終了します。"
