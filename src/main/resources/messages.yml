@@ -296,6 +296,12 @@ features:
   confirm_title: "&%2購入の確認"
   confirm_description: "&%7この機能を &%e%price% &%7で購入しますか？"
 
+adminshop:
+  title: "&%9&l運営ショップ"
+  purchased: "&%a%item% を購入しました。（%price%）"
+  insufficient_funds: "&%c残高が足りません。（必要: %price%）"
+  disabled: "&%c現在このショップは利用できません。"
+
 land:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   no_permission: "&%cこのコマンドを実行する権限がありません。"
