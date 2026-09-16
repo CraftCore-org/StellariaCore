@@ -58,7 +58,7 @@ public class BelownameManager {
                 objective.displayName(ColorUtil.component(placeholders.resolve(titleTemplate, viewer)));
             }
             for (Player target : online) {
-                String value = placeholders.resolve(valueTemplate, target);
+                String value = placeholders.resolve(valueTemplate, target, viewer);
                 var score = objective.getScore(target.getName());
                 score.setScore(0);
                 score.numberFormat(NumberFormat.fixed(ColorUtil.component(value)));

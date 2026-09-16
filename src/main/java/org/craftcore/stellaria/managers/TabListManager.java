@@ -64,7 +64,7 @@ public class TabListManager {
 
             Objective objective = ensureValueObjective(BoardUtil.ensurePersonalBoard(viewer));
             for (Player target : online) {
-                applyValue(objective, target);
+                applyValue(objective, target, viewer);
             }
         }
     }
@@ -93,9 +93,8 @@ public class TabListManager {
         return objective;
     }
 
-    private void applyValue(Objective objective, Player target) {
-        // 値は見る側によらず同じ（targetの状態だけで決まる）
-        String value = placeholders.resolve(valueTemplate, target);
+    private void applyValue(Objective objective, Player target, Player viewer) {
+        String value = placeholders.resolve(valueTemplate, target, viewer);
         var score = objective.getScore(target.getName());
         score.setScore(0);
         score.numberFormat(NumberFormat.fixed(ColorUtil.component(value)));
