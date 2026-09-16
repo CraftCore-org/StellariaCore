@@ -90,9 +90,11 @@ first-join-kit:
 
 adminshop:
   enabled: true
+  # rows: 6 # 省略時は商品数に応じて自動決定（1〜6）
   items:
     - material: BREAD
       price: 10
+      # slot: 0 # 省略時は空いているスロットへ自動配置
     - material: CARROT
       price: 8
     - material: POTATO

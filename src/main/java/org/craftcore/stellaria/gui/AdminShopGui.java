@@ -14,6 +14,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -34,12 +35,13 @@ public class AdminShopGui extends Gui {
         this(plugin, player, parent, loadItems(plugin));
     }
 
-    private AdminShopGui(StellariaCore plugin, Player player, @Nullable Gui parent, List<ShopItem> shopItems) {
-        super(inventorySize(shopItems.size()), ColorUtil.component(plugin.getConfigManager().getMessage("adminshop.title", player)), parent);
+    private AdminShopGui(StellariaCore plugin, Player player, @Nullable Gui parent, ShopLayout layout) {
+        super(layout.inventorySize(), ColorUtil.component(plugin.getConfigManager().getMessage("adminshop.title", player)), parent);
         this.plugin = plugin;
 
-        for (int slot = 0; slot < shopItems.size() && slot < MAX_SLOTS; slot++) {
-            ShopItem shopItem = shopItems.get(slot);
+        for (Map.Entry<Integer, ShopItem> entry : layout.itemsBySlot().entrySet()) {
+            int slot = entry.getKey();
+            ShopItem shopItem = entry.getValue();
             itemsBySlot.put(slot, shopItem);
             getInventory().setItem(slot, createDisplayItem(shopItem));
         }
@@ -63,10 +65,13 @@ public class AdminShopGui extends Gui {
 
         EconomyResponse response = plugin.getEconomyManager().withdrawPlayer(player, shopItem.price());
         if (response.transactionSuccess()) {
-            player.getInventory().addItem(new ItemStack(shopItem.material()));
-            player.sendMessage(plugin.getConfigManager().getMessage("adminshop.purchased", player)
-                    .replace("%item%", shopItem.material().name())
-                    .replace("%price%", plugin.getEconomyManager().format(shopItem.price())));
+            ItemStack itemStack = new ItemStack(shopItem.material());
+            player.getInventory().addItem(itemStack);
+            Component purchasedMessage = ColorUtil.component(plugin.getConfigManager().getMessage("adminshop.purchased", player)
+                    .replace("%price%", plugin.getEconomyManager().format(shopItem.price())))
+                    .replaceText(builder -> builder.matchLiteral("%item%")
+                            .replacement(Component.translatable(itemStack.getType().translationKey())));
+            player.sendMessage(purchasedMessage);
             return;
         }
 
@@ -82,11 +87,12 @@ public class AdminShopGui extends Gui {
         return itemStack;
     }
 
-    private static List<ShopItem> loadItems(StellariaCore plugin) {
+    private static ShopLayout loadItems(StellariaCore plugin) {
         List<ShopItem> shopItems = new ArrayList<>();
         for (Map<?, ?> itemConfig : plugin.getConfigManager().getMapList("adminshop.items")) {
             Object materialValue = itemConfig.get("material");
             Object priceValue = itemConfig.get("price");
+            Object slotValue = itemConfig.get("slot");
             Material material = materialValue instanceof String materialName ? Material.matchMaterial(materialName) : null;
 
             if (material == null || !(priceValue instanceof Number number) || number.intValue() < 0) {
@@ -94,16 +100,67 @@ public class AdminShopGui extends Gui {
                 continue;
             }
 
-            shopItems.add(new ShopItem(material, number.intValue()));
+            if (slotValue != null && (!(slotValue instanceof Number) || ((Number) slotValue).intValue() < 0)) {
+                plugin.getLogger().warning("adminshop.items の slot は0以上の整数で指定してください: " + itemConfig);
+                continue;
+            }
+
+            shopItems.add(new ShopItem(material, number.intValue(), slotValue instanceof Number slot ? slot.intValue() : null));
         }
-        return shopItems;
+
+        int configuredRows = plugin.getConfigManager().getInt("adminshop.rows", -1, true);
+        boolean hasFixedRows = configuredRows != -1;
+        if (hasFixedRows && (configuredRows < 1 || configuredRows > 6)) {
+            plugin.getLogger().warning("adminshop.rows は1から6で指定してください。自動行数を使用します: " + configuredRows);
+            hasFixedRows = false;
+        }
+
+        int highestRequestedSlot = shopItems.stream()
+                .map(ShopItem::slot)
+                .filter(slot -> slot != null)
+                .mapToInt(Integer::intValue)
+                .max()
+                .orElse(-1);
+        int rows = hasFixedRows
+                ? configuredRows
+                : Math.max(1, Math.min(6, Math.max((shopItems.size() + 8) / 9, (highestRequestedSlot + 9) / 9)));
+        int inventorySize = rows * 9;
+        Map<Integer, ShopItem> itemsBySlot = new LinkedHashMap<>();
+
+        for (ShopItem shopItem : shopItems) {
+            if (shopItem.slot() == null) {
+                continue;
+            }
+            if (shopItem.slot() >= inventorySize) {
+                plugin.getLogger().warning("adminshop.items の slot がショップの範囲外です: " + shopItem.slot());
+                continue;
+            }
+            if (itemsBySlot.putIfAbsent(shopItem.slot(), shopItem) != null) {
+                plugin.getLogger().warning("adminshop.items に重複した slot 指定があります: " + shopItem.slot());
+            }
+        }
+
+        for (ShopItem shopItem : shopItems) {
+            if (shopItem.slot() != null) {
+                continue;
+            }
+            for (int slot = 0; slot < inventorySize; slot++) {
+                if (!itemsBySlot.containsKey(slot)) {
+                    itemsBySlot.put(slot, shopItem);
+                    break;
+                }
+            }
+            if (itemsBySlot.size() == inventorySize) {
+                break;
+            }
+        }
+
+        return new ShopLayout(inventorySize, itemsBySlot);
     }
 
-    private static int inventorySize(int itemCount) {
-        int rows = Math.max(1, Math.min(6, (itemCount + 8) / 9));
-        return rows * 9;
+    private record ShopItem(Material material, int price, @Nullable Integer slot) {
     }
 
-    private record ShopItem(Material material, int price) {
+    private record ShopLayout(int inventorySize, Map<Integer, ShopItem> itemsBySlot) {
     }
 }
