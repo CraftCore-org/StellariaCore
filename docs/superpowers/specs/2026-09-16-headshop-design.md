@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS headshop_rotation (
 ## 管理者GUI（`HeadshopAdminGui`、`/headshop admin`）
 
 - ページ送りの管理用インベントリ（1ページ45枠+ナビゲーション、`headshop_pool`を全件ページング表示）
-- **登録**: 各ページの空きスロットに、運営が持ち物のヘッドアイテムをドラッグして置くと、そのアイテムの`SkullMeta#getPlayerProfile()`からtextureプロパティ（base64）を読み取り、アイテムのカスタム表示名（`displayName`が設定されていればそれ、無ければ`headshop.admin.unnamed-head`のデフォルト文言）とあわせて`headshop_pool`にINSERTする。同一texture文字列が既に登録済みの場合は登録せず、`headshop.admin.duplicate`メッセージを表示してカーソルへアイテムを戻す
+- **登録**: 既存GUI（`AdminShopGui`等）と同様、このGUIも`onClick`で全クリックを`setCancelled(true)`する（実物のドラッグ&ドロップは起きない）。運営はヘッドアイテムをカーソルに乗せた状態で空きスロットをクリックする。そのクリック時の`event.getCursor()`が`PLAYER_HEAD`なら`SkullMeta#getPlayerProfile()`からtextureプロパティ（base64）を読み取り、アイテムのカスタム表示名（`displayName`が設定されていればそれ、無ければ`headshop.admin.unnamed-head`のデフォルト文言）とあわせて`headshop_pool`にINSERTする。イベント自体はキャンセルされるのでカーソルのアイテムは常にそのまま運営の手元に残る。同一texture文字列が既に登録済みの場合は登録せず`headshop.admin.duplicate`メッセージのみ表示。カーソルが`PLAYER_HEAD`ですらない場合は`headshop.admin.invalid_head`を表示
 - **削除**: 既存登録済みのヘッドをシフトクリックすると、確認なしで`headshop_pool`から削除する（`land.unclaim`同様、即時実行系の操作として扱う）
 - 権限: `stellaria.headshop.admin`
 
@@ -127,6 +127,8 @@ headshop:
 
 ```yaml
 headshop:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
   title: "ヘッドショップ"
   player-heads-title: "プレイヤーヘッド一覧"
   admin-title: "ヘッドショップ管理"
@@ -139,24 +141,26 @@ headshop:
   admin:
     added: "&%aヘッドをプールに登録しました：&%e%item%"
     duplicate: "&%cこのヘッドは既に登録されています"
+    invalid_head: "&%c頭アイテムをカーソルに乗せた状態でクリックしてください"
     unnamed-head: "名称未設定の頭"
     removed: "&%aプールからヘッドを削除しました：&%e%item%"
 ```
 
 ## エラーハンドリング
 
-- `/headshop`系コマンドをプレイヤー以外が実行 → 既存コマンドと同様の共通処理があれば流用
-- 権限不足 → バニラの権限拒否メッセージに委ねる
+- `/headshop`系コマンドをプレイヤー以外が実行 → `headshop.must_be_player`
+- `/headshop admin`を`stellaria.headshop.admin`無しで実行 → `headshop.no_permission`（`/headshop`本体は`plugin.yml`の`permission: stellaria.headshop`でBukkit標準の権限拒否に委ねる。`admin`サブコマンドだけ別権限を要求するため、これは`HeadshopCommand`内で手動チェックする——`WarpCommand`が`stellaria.warp`を手動チェックするのと同じ理由）
 - プールが空の状態で日替わり抽選のタイミングが来た → 抽選をスキップし、メインGUIの該当スロットは空欄＋案内ロア表示（購入不可）
 - 購入時の残高不足 → コインは引き落とさず`insufficient-funds`のみ表示
-- 管理者GUIでの重複登録 → 登録せず`duplicate`メッセージ、アイテムはカーソルに保持されたまま（インベントリから消えない）
+- 管理者GUIでの重複登録 → 登録せず`duplicate`メッセージ、カーソルのアイテムは常にそのまま（イベントを常にキャンセルするため元々インベントリからは動かない）
+- カーソルが`PLAYER_HEAD`以外、またはtextureプロパティを持たない頭 → `invalid_head`
 
 ## テスト方針
 
 本リポジトリに自動テストは無く、`runServer`での実機確認を行う:
 
 - `./gradlew build`が通ること
-- **プール登録**: `/headshop admin`を開き、頭アイテムを空きスロットにドラッグ→`headshop_pool`に登録されること。同じアイテムをもう一度登録しようとすると`duplicate`表示になること。シフトクリックで削除できること
+- **プール登録**: `/headshop admin`を開き、頭アイテムをカーソルに乗せた状態で空きスロットをクリック→`headshop_pool`に登録されること。同じアイテムをもう一度登録しようとすると`duplicate`表示になること。シフトクリックで削除できること
 - **日替わり抽選**: `headshop.reset-time`を数分後の時刻に設定して再起動→時刻到達後にメインGUIの5枠が埋まること。前日の`headshop_rotation`と重複しないこと（プールを10件程度用意してテスト）
 - **メインGUI購入**: 所持金を用意して本日のヘッドを購入→残高が減り、頭アイテムが付与されること。残高不足で`insufficient-funds`表示になること
 - **プレイヤーヘッドGUI**: オンライン中のプレイヤーの頭が一覧に出ること、購入時に価格が`normal-price + player-head-markup`になっていること、ヒントアイテムに`reset-time`の値が表示されていること
