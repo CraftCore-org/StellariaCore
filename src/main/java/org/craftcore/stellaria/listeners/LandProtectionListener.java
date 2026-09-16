@@ -134,13 +134,15 @@ public class LandProtectionListener implements Listener {
     }
 
     /**
-     * バニラのTag（DOORS/TRAPDOORS/FENCE_GATES）で判定する。設定ファイル経由にしないのは、
+     * バニラのTag（DOORS/TRAPDOORS/FENCE_GATES/BUTTONS）で判定する。設定ファイル経由にしないのは、
      * config.ymlは新規インストール時にしか展開されず（移行機能なし）、既存サーバーで
      * 新しいキーが単に「無い」＝「保護対象0件」に化けてしまう事故を避けるため
      * （実際に銅ドア/淡いオークドア等、キー追加時点で存在しなかった新素材も自動的に拾える）。
+     * ボタンもここに含めるのは、ドア同様「誰でも開閉可能」に設定していない限りはdoorsフラグの保護対象にするため。
      */
     private boolean isDoorMaterial(Material material) {
-        return Tag.DOORS.isTagged(material) || Tag.TRAPDOORS.isTagged(material) || Tag.FENCE_GATES.isTagged(material);
+        return Tag.DOORS.isTagged(material) || Tag.TRAPDOORS.isTagged(material)
+                || Tag.FENCE_GATES.isTagged(material) || Tag.BUTTONS.isTagged(material);
     }
 
     /**

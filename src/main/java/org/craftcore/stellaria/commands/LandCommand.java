@@ -207,6 +207,9 @@ public class LandCommand implements CommandExecutor, TabCompleter {
         UUID self = player.getUniqueId();
 
         player.sendMessage(plugin.getConfigManager().getMessage("land.map_header", player));
+        player.sendMessage(FormatUtil.replace(
+                plugin.getConfigManager().getMessage("land.map_facing", player), "%direction%", facing4(player)));
+        player.sendMessage(plugin.getConfigManager().getMessage("land.map_axis", player));
 
         // 1行ずつ個別にsendMessageする（このコードベースの他の複数行出力＝handleHelp/trustlist等と
         // 同じ確立された方式に合わせる。1メッセージに\nを埋め込んで一括送信する方式は
@@ -236,6 +239,25 @@ public class LandCommand implements CommandExecutor, TabCompleter {
         for (String line : plugin.getConfigManager().getMessageList("land.map_legend")) {
             player.sendMessage(FormatUtil.text(player, line));
         }
+    }
+
+    /**
+     * ヨー角を北/東/南/西の4方位に丸める。/land mapのグリッドがX/Z軸だけなので8方位ではなく4方位に対応させる。
+     * Minecraftのヨーは0/360=南(+Z)、90=西(-X)、180=北(-Z)、270=東(+X)。
+     */
+    private String facing4(Player player) {
+        float yaw = ((player.getLocation().getYaw() % 360) + 360) % 360;
+        String key;
+        if (yaw >= 45 && yaw < 135) {
+            key = "land.map_direction_west";
+        } else if (yaw >= 135 && yaw < 225) {
+            key = "land.map_direction_north";
+        } else if (yaw >= 225 && yaw < 315) {
+            key = "land.map_direction_east";
+        } else {
+            key = "land.map_direction_south";
+        }
+        return plugin.getConfigManager().getMessage(key, player);
     }
 
     private void handleHelp(Player player) {
