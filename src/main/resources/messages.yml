@@ -192,11 +192,24 @@ profile:
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   no_permission_others: "&%c他人のプロフィールを確認する権限がありません。"
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
-  usage: "&%c使用方法: /profile [プレイヤー]、/profile <hide|show>"
+  usage: "&%c使用方法: /profile [プレイヤー名]"
   player_not_found: "&%c%player% &%7はオフラインまたは存在しません。"
   balance_hidden: "&%8非公開"
+  gui_title: "&%b&lプロフィール"
+  gui_self: "&%bあなたのプロフィール"
+  gui_hint_title: "&%e他のプレイヤーを見る"
+  gui_hint: "&%7ヒント: &%e/profile <名前> &%7で他のプレイヤーのプロフィールも見られます"
+
+settings:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  usage: "&%c使用方法: /settings"
+  gui_title: "&%b&l設定"
+  balance_visibility: "&%e所持金の公開設定"
+  balance_visible: "&%a現在: 公開"
+  balance_hidden: "&%8現在: 非公開"
+  toggle_hint: "&%7クリックで切り替え"
+  balance_visible_enabled: "&%a所持金を他のプレイヤーに公開しました。"
   balance_hidden_enabled: "&%a所持金を他のプレイヤーに非公開にしました。"
-  balance_hidden_disabled: "&%a所持金を公開しました。"
 
 ranking:
   no_permission: "&%cこのコマンドを実行する権限がありません。"

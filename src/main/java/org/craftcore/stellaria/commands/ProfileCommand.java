@@ -9,6 +9,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.gui.ProfileGui;
 import org.craftcore.stellaria.managers.EconomyManager;
 import org.craftcore.stellaria.utils.DurationParser;
 import org.craftcore.stellaria.utils.TabCompleteUtil;
@@ -17,8 +18,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.List;
 
 /**
- * /profile [プレイヤー] コマンド。自分または権限を持つ閲覧者に指定プレイヤーのプロフィールを表示する。
- * 所持金の表示内容は {@link #buildProfile(Player, OfflinePlayer)} にまとめ、将来のGUIからも再利用しやすくしている。
+ * /profile [プレイヤー] コマンド。自分のプロフィールはGUIで、指定プレイヤーはテキストで表示する。
  */
 public class ProfileCommand implements CommandExecutor, TabCompleter {
 
@@ -43,27 +43,16 @@ public class ProfileCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (args.length == 1 && args[0].equalsIgnoreCase("hide")) {
-            plugin.getEconomyManager().setHideBalance(viewer, true);
-            viewer.sendMessage(plugin.getConfigManager().getMessage("profile.balance_hidden_enabled", viewer));
-            return true;
-        }
-        if (args.length == 1 && args[0].equalsIgnoreCase("show")) {
-            plugin.getEconomyManager().setHideBalance(viewer, false);
-            viewer.sendMessage(plugin.getConfigManager().getMessage("profile.balance_hidden_disabled", viewer));
+        if (args.length == 0) {
+            new ProfileGui(plugin, viewer).open(viewer);
             return true;
         }
 
-        OfflinePlayer target;
-        if (args.length == 0) {
-            target = viewer;
-        } else {
-            if (!viewer.hasPermission("stellaria.profile.others")) {
-                viewer.sendMessage(plugin.getConfigManager().getMessage("profile.no_permission_others", null));
-                return true;
-            }
-            target = Bukkit.getOfflinePlayer(args[0]);
+        if (!viewer.hasPermission("stellaria.profile.others")) {
+            viewer.sendMessage(plugin.getConfigManager().getMessage("profile.no_permission_others", null));
+            return true;
         }
+        OfflinePlayer target = Bukkit.getOfflinePlayer(args[0]);
 
         if (!target.hasPlayedBefore() && !target.isOnline()) {
             viewer.sendMessage(plugin.getConfigManager().getMessage("profile.player_not_found", target));
@@ -74,8 +63,18 @@ public class ProfileCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    /** プロフィールの複数行表示を組み立てる。将来のGUI表示でもこの内容生成を再利用できる。 */
+    /** プロフィールの複数行表示を組み立てる。 */
     private Component buildProfile(Player viewer, OfflinePlayer target) {
+        return plugin.getPlaceholderManager().resolveLines(buildProfileInfoLines(plugin, viewer, target), viewer);
+    }
+
+    /**
+     * {@code profile.info-lines} のプロフィール固有トークンを置換した未解決テンプレートを返す。
+     * {@code %playtime%} は PlaceholderManager の組み込みトークンではないため、
+     * {@link org.craftcore.stellaria.managers.PlaceholderManager#resolveLines(List, Player)} の前に
+     * ここで必ず置換する。ProfileGui もこのメソッドを使い、テキスト表示と同じ内容を表示する。
+     */
+    public static List<String> buildProfileInfoLines(StellariaCore plugin, Player viewer, OfflinePlayer target) {
         EconomyManager economy = plugin.getEconomyManager();
         String playtime = DurationParser.formatDuration(plugin.getPlaytimeManager().getPlaytimeSeconds(target.getUniqueId()));
         boolean hideBalance = economy.isHideBalance(target) && !viewer.getUniqueId().equals(target.getUniqueId());
@@ -83,21 +82,18 @@ public class ProfileCommand implements CommandExecutor, TabCompleter {
                 ? plugin.getConfigManager().getMessage("profile.balance_hidden", null)
                 : economy.formatExact(economy.getBalance(target));
 
-        List<String> lines = plugin.getConfigManager().getStringList("profile.info-lines").stream()
+        return plugin.getConfigManager().getStringList("profile.info-lines").stream()
                 .map(line -> line
                         .replace("%player%", target.getName() != null ? target.getName() : target.getUniqueId().toString())
                         .replace("%playtime%", playtime)
                         .replace("%money%", balance))
                 .toList();
-        return plugin.getPlaceholderManager().resolveLines(lines, viewer);
     }
 
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String @NotNull [] args) {
         if (args.length == 1) {
-            return TabCompleteUtil.filterStartsWith(List.of("hide", "show"), args[0]).isEmpty()
-                    ? TabCompleteUtil.knownPlayerNames(args[0])
-                    : TabCompleteUtil.filterStartsWith(List.of("hide", "show"), args[0]);
+            return TabCompleteUtil.knownPlayerNames(args[0]);
         }
         return List.of();
     }
