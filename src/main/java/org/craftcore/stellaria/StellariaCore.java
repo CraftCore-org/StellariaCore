@@ -424,8 +424,9 @@ public class StellariaCore extends JavaPlugin {
         getCommand("land").setExecutor(landCommand);
         getCommand("land").setTabCompleter(landCommand);
 
-        getCommand("chunkborder").setExecutor(landCommand);
-        getCommand("chunkborder").setTabCompleter(landCommand);
+        ChunkBorderCommand chunkBorderCommand = new ChunkBorderCommand(this);
+        getCommand("chunkborder").setExecutor(chunkBorderCommand);
+        getCommand("chunkborder").setTabCompleter(chunkBorderCommand);
 
         this.autoBroadcastManager = new AutoBroadcastManager(this);
         autoBroadcastManager.start();

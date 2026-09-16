@@ -12,6 +12,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.managers.LandBorderParticleManager;
 import org.craftcore.stellaria.managers.LandManager;
 import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
@@ -61,12 +62,6 @@ public class LandCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        // /chunkborder は /land border のエイリアス。border以降の引数だけ渡されたものとして扱う。
-        if (command.getName().equalsIgnoreCase("chunkborder")) {
-            handleBorder(player, prependBorder(args));
-            return true;
-        }
-
         String sub = args.length > 0 ? args[0].toLowerCase() : "";
         switch (sub) {
             case "claim" -> handleClaim(player);
@@ -82,13 +77,6 @@ public class LandCommand implements CommandExecutor, TabCompleter {
             default -> sendUsage(player, "land.usage");
         }
         return true;
-    }
-
-    private String[] prependBorder(String[] args) {
-        String[] result = new String[args.length + 1];
-        result[0] = "border";
-        System.arraycopy(args, 0, result, 1, args.length);
-        return result;
     }
 
     private void handleClaim(Player player) {
@@ -284,7 +272,7 @@ public class LandCommand implements CommandExecutor, TabCompleter {
         int defaultRadius = Math.max(1, plugin.getConfigManager().getInt(
                 "land.border-particle.toggle-radius-default", 3));
         if (args.length == 1) {
-            boolean enabled = plugin.getLandBorderParticleManager().toggle(player, defaultRadius);
+            boolean enabled = plugin.getLandBorderParticleManager().toggle(player, defaultRadius, LandBorderParticleManager.Mode.CLAIMED);
             sendBorderState(player, enabled, defaultRadius);
             return;
         }
@@ -304,7 +292,7 @@ public class LandCommand implements CommandExecutor, TabCompleter {
         if (radius < 1) {
             return;
         }
-        plugin.getLandBorderParticleManager().enable(player, radius);
+        plugin.getLandBorderParticleManager().enable(player, radius, LandBorderParticleManager.Mode.CLAIMED);
         sendBorderState(player, true, radius);
     }
 
@@ -599,9 +587,6 @@ public class LandCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String @NotNull [] args) {
-        if (command.getName().equalsIgnoreCase("chunkborder")) {
-            return args.length == 1 ? TabCompleteUtil.filterStartsWith(ON_OFF, args[0]) : List.of();
-        }
         if (args.length == 1) {
             List<String> visible = sender.hasPermission("stellaria.land.admin")
                     ? SUBCOMMANDS

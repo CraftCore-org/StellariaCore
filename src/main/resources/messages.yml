@@ -475,6 +475,12 @@ land:
     - "&%7個々のチャンクだけエリアと違う設定にしたい時は&%e/land rule <pvp|explosions|doors|chests> <on|off|default>"
     - "&%7&%7（defaultで個別設定を解除すると、またエリアの設定に従います）"
 
+chunkborder:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  usage: "&%c使用方法: /chunkborder [on|off] [半径]"
+  enabled: "&%aチャンク境界の常時表示をONにしました。&%7（半径: &%f%radius%&%7チャンク、保護状態は問いません）"
+  disabled: "&%cチャンク境界の常時表示をOFFにしました。"
+
 menu:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   title: "&%9&lすてらりあ &%bメニュー"

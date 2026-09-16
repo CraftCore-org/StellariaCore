@@ -8,7 +8,6 @@ import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.ParticleUtil;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -19,16 +18,22 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * /land border の常時表示を管理する。
+ * チャンク境界パーティクルの常時表示を管理する。2つのモードがあり、同じプレイヤーが
+ * 同時に両方を表示することはできない（片方をONにするともう片方は自動的に置き換わる）。
+ * <ul>
+ *   <li>{@link Mode#CLAIMED} — /land border。保護済みチャンクの外周のみ表示。</li>
+ *   <li>{@link Mode#ALL_CHUNKS} — /chunkborder。保護状態に関係なく全チャンクの境界を表示。</li>
+ * </ul>
  *
  * プレイヤーごとに半径と「境界になるXZ座標・隣接点の組」をキャッシュする。毎回走査するのは
  * 表示中のパーティクル座標だけで、対象チャンクの走査はON時、中心チャンクの移動時、または
- * claim一覧が変更された時に限る。
+ * （CLAIMEDモードのみ）claim一覧が変更された時に限る。
  */
 public class LandBorderParticleManager {
 
+    public enum Mode { CLAIMED, ALL_CHUNKS }
+
     private static final int CHUNK_SIZE = 16;
-    private static final int[][] NEIGHBOR_OFFSETS = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
     private final StellariaCore plugin;
     private final Map<UUID, DisplayState> displays = new HashMap<>();
@@ -53,10 +58,12 @@ public class LandBorderParticleManager {
 
     private static final class DisplayState {
         private final int radius;
+        private final Mode mode;
         private BorderCache cache;
 
-        private DisplayState(int radius) {
+        private DisplayState(int radius, Mode mode) {
             this.radius = radius;
+            this.mode = mode;
         }
     }
 
@@ -64,20 +71,26 @@ public class LandBorderParticleManager {
         this.plugin = plugin;
     }
 
-    /** 表示をONにする。同じプレイヤーがON済みでも半径を更新して座標キャッシュを作り直す。 */
-    public void enable(Player player, int radius) {
-        DisplayState state = new DisplayState(radius);
-        state.cache = buildCache(LandManager.ChunkKey.of(player.getLocation()), radius);
+    /** 表示をONにする。他のモードで表示中だった場合は置き換わる。 */
+    public void enable(Player player, int radius, Mode mode) {
+        DisplayState state = new DisplayState(radius, mode);
+        state.cache = buildCache(LandManager.ChunkKey.of(player.getLocation()), radius, mode);
         displays.put(player.getUniqueId(), state);
     }
 
-    /** ON/OFFを反転する。反転後の状態（true=ON）を返す。 */
-    public boolean toggle(Player player, int radius) {
+    /**
+     * 指定モードでON/OFFを反転する。既に「別モード」で表示中だった場合はOFFにせず、
+     * 指定モードに切り替える（/land border 表示中に /chunkborder を打つと切り替わる）。
+     * 反転後の状態（true=ON）を返す。
+     */
+    public boolean toggle(Player player, int radius, Mode mode) {
         UUID uuid = player.getUniqueId();
-        if (displays.remove(uuid) != null) {
+        DisplayState existing = displays.get(uuid);
+        if (existing != null && existing.mode == mode) {
+            displays.remove(uuid);
             return false;
         }
-        enable(player, radius);
+        enable(player, radius, mode);
         return true;
     }
 
@@ -85,8 +98,10 @@ public class LandBorderParticleManager {
         displays.remove(uuid);
     }
 
-    public boolean isEnabled(Player player) {
-        return displays.containsKey(player.getUniqueId());
+    /** 指定モードで現在ONかどうか（別モードでONの場合はfalse）。 */
+    public boolean isEnabled(Player player, Mode mode) {
+        DisplayState state = displays.get(player.getUniqueId());
+        return state != null && state.mode == mode;
     }
 
     /** 現在キャッシュしている境界パーティクルの表示点数（診断用）。表示OFFなら0。 */
@@ -110,16 +125,16 @@ public class LandBorderParticleManager {
             DisplayState state = entry.getValue();
             LandManager.ChunkKey center = LandManager.ChunkKey.of(player.getLocation());
             BorderCache cache = state.cache;
-            if (cache == null || !cache.center().equals(center)
-                    || cache.radius() != state.radius || cache.claimsVersion() != land.claimsVersion()) {
-                cache = buildCache(center, state.radius);
+            boolean claimsChanged = state.mode == Mode.CLAIMED && cache != null && cache.claimsVersion() != land.claimsVersion();
+            if (cache == null || !cache.center().equals(center) || cache.radius() != state.radius || claimsChanged) {
+                cache = buildCache(center, state.radius, state.mode);
                 state.cache = cache;
             }
             render(player, cache);
         }
     }
 
-    private BorderCache buildCache(LandManager.ChunkKey center, int radius) {
+    private BorderCache buildCache(LandManager.ChunkKey center, int radius, Mode mode) {
         LandManager land = plugin.getLandManager();
         Set<BorderPoint> points = new HashSet<>();
         Set<BorderSegment> segments = new HashSet<>();
@@ -128,7 +143,7 @@ public class LandBorderParticleManager {
             for (int dz = -radius; dz <= radius; dz++) {
                 LandManager.ChunkKey chunk = new LandManager.ChunkKey(
                         center.world(), center.chunkX() + dx, center.chunkZ() + dz);
-                if (!land.isClaimed(chunk)) {
+                if (mode == Mode.CLAIMED && !land.isClaimed(chunk)) {
                     continue;
                 }
 
@@ -136,6 +151,17 @@ public class LandBorderParticleManager {
                 int minZ = chunk.chunkZ() * CHUNK_SIZE;
                 int maxX = minX + CHUNK_SIZE;
                 int maxZ = minZ + CHUNK_SIZE;
+
+                if (mode == Mode.ALL_CHUNKS) {
+                    // 保護状態を問わず、範囲内の全チャンクの4辺をそのまま描画する
+                    // （隣接チャンクとの共有辺はSetで自然に重複排除される）。
+                    addHorizontalSide(points, segments, minX, maxX, minZ);
+                    addHorizontalSide(points, segments, minX, maxX, maxZ);
+                    addVerticalSide(points, segments, minX, minZ, maxZ);
+                    addVerticalSide(points, segments, maxX, minZ, maxZ);
+                    continue;
+                }
+
                 if (!land.isClaimed(new LandManager.ChunkKey(center.world(), chunk.chunkX(), chunk.chunkZ() - 1))) {
                     addHorizontalSide(points, segments, minX, maxX, minZ);
                 }
@@ -183,6 +209,7 @@ public class LandBorderParticleManager {
     /**
      * 境界XZごとに現在の最高ブロックの1つ上を表示する。高さはキャッシュしないため、地形が変わっても
      * 次回表示時に追従する。隣接点の高低差が2以上なら低い側の座標に縦の補完点を足す。
+     * CLAIMED/ALL_CHUNKSどちらのモードでも同じロジックで地形に追従する。
      */
     private void render(Player player, BorderCache cache) {
         World world = player.getWorld();
