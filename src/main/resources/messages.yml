@@ -150,6 +150,16 @@ colors:
 discord:
   message: "&%9&l| &%fDiscordサーバーはこちら&%7: &%b%link%"
 
+map:
+  message: "&%9&l| &%fマップはこちら&%7: &%b%link%"
+
+homepage:
+  message: "&%9&l| &%fホームページはこちら&%7: &%b%link%"
+  craftcore_message: "&%9&l| &%fCraftCoreのホームページはこちら&%7: &%b%link%"
+
+enderchest:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+
 playtime:
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   no_permission_others: "&%c他人のプレイ時間を確認する権限がありません。"

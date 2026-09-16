@@ -322,6 +322,14 @@ public class StellariaCore extends JavaPlugin {
 
         getCommand("discord").setExecutor(new DiscordCommand(this));
 
+        getCommand("map").setExecutor(new MapCommand(this));
+
+        HomepageCommand homepageCommand = new HomepageCommand(this);
+        getCommand("homepage").setExecutor(homepageCommand);
+        getCommand("homepage").setTabCompleter(homepageCommand);
+
+        getCommand("enderchest").setExecutor(new EnderChestCommand(this));
+
         PlaytimeCommand playtimeCommand = new PlaytimeCommand(this);
         getCommand("playtime").setExecutor(playtimeCommand);
         getCommand("playtime").setTabCompleter(playtimeCommand);

@@ -41,6 +41,10 @@ commands:
   adminshop:
   discord:
     aliases: [dc]
+  map:
+  homepage:
+  enderchest:
+    aliases: [ec]
   playtime:
   seen:
   ranking:

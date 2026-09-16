@@ -7,6 +7,13 @@ server:
 discord:
   invite: "https://discord.gg/ssaREjBJXg" # /discord で案内するサーバー招待リンク
 
+map:
+  link: "https://example.com/map" # TODO: 実際のマップURLに差し替え
+
+homepage:
+  link: "https://example.com"
+  craftcore-link: "https://example.com/craftcore" # TODO: 実URLに差し替え
+
 rank:
   enabled: true
   default:
