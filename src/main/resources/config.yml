@@ -310,62 +310,62 @@ land:
 menu:
   rows: 5 # 1〜6。省略/範囲外の場合は5
   items:
-    - slot: 10
-      material: PLAYER_HEAD
-      name: "&%bプロフィール"
-      action: "profile"
-    - slot: 11
-      material: PAPER
-      name: "&%9Discord"
-      action: "discord"
-    - slot: 12
-      material: EMERALD
-      name: "&%aサーバー投票"
-      action: "vote"
-    - slot: 13
-      material: COMPASS
-      name: "&%eワールド移動"
-      action: "world"
-    - slot: 14
+    - slot: 0
       material: LIGHTNING_ROD
       name: "&%b天気投票"
       action: "weathervote"
-    - slot: 15
+    - slot: 1
       material: CLOCK
       name: "&%6時間投票"
       action: "timevote"
-    - slot: 16
-      material: ENDER_CHEST
-      name: "&%8エンダーチェスト"
-      action: "enderchest"
-    - slot: 28
-      material: REDSTONE
-      name: "&%c便利機能"
-      action: "features"
-    - slot: 29
-      material: FILLED_MAP
-      name: "&%2マップ"
-      action: "map"
-    - slot: 30
-      material: DARK_OAK_LOG
+    - slot: 8
+      material: DARK_OAK_DOOR
       name: "&%9ホームページ"
       action: "homepage"
-    - slot: 31
-      material: ENDER_PEARL
-      name: "&%dテレポートリクエストの使い方"
-      action: "tpa-help"
-    - slot: 32
-      material: SHIELD
-      name: "&%a土地保護のヘルプ"
-      action: "land-help"
-    - slot: 33
+    - slot: 13
+      material: PLAYER_HEAD
+      name: "&%bプロフィール"
+      action: "profile"
+    - slot: 17
+      material: PAPER
+      name: "&%9Discord"
+      action: "discord"
+    - slot: 18
       material: LODESTONE
       name: "&%3ワープ"
       action: "warp"
-    - slot: 34
+    - slot: 19
       material: RED_BED
       name: "&%9ホーム"
       action: "home"
+    - slot: 21
+      material: REDSTONE
+      name: "&%c便利機能"
+      action: "features"
+    - slot: 23
+      material: COMPASS
+      name: "&%eワールド移動"
+      action: "world"
+    - slot: 26
+      material: FILLED_MAP
+      name: "&%2マップ"
+      action: "map"
+    - slot: 31
+      material: ENDER_CHEST
+      name: "&%8エンダーチェスト"
+      action: "enderchest"
+    - slot: 35
+      material: EMERALD
+      name: "&%aサーバー投票"
+      action: "vote"
+    - slot: 36
+      material: SHIELD
+      name: "&%a土地保護のヘルプ"
+      action: "land-help"
+    - slot: 37
+      material: ENDER_PEARL
+      name: "&%dテレポートリクエストの使い方"
+      action: "tpa-help"
     - slot: 44
       material: COMPASS
       name: "&%9メニューアイテムを入手"
