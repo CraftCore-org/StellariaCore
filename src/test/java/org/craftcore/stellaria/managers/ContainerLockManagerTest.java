@@ -46,6 +46,18 @@ class ContainerLockManagerTest {
         assertTrue(manager.findCached(lock.lockId()).isEmpty());
     }
 
+    @Test
+    void bypassIsDisabledByDefaultAndTogglesPerPlayer() {
+        ContainerLockManager manager = new ContainerLockManager();
+        UUID admin = UUID.randomUUID();
+
+        assertTrue(!manager.hasBypassEnabled(admin));
+        assertTrue(manager.toggleBypass(admin));
+        assertTrue(manager.hasBypassEnabled(admin));
+        assertTrue(!manager.toggleBypass(admin));
+        assertTrue(!manager.hasBypassEnabled(admin));
+    }
+
     private static ContainerLock lock(ContainerLock.BlockKey... blocks) {
         return new ContainerLock(UUID.randomUUID(), UUID.randomUUID(), Set.of(blocks), Set.of());
     }

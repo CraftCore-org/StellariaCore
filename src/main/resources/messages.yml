@@ -579,6 +579,7 @@ headshop:
       - "&%7既存の頭は &%eShiftクリック &%7で削除できます"
 
 lock:
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   usage: "&%c使用方法: /lock [trust|untrust <player>]"
   look_at_container: "&%cチェスト、樽、またはシュルカーボックスを見て実行してください。"
@@ -594,6 +595,9 @@ lock:
   cannot_trust_self: "&%c自分自身を共同利用者には追加できません。"
   protected: "&%cこのコンテナは保護されています。"
   double_chest_denied: "&%c保護されたチェストを二連チェストにできません。"
+  bypass_enabled: "&%aコンテナロックのbypassモードをONにしました。"
+  bypass_disabled: "&%cコンテナロックのbypassモードをOFFにしました。"
+  bypass_indicator: "&%c&l[BYPASS] &%7コンテナロックを無視中"
 
 sudo:
   usage: "&%c使用方法: /sudo <プレイヤー> <コマンド>"

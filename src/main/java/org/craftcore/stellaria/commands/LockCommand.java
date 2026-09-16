@@ -16,6 +16,7 @@ import org.craftcore.stellaria.managers.ContainerLock;
 import org.craftcore.stellaria.managers.ContainerLockManager;
 import org.craftcore.stellaria.utils.FormatUtil;
 import org.craftcore.stellaria.utils.TabCompleteUtil;
+import org.craftcore.stellaria.utils.ColorUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.LinkedHashSet;
@@ -27,7 +28,7 @@ import java.util.UUID;
 /** /lock と /unlock を扱う。対象は実際に視線が当たっている保護可能コンテナだけ。 */
 public class LockCommand implements CommandExecutor, TabCompleter {
 
-    private static final List<String> SUBCOMMANDS = List.of("trust", "untrust");
+    private static final List<String> SUBCOMMANDS = List.of("trust", "untrust", "bypass");
 
     private final StellariaCore plugin;
 
@@ -49,6 +50,7 @@ public class LockCommand implements CommandExecutor, TabCompleter {
         if (!player.hasPermission("stellaria.lock")) {
             return true;
         }
+        if (command.getName().equalsIgnoreCase("lock") && args.length == 1 && args[0].equalsIgnoreCase("bypass")) { handleBypass(player); return true; }
 
         Block target = player.getTargetBlockExact(5);
         if (target == null || !isActionableTarget(target.getType())) {
@@ -102,7 +104,7 @@ public class LockCommand implements CommandExecutor, TabCompleter {
             message(player, "lock.not_locked");
             return;
         }
-        if (!lock.canManage(player.getUniqueId(), player.hasPermission("stellaria.lock.admin"))) {
+        if (!lock.canManage(player.getUniqueId(), manager.isBypassing(player))) {
             message(player, "lock.not_owner");
             return;
         }
@@ -118,7 +120,7 @@ public class LockCommand implements CommandExecutor, TabCompleter {
             message(player, "lock.not_locked");
             return;
         }
-        if (!lock.canManage(player.getUniqueId(), player.hasPermission("stellaria.lock.admin"))) {
+        if (!lock.canManage(player.getUniqueId(), manager.isBypassing(player))) {
             message(player, "lock.not_owner");
             return;
         }
@@ -168,18 +170,19 @@ public class LockCommand implements CommandExecutor, TabCompleter {
     }
 
     private void message(Player player, String key, String... replacements) {
-        String message = plugin.getConfigManager().getMessage(key, player);
+        String message = plugin.getConfigManager().getRawMessage(key);
         for (int index = 0; index + 1 < replacements.length; index += 2) {
             message = FormatUtil.replace(message, replacements[index], replacements[index + 1]);
         }
-        player.sendMessage(message);
+        player.sendMessage(FormatUtil.text(player, message));
     }
+    private void handleBypass(Player p) { if (!p.hasPermission("stellaria.lock.admin")) { message(p,"lock.no_permission"); return; } boolean on=plugin.getContainerLockManager().toggleBypass(p.getUniqueId()); message(p,on?"lock.bypass_enabled":"lock.bypass_disabled"); if(on) plugin.getActionBarManager().setChannel(p,"lock_bypass",ColorUtil.component(plugin.getConfigManager().getMessage("lock.bypass_indicator",p))); else plugin.getActionBarManager().clearChannel(p,"lock_bypass"); }
 
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias,
                                       @NotNull String @NotNull [] args) {
         if (command.getName().equalsIgnoreCase("unlock")) return List.of();
-        if (args.length == 1) return TabCompleteUtil.filterStartsWith(SUBCOMMANDS, args[0]);
+        if (args.length == 1) return TabCompleteUtil.filterStartsWith(sender.hasPermission("stellaria.lock.admin") ? SUBCOMMANDS : List.of("trust", "untrust"), args[0]);
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return TabCompleteUtil.filterStartsWith(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList(), args[1]);
         }

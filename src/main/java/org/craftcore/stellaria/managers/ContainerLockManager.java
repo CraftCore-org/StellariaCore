@@ -27,6 +27,7 @@ public class ContainerLockManager {
 
     private final Map<ContainerLock.BlockKey, ContainerLock> locksByBlock = new ConcurrentHashMap<>();
     private final Map<UUID, ContainerLock> locksById = new ConcurrentHashMap<>();
+    private final Set<UUID> bypassEnabled = ConcurrentHashMap.newKeySet();
 
     /** テスト用。DBをロードしない。 */
     ContainerLockManager() {
@@ -96,11 +97,11 @@ public class ContainerLockManager {
     }
 
     public boolean canAccess(Block block, Player player) {
-        return find(block).map(lock -> lock.canAccess(player.getUniqueId(), isAdmin(player))).orElse(true);
+        return find(block).map(lock -> lock.canAccess(player.getUniqueId(), isBypassing(player))).orElse(true);
     }
 
     public boolean canManage(Block block, Player player) {
-        return find(block).map(lock -> lock.canManage(player.getUniqueId(), isAdmin(player))).orElse(true);
+        return find(block).map(lock -> lock.canManage(player.getUniqueId(), isBypassing(player))).orElse(true);
     }
 
     public CreateResult create(Player owner, Set<ContainerLock.BlockKey> keys) {
@@ -220,9 +221,9 @@ public class ContainerLockManager {
         }
     }
 
-    private static boolean isAdmin(Player player) {
-        return player.hasPermission("stellaria.lock.admin");
-    }
+    public boolean hasBypassEnabled(UUID id) { return bypassEnabled.contains(id); }
+    public boolean toggleBypass(UUID id) { return bypassEnabled.remove(id) ? false : bypassEnabled.add(id); }
+    public boolean isBypassing(Player player) { return player.hasPermission("stellaria.lock.admin") && hasBypassEnabled(player.getUniqueId()); }
 
     private static void execute(Connection connection, String sql, Object... values) {
         try (PreparedStatement statement = connection.prepareStatement(sql)) {

@@ -40,7 +40,7 @@ public class ContainerLockListener implements Listener {
     }
     @EventHandler(ignoreCancelled = true)
     public void breakBlock(BlockBreakEvent event) {
-        if (plugin.getContainerLockManager().isLocked(event.getBlock()) && !event.getPlayer().hasPermission("stellaria.lock.admin")) deny(event.getPlayer(), event);
+        if (plugin.getContainerLockManager().isLocked(event.getBlock()) && !plugin.getContainerLockManager().isBypassing(event.getPlayer())) deny(event.getPlayer(), event);
     }
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void joinLockedChest(BlockPlaceEvent event) {
@@ -55,14 +55,14 @@ public class ContainerLockListener implements Listener {
         if (neighboringLocks.size() != 1) { deny(event.getPlayer(), event); return; }
         ContainerLock lock = neighboringLocks.iterator().next();
         if (lock.blocks().contains(placedKey)) return;
-        if (!lock.canManage(event.getPlayer().getUniqueId(), event.getPlayer().hasPermission("stellaria.lock.admin"))
+        if (!lock.canManage(event.getPlayer().getUniqueId(), plugin.getContainerLockManager().isBypassing(event.getPlayer()))
                 || plugin.getContainerLockManager().attachBlock(lock, placedKey) != ContainerLockManager.CreateResult.SUCCESS) {
             deny(event.getPlayer(), event);
         }
     }
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void removeBroken(BlockBreakEvent event) {
-        if (event.getPlayer().hasPermission("stellaria.lock.admin")) plugin.getContainerLockManager().removeDestroyedBlock(ContainerLock.BlockKey.of(event.getBlock()));
+        if (plugin.getContainerLockManager().isBypassing(event.getPlayer())) plugin.getContainerLockManager().removeDestroyedBlock(ContainerLock.BlockKey.of(event.getBlock()));
     }
     @EventHandler(ignoreCancelled = true)
     public void move(InventoryMoveItemEvent event) {
