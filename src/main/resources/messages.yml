@@ -288,6 +288,7 @@ warp:
   gui_page: "&%7ページ %page%/%max_page%"
 
 weathervote:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   world_disabled: "&%cこのワールドでは天気投票を利用できません。"
   gui:
     title: "&%9&l天気投票"
@@ -313,6 +314,7 @@ weathervote:
   err_world: "&%cこのワールドは天気を変更できません。"
 
 timevote:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   world_disabled: "&%cこのワールドでは時間投票を利用できません。"
   gui:
     title: "&%9&l時間投票"

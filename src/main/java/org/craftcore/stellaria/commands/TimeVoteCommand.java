@@ -100,7 +100,10 @@ public class TimeVoteCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String @NotNull [] args) {
-        Player player = (Player) sender;
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(plugin.getConfigManager().getMessage("timevote.must_be_player", null));
+            return true;
+        }
         if (WorldBlacklistUtil.isBlacklisted(plugin.getConfigManager().getStringList("timevote.disabled-worlds", true), player.getWorld().getName())) {
             player.sendMessage(plugin.getConfigManager().getMessage("timevote.world_disabled", player));
             return true;
