@@ -17,7 +17,7 @@ public final class ConfigFile {
     private final Logger logger;
     private final File file;
     private final String resourcePath;
-    private YamlConfiguration configuration;
+    private volatile YamlConfiguration configuration;
 
     ConfigFile(Logger logger, File dataFolder, String fileName) {
         this.logger = logger;
@@ -30,7 +30,8 @@ public final class ConfigFile {
         if (!file.exists()) {
             file.getParentFile().mkdirs();
         }
-        this.configuration = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration loaded = YamlConfiguration.loadConfiguration(file);
+        this.configuration = loaded;
     }
 
     public void reload() {

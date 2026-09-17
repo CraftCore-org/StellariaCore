@@ -31,14 +31,30 @@ public final class DurationParser {
         if (!matcher.matches()) {
             throw new IllegalArgumentException("期間の形式が不正です: " + input);
         }
-        long value = Long.parseLong(matcher.group(1));
-        return switch (matcher.group(2).toLowerCase()) {
-            case "s" -> value;
-            case "m" -> value * 60;
-            case "h" -> value * 3600;
-            case "d" -> value * 86400;
-            default -> throw new IllegalArgumentException("期間の形式が不正です: " + input);
-        };
+        try {
+            long value = Long.parseLong(matcher.group(1));
+            return switch (matcher.group(2).toLowerCase()) {
+                case "s" -> value;
+                case "m" -> Math.multiplyExact(value, 60L);
+                case "h" -> Math.multiplyExact(value, 3600L);
+                case "d" -> Math.multiplyExact(value, 86400L);
+                default -> throw new IllegalArgumentException("期間の形式が不正です: " + input);
+            };
+        } catch (ArithmeticException e) {
+            throw new IllegalArgumentException("期間が長すぎます: " + input, e);
+        }
+    }
+
+    /** 相対秒数からepoch millisecondsの期限を求める。永久指定は負の値を返す。 */
+    public static long expiresAtMillis(long nowMillis, long seconds) {
+        if (seconds < 0) {
+            return -1L;
+        }
+        try {
+            return Math.addExact(nowMillis, Math.multiplyExact(seconds, 1000L));
+        } catch (ArithmeticException e) {
+            throw new IllegalArgumentException("期間が長すぎます", e);
+        }
     }
 
     /**
