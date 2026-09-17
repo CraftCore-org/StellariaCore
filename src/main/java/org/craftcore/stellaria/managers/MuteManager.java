@@ -2,10 +2,10 @@ package org.craftcore.stellaria.managers;
 
 import org.craftcore.stellaria.StellariaCore;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * ユーザーごと・レベル別・期限付きのミュート状態を管理する。
@@ -36,7 +36,7 @@ public class MuteManager {
     }
 
     private final StellariaCore plugin;
-    private final Map<UUID, MuteRecord> cache = new HashMap<>();
+    private final Map<UUID, MuteRecord> cache = new ConcurrentHashMap<>();
 
     public MuteManager(StellariaCore plugin) {
         this.plugin = plugin;
@@ -93,11 +93,11 @@ public class MuteManager {
         return getRestrictingRecord(uuid, scope) != null;
     }
 
-    /** ミュートを設定する（既存のミュートは上書き）。DB書き込みは非同期。 */
+    /** ミュートを設定する（既存のミュートは上書き）。DB書き込みは同期（順序保証のため）。 */
     public void mute(UUID uuid, int level, long expiresAt, String reason, String mutedBy) {
         long mutedAt = System.currentTimeMillis();
         cache.put(uuid, new MuteRecord(level, expiresAt, reason, mutedBy, mutedAt));
-        DatabaseManager.executeAsync(
+        DatabaseManager.execute(
             "INSERT OR REPLACE INTO mutes (uuid, level, expires_at, reason, muted_by, muted_at) VALUES (?, ?, ?, ?, ?, ?)",
             uuid.toString(), level, expiresAt, reason, mutedBy, mutedAt
         );
@@ -109,6 +109,6 @@ public class MuteManager {
 
     private void unmuteInternal(UUID uuid) {
         cache.remove(uuid);
-        DatabaseManager.executeAsync("DELETE FROM mutes WHERE uuid = ?", uuid.toString());
+        DatabaseManager.execute("DELETE FROM mutes WHERE uuid = ?", uuid.toString());
     }
 }
