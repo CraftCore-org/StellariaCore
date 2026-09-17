@@ -37,10 +37,10 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** Discord bot lifecycle, webhook relay, and guild-scoped Discord commands. */
 public class DiscordBotManager {
@@ -51,7 +51,7 @@ public class DiscordBotManager {
 
     private final StellariaCore plugin;
     private final HttpClient httpClient = HttpClient.newHttpClient();
-    private final Map<String, String> webhookUrls = new HashMap<>();
+    private final Map<String, String> webhookUrls = new ConcurrentHashMap<>();
     private JDA jda;
     private String token;
     private ScheduledTask presenceTask;
@@ -71,25 +71,33 @@ public class DiscordBotManager {
                     .addEventListeners(new DiscordListener(plugin))
                     .enableIntents(GatewayIntent.MESSAGE_CONTENT)
                     .build();
-            jda.awaitReady();
-
-            initializeWebhooks();
-            registerAdminCommands();
-            registerPublicCommands();
-            startPresenceUpdates();
-            sendStartupLog();
-            plugin.getLogger().info("DiscordBotを起動しました。");
         } catch (Exception e) {
             plugin.getLogger().warning("DiscordBotの起動に失敗しました: " + e.getMessage());
-            if (presenceTask != null) {
-                presenceTask.cancel();
-                presenceTask = null;
-            }
-            if (jda != null) {
-                jda.shutdown();
-                jda = null;
-            }
+            jda = null;
+            return;
         }
+
+        Bukkit.getAsyncScheduler().runNow(plugin, task -> {
+            try {
+                jda.awaitReady();
+                initializeWebhooks();
+                registerAdminCommands();
+                registerPublicCommands();
+                startPresenceUpdates();
+                sendStartupLog();
+                plugin.getLogger().info("DiscordBotを起動しました。");
+            } catch (Exception e) {
+                plugin.getLogger().warning("DiscordBotの起動に失敗しました: " + e.getMessage());
+                if (presenceTask != null) {
+                    presenceTask.cancel();
+                    presenceTask = null;
+                }
+                if (jda != null) {
+                    jda.shutdown();
+                    jda = null;
+                }
+            }
+        });
     }
 
     public void stop() {
