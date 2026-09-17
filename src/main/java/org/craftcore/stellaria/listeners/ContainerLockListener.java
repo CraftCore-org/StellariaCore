@@ -17,6 +17,7 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.world.WorldLoadEvent;
 import org.bukkit.event.block.Action;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.InventoryHolder;
@@ -32,6 +33,11 @@ import java.util.Set;
 public class ContainerLockListener implements Listener {
     private final StellariaCore plugin;
     public ContainerLockListener(StellariaCore plugin) { this.plugin = plugin; }
+
+    @EventHandler
+    public void worldLoad(WorldLoadEvent event) {
+        plugin.getContainerLockManager().reconcileWorld(event.getWorld());
+    }
 
     @EventHandler(ignoreCancelled = true)
     public void interact(PlayerInteractEvent event) {

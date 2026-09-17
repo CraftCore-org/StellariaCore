@@ -1,13 +1,20 @@
 package org.craftcore.stellaria.managers;
 
+import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -27,6 +34,7 @@ class ContainerLockManagerTest {
             statement.execute("CREATE TABLE container_locks (lock_id TEXT PRIMARY KEY, owner_uuid TEXT NOT NULL, created_at INTEGER NOT NULL)");
             statement.execute("CREATE TABLE container_lock_blocks (world TEXT NOT NULL, x INTEGER NOT NULL, y INTEGER NOT NULL, z INTEGER NOT NULL, lock_id TEXT NOT NULL, PRIMARY KEY (world, x, y, z))");
             statement.execute("CREATE TABLE container_lock_members (lock_id TEXT NOT NULL, member_uuid TEXT NOT NULL, PRIMARY KEY (lock_id, member_uuid))");
+            statement.execute("CREATE TABLE container_lock_auto_players (player_uuid TEXT PRIMARY KEY)");
         }
         databaseConnectionField().set(null, connection);
     }
@@ -119,6 +127,32 @@ class ContainerLockManagerTest {
         assertEquals(0, count("SELECT COUNT(*) FROM container_lock_blocks WHERE world = 'world'"));
         assertEquals(1, count("SELECT COUNT(*) FROM container_locks"));
         assertEquals(0, count("SELECT COUNT(*) FROM container_lock_members"));
+    }
+
+    @Test
+    void unloadedWorldStaysPendingUntilWorldLoadReconciliation() throws Exception {
+        String worldName = "pending-world";
+        ContainerLock.BlockKey pendingKey = new ContainerLock.BlockKey(worldName, 0, 64, 0);
+        ContainerLock lock = lock(pendingKey);
+        insertRows(lock, pendingKey);
+        World pendingWorld = worldProxy(worldName, Material.BARREL);
+        Map<String, World> loadedWorlds = new HashMap<>();
+        setBukkitServer(serverProxy(loadedWorlds));
+        try {
+            ContainerLockManager manager = new ContainerLockManager(null);
+
+            assertTrue(manager.isWorldPending(worldName));
+            assertTrue(manager.findCached(pendingKey).isEmpty());
+            assertEquals(1, count("SELECT COUNT(*) FROM container_lock_blocks"));
+
+            loadedWorlds.put(worldName, pendingWorld);
+            manager.reconcileWorld(pendingWorld);
+
+            assertFalse(manager.isWorldPending(worldName));
+            assertEquals(lock.lockId(), manager.findCached(pendingKey).orElseThrow().lockId());
+        } finally {
+            setBukkitServer(null);
+        }
     }
 
     @Test
@@ -221,9 +255,61 @@ class ContainerLockManagerTest {
         }
     }
 
+    private static World worldProxy(String worldName, Material material) {
+        Block block = (Block) Proxy.newProxyInstance(
+                ContainerLockManagerTest.class.getClassLoader(),
+                new Class<?>[]{Block.class},
+                (proxy, method, args) -> switch (method.getName()) {
+                    case "getType" -> material;
+                    case "getWorld" -> proxy;
+                    case "getX", "getY", "getZ" -> 0;
+                    default -> defaultValue(method);
+                });
+        return (World) Proxy.newProxyInstance(
+                ContainerLockManagerTest.class.getClassLoader(),
+                new Class<?>[]{World.class},
+                (proxy, method, args) -> switch (method.getName()) {
+                    case "getName" -> worldName;
+                    case "getBlockAt" -> block;
+                    default -> defaultValue(method);
+                });
+    }
+
+    private static org.bukkit.Server serverProxy(Map<String, World> worlds) {
+        return (org.bukkit.Server) Proxy.newProxyInstance(
+                ContainerLockManagerTest.class.getClassLoader(),
+                new Class<?>[]{org.bukkit.Server.class},
+                (proxy, method, args) -> switch (method.getName()) {
+                    case "getWorld" -> worlds.get(args[0]);
+                    case "getWorlds" -> worlds.values().stream().toList();
+                    case "getLogger" -> java.util.logging.Logger.getLogger("ContainerLockManagerTest");
+                    default -> defaultValue(method);
+                });
+    }
+
+    private static Object defaultValue(Method method) {
+        if (!method.getReturnType().isPrimitive()) return null;
+        if (method.getReturnType() == boolean.class) return false;
+        if (method.getReturnType() == char.class) return (char) 0;
+        if (method.getReturnType() == byte.class) return (byte) 0;
+        if (method.getReturnType() == short.class) return (short) 0;
+        if (method.getReturnType() == int.class) return 0;
+        if (method.getReturnType() == long.class) return 0L;
+        if (method.getReturnType() == float.class) return 0F;
+        if (method.getReturnType() == double.class) return 0D;
+        return null;
+    }
+
+    private static void setBukkitServer(org.bukkit.Server server) throws Exception {
+        Field field = Bukkit.class.getDeclaredField("server");
+        field.setAccessible(true);
+        field.set(null, server);
+    }
+
     private static Field databaseConnectionField() throws Exception {
         Field field = DatabaseManager.class.getDeclaredField("connection");
         field.setAccessible(true);
         return field;
     }
+
 }

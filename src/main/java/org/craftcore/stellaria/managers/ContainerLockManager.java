@@ -24,6 +24,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Logger;
 
 /** 個別コンテナロックの永続化と、イベント用の座標キャッシュを管理する。 */
 public class ContainerLockManager {
@@ -37,6 +38,7 @@ public class ContainerLockManager {
     private final Map<UUID, ContainerLock> locksById = new ConcurrentHashMap<>();
     private final Set<UUID> bypassEnabled = ConcurrentHashMap.newKeySet();
     private final Set<UUID> autoLockEnabled = ConcurrentHashMap.newKeySet();
+    private final Set<String> pendingWorlds = ConcurrentHashMap.newKeySet();
     private final StellariaCore plugin;
     private final boolean databaseBacked;
 
@@ -52,7 +54,9 @@ public class ContainerLockManager {
         loadFromDatabase();
     }
 
-    private void loadFromDatabase() {
+    private boolean loadFromDatabase() {
+        locksByBlock.clear();
+        locksById.clear();
         Map<UUID, UUID> owners = new HashMap<>();
         for (LockRow row : DatabaseManager.query(
                 "SELECT lock_id, owner_uuid FROM container_locks",
@@ -64,11 +68,6 @@ public class ContainerLockManager {
                 "SELECT lock_id, world, x, y, z FROM container_lock_blocks",
                 rs -> new BlockRow(UUID.fromString(rs.getString("lock_id")),
                         new ContainerLock.BlockKey(rs.getString("world"), rs.getInt("x"), rs.getInt("y"), rs.getInt("z"))));
-
-        Map<UUID, Set<ContainerLock.BlockKey>> blocks = new HashMap<>();
-        for (BlockRow row : blockRows) {
-            blocks.computeIfAbsent(row.lockId(), ignored -> new LinkedHashSet<>()).add(row.key());
-        }
 
         Map<UUID, Set<UUID>> members = new HashMap<>();
         for (MemberRow row : DatabaseManager.query(
@@ -85,7 +84,11 @@ public class ContainerLockManager {
                 continue;
             }
             World world = Bukkit.getWorld(row.key().world());
-            if (world != null && !isLockable(world, row.key())) {
+            if (world == null) {
+                pendingWorlds.add(row.key().world());
+                continue;
+            }
+            if (!isLockable(world, row.key())) {
                 discardedRows.add(row);
                 continue;
             }
@@ -125,7 +128,11 @@ public class ContainerLockManager {
         Set<UUID> emptyLockIds = new LinkedHashSet<>(owners.keySet());
         emptyLockIds.removeAll(reconciledBlocks.keySet());
         boolean reconciled = reconcileDatabase(discardedRows, emptyLockIds);
-        Map<UUID, Set<ContainerLock.BlockKey>> blocksToCache = reconciled ? reconciledBlocks : blocks;
+        Map<UUID, Set<ContainerLock.BlockKey>> blocksToCache = new HashMap<>();
+        for (BlockRow row : blockRows) {
+            if (discardedRows.contains(row) || Bukkit.getWorld(row.key().world()) == null) continue;
+            blocksToCache.computeIfAbsent(row.lockId(), ignored -> new LinkedHashSet<>()).add(row.key());
+        }
 
         for (Map.Entry<UUID, UUID> entry : owners.entrySet()) {
             Set<ContainerLock.BlockKey> lockBlocks = blocksToCache.getOrDefault(entry.getKey(), Set.of());
@@ -140,6 +147,20 @@ public class ContainerLockManager {
                 rs -> UUID.fromString(rs.getString("player_uuid")))) {
             autoLockEnabled.add(playerId);
         }
+        for (String worldName : pendingWorlds) {
+            warn("コンテナロックのワールド '" + worldName + "' は未ロードのため、ワールドロード時に整合性を確認します。");
+        }
+        return reconciled;
+    }
+
+    /** ワールドロード後に、保留中の座標を検証してからキャッシュへ反映する。 */
+    public void reconcileWorld(World world) {
+        if (world == null) return;
+        if (loadFromDatabase()) pendingWorlds.remove(world.getName());
+    }
+
+    boolean isWorldPending(String worldName) {
+        return pendingWorlds.contains(worldName);
     }
 
     private boolean isLockable(World world, ContainerLock.BlockKey key) {
@@ -432,7 +453,7 @@ public class ContainerLockManager {
 
     private void warn(String message) {
         if (plugin != null) plugin.getLogger().warning(message);
-        else Bukkit.getLogger().warning(message);
+        else Logger.getLogger(ContainerLockManager.class.getName()).warning(message);
     }
 
     private record LockRow(UUID lockId, UUID owner) {}
