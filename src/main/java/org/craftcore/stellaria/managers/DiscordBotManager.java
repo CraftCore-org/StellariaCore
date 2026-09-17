@@ -52,9 +52,11 @@ public class DiscordBotManager {
     private final StellariaCore plugin;
     private final HttpClient httpClient = HttpClient.newHttpClient();
     private final Map<String, String> webhookUrls = new ConcurrentHashMap<>();
-    private JDA jda;
+    private volatile JDA jda;
     private String token;
-    private ScheduledTask presenceTask;
+    private volatile ScheduledTask presenceTask;
+    /** stop()が非同期起動シーケンス（awaitReady後）と競合しないためのガード。 */
+    private volatile boolean shuttingDown = false;
 
     public DiscordBotManager(StellariaCore plugin) {
         this.plugin = plugin;
@@ -80,6 +82,12 @@ public class DiscordBotManager {
         Bukkit.getAsyncScheduler().runNow(plugin, task -> {
             try {
                 jda.awaitReady();
+                if (shuttingDown) {
+                    // awaitReady()の完了を待っている間にstop()が呼ばれた場合、
+                    // 既に無効化されたプラグイン/シャットダウン済みのJDAに対して
+                    // 起動シーケンスを続行しない。
+                    return;
+                }
                 initializeWebhooks();
                 registerAdminCommands();
                 registerPublicCommands();
@@ -101,6 +109,7 @@ public class DiscordBotManager {
     }
 
     public void stop() {
+        shuttingDown = true;
         try {
             sendShutdownLog();
         } catch (Exception e) {

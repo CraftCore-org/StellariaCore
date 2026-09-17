@@ -89,7 +89,7 @@ public class LandManager {
         }
     }
 
-    public enum ClaimResult { SUCCESS, ALREADY_CLAIMED, UNCLAIMABLE, LIMIT_REACHED, INSUFFICIENT_FUNDS, WORLD_DISABLED }
+    public enum ClaimResult { SUCCESS, ALREADY_CLAIMED, UNCLAIMABLE, LIMIT_REACHED, INSUFFICIENT_FUNDS, WORLD_DISABLED, DATABASE_ERROR }
 
     public enum ActionResult { SUCCESS, NOT_CLAIMED, NOT_OWNER, SELF_TARGET }
 
@@ -238,8 +238,17 @@ public class LandManager {
         }
 
         AreaResolution resolution = resolveAreaForNewClaim(key, owner);
+        if (resolution == null) {
+            // land_territories へのINSERTに失敗（新規エリア作成時のみ発生しうる）。
+            // 引き落とし済みのコストを返金し、キャッシュには一切触れずに失敗を返す。
+            if (cost > 0) {
+                plugin.getEconomyManager().depositPlayer(player, cost);
+            }
+            plugin.getLogger().severe("land_territories へのINSERTに失敗したためclaimを中止しました: " + key);
+            return ClaimOutcome.of(ClaimResult.DATABASE_ERROR);
+        }
 
-        DatabaseManager.insert("land_claims", Map.of(
+        int inserted = DatabaseManager.insert("land_claims", Map.of(
                 "world", key.world(),
                 "chunk_x", key.chunkX(),
                 "chunk_z", key.chunkZ(),
@@ -247,6 +256,13 @@ public class LandManager {
                 "territory_id", resolution.areaId(),
                 "claimed_at", System.currentTimeMillis()
         ));
+        if (inserted <= 0) {
+            if (cost > 0) {
+                plugin.getEconomyManager().depositPlayer(player, cost);
+            }
+            plugin.getLogger().severe("land_claims へのINSERTに失敗したためclaimを中止しました: " + key);
+            return ClaimOutcome.of(ClaimResult.DATABASE_ERROR);
+        }
         claimsByChunk.put(key, Claim.newClaim(owner, resolution.areaId()));
         claimsVersion++;
 
@@ -275,10 +291,13 @@ public class LandManager {
 
         if (adjacentAreas.isEmpty()) {
             String areaId = UUID.randomUUID().toString();
-            areas.put(areaId, new Area(false, false, false, false));
-            DatabaseManager.insert("land_territories", Map.of(
+            int inserted = DatabaseManager.insert("land_territories", Map.of(
                     "territory_id", areaId, "pvp_enabled", 0,
                     "explosions_allowed", 0, "doors_open", 0, "chests_open", 0));
+            if (inserted <= 0) {
+                return null;
+            }
+            areas.put(areaId, new Area(false, false, false, false));
             return new AreaResolution(areaId, false);
         }
 
@@ -356,6 +375,10 @@ public class LandManager {
         int affected = DatabaseManager.execute("DELETE FROM land_claims WHERE world = ? AND chunk_x = ? AND chunk_z = ?",
                 key.world(), key.chunkX(), key.chunkZ());
         if (affected <= 0) {
+            // キャッシュ上はclaim済みだったがDB側に該当行が無かった（矛盾した状態）。
+            // 証明済みで誤りのキャッシュエントリなので、放置せずここで取り除く。
+            claimsByChunk.remove(key);
+            claimsVersion++;
             return ActionResult.NOT_CLAIMED;
         }
 
@@ -641,14 +664,18 @@ public class LandManager {
         if (area == null) {
             return ActionResult.NOT_CLAIMED;
         }
+        int affected = DatabaseManager.update("land_territories", Map.of(dbColumnFor(flag), enabled ? 1 : 0),
+                "territory_id = ?", claim.areaId());
+        if (affected <= 0) {
+            plugin.getLogger().severe("land_territories の更新に失敗したためキャッシュは変更していません: " + claim.areaId());
+            return ActionResult.SUCCESS;
+        }
         switch (flag) {
             case PVP -> area.pvpEnabled = enabled;
             case EXPLOSIONS -> area.explosionsAllowed = enabled;
             case DOORS -> area.doorsOpenToOthers = enabled;
             case CHESTS -> area.chestsOpenToOthers = enabled;
         }
-        DatabaseManager.update("land_territories", Map.of(dbColumnFor(flag), enabled ? 1 : 0),
-                "territory_id = ?", claim.areaId());
         return ActionResult.SUCCESS;
     }
 
@@ -673,13 +700,16 @@ public class LandManager {
         if (error != null) {
             return error;
         }
-        claimsByChunk.put(key, claim.withOverride(flag, value));
-
         // Map.of(...)はnull値を許容しないため、個別設定の解除（value=null）ではHashMapを使う。
         Map<String, Object> values = new HashMap<>();
         values.put(dbColumnForOverride(flag), value == null ? null : (value ? 1 : 0));
-        DatabaseManager.update("land_claims", values,
+        int affected = DatabaseManager.update("land_claims", values,
                 "world = ? AND chunk_x = ? AND chunk_z = ?", key.world(), key.chunkX(), key.chunkZ());
+        if (affected <= 0) {
+            plugin.getLogger().severe("land_claims の個別設定更新に失敗したためキャッシュは変更していません: " + key);
+            return ActionResult.SUCCESS;
+        }
+        claimsByChunk.put(key, claim.withOverride(flag, value));
         return ActionResult.SUCCESS;
     }
 

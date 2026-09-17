@@ -182,11 +182,23 @@ public class EconomyManager extends AbstractEconomy {
         }
 
         long amountLong = (long) amount;
-        DatabaseManager.execute(
+        int affected = DatabaseManager.execute(
             "UPDATE players SET coins = coins + ? WHERE uuid = ?",
             amountLong, player.getUniqueId().toString()
         );
+        if (affected <= 0) {
+            // UUIDに対応する行がまだ存在しない（未ログインの投票者など）場合はここに来る。
+            // 行を作ってから一度だけ再試行し、それでも失敗すればFAILUREを返す。
+            ensurePlayerRecord(player);
+            affected = DatabaseManager.execute(
+                "UPDATE players SET coins = coins + ? WHERE uuid = ?",
+                amountLong, player.getUniqueId().toString()
+            );
+        }
         balanceCache.remove(player.getUniqueId());
+        if (affected <= 0) {
+            return new EconomyResponse(0, getBalance(player), EconomyResponse.ResponseType.FAILURE, "プレイヤーの残高レコードを作成できませんでした");
+        }
 
         return new EconomyResponse(amount, getBalance(player), EconomyResponse.ResponseType.SUCCESS, null);
     }
@@ -234,7 +246,7 @@ public class EconomyManager extends AbstractEconomy {
             return false;
         }
         long newBalance = (long) amount;
-        DatabaseManager.updateAsync("players", java.util.Map.of("coins", newBalance), "uuid = ?", player.getUniqueId().toString());
+        DatabaseManager.update("players", java.util.Map.of("coins", newBalance), "uuid = ?", player.getUniqueId().toString());
         balanceCache.remove(player.getUniqueId());
         return true;
     }
@@ -276,8 +288,18 @@ public class EconomyManager extends AbstractEconomy {
             if (affected <= 0) {
                 throw new IllegalStateException("残高不足のため送金を中止");
             }
-            DatabaseManager.execute("UPDATE players SET coins = coins + ? WHERE uuid = ?", amountLong, to.getUniqueId().toString());
+            int creditAffected = DatabaseManager.execute("UPDATE players SET coins = coins + ? WHERE uuid = ?", amountLong, to.getUniqueId().toString());
+            if (creditAffected <= 0) {
+                // toのUUIDにまだplayers行が無い場合はここに来る。行を作ってから一度だけ再試行し、
+                // それでも失敗すればロールバックさせて送金を無かったことにする（fromからの引き落としだけが
+                // 残ってしまう事態を避ける）。
+                ensurePlayerRecord(to);
+                creditAffected = DatabaseManager.execute("UPDATE players SET coins = coins + ? WHERE uuid = ?", amountLong, to.getUniqueId().toString());
+            }
             balanceCache.remove(to.getUniqueId());
+            if (creditAffected <= 0) {
+                throw new IllegalStateException("送金先の残高レコードを作成できなかったため送金を中止");
+            }
         });
     }
 
