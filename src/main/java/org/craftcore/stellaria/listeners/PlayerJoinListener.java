@@ -47,17 +47,8 @@ public class PlayerJoinListener implements Listener {
         plugin.getPlaytimeManager().onJoin(player);
         plugin.getLandBorderParticleManager().restoreOnJoin(player);
 
-        // すでにレコードがあるかチェック
-        boolean exists = DatabaseManager.exists("players", "uuid = ?", uuid);
-
-        if (!exists) {
-            int defaultBalance = plugin.getConfigManager().getInt("economy.default-balance", 1000);
-            DatabaseManager.insertAsync("players", Map.of(
-                "uuid", uuid,
-                "name", event.getPlayer().getName(),
-                "coins", defaultBalance
-            ));
-        }
+        // INSERT OR IGNOREで同期的に確保するため、参加直後の経済操作も必ず行を更新できる。
+        plugin.getEconomyManager().ensurePlayerRecord(player);
 
         // 投票報酬によりログイン前からレコードがある場合でも、初回キットは配布する。
         if (!player.hasPlayedBefore()) {
@@ -103,7 +94,7 @@ public class PlayerJoinListener implements Listener {
     private void playJoinEffect(Player player) {
         if (!plugin.getConfigManager().getBoolean("join-effect.enabled", true)) return;
 
-        Particle particle = Particle.valueOf(plugin.getConfigManager().getString("join-effect.particle", "DUST"));
+        Particle particle = ParticleUtil.resolveParticle(plugin.getConfigManager().getString("join-effect.particle", "DUST"), plugin.getLogger()::warning);
         double radius = plugin.getConfigManager().getDouble("join-effect.radius", 1.0);
         int points = plugin.getConfigManager().getInt("join-effect.points", 30);
 

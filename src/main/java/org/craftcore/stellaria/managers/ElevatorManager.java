@@ -63,7 +63,9 @@ public class ElevatorManager {
                     return;
                 }
                 Location location = new Location(player.getWorld(),player.getX(),checkBlock.getY() + 1,player.getZ(),player.getYaw(),player.getPitch());
-                player.teleport(location);
+                if (!player.teleport(location)) {
+                    return;
+                }
                 Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.moveup_success",""));
                 player.sendActionBar(message);
                 String soundName = plugin.getConfigManager().getString("elevator.sound.moveup.name", "BLOCK_PISTON_EXTEND");
@@ -107,7 +109,9 @@ public class ElevatorManager {
                     return;
                 }
                 Location location = new Location(player.getWorld(),player.getX(),checkBlock.getY() + 1,player.getZ(),player.getYaw(),player.getPitch());
-                player.teleport(location);
+                if (!player.teleport(location)) {
+                    return;
+                }
                 Component message = FormatUtil.component(plugin.getConfigManager().getString("elevator.message.movedown_success",""));
                 player.sendActionBar(message);
                 String soundName = plugin.getConfigManager().getString("elevator.sound.movedown.name", "BLOCK_PISTON_EXTEND");

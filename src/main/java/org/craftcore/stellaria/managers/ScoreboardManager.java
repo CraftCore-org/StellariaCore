@@ -85,7 +85,9 @@ public class ScoreboardManager {
 
     private void render(Player player) {
         if (hiddenPlayers.contains(player.getUniqueId())) {
-            Objective existing = BoardUtil.ensurePersonalBoard(player).getObjective(OBJECTIVE_NAME);
+            Scoreboard board = BoardUtil.ensurePersonalBoard(player);
+            if (board == null) return;
+            Objective existing = board.getObjective(OBJECTIVE_NAME);
             if (existing != null) {
                 existing.unregister();
             }
@@ -102,6 +104,7 @@ public class ScoreboardManager {
         lastRenderedLines.put(player.getUniqueId(), lines);
 
         Scoreboard board = BoardUtil.ensurePersonalBoard(player);
+        if (board == null) return;
         Objective existing = board.getObjective(OBJECTIVE_NAME);
         if (existing != null) {
             existing.unregister();

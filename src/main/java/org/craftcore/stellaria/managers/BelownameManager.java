@@ -49,6 +49,7 @@ public class BelownameManager {
 
         for (Player viewer : online) {
             Scoreboard board = BoardUtil.ensurePersonalBoard(viewer);
+            if (board == null) continue;
             Objective objective = board.getObjective(OBJECTIVE_NAME);
             if (objective == null) {
                 objective = board.registerNewObjective(OBJECTIVE_NAME, Criteria.DUMMY,

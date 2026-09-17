@@ -62,7 +62,9 @@ public class TabListManager {
                     placeholders.resolve(footerTemplate, viewer)
             );
 
-            Objective objective = ensureValueObjective(BoardUtil.ensurePersonalBoard(viewer));
+            Scoreboard board = BoardUtil.ensurePersonalBoard(viewer);
+            if (board == null) continue;
+            Objective objective = ensureValueObjective(board);
             for (Player target : online) {
                 applyValue(objective, target, viewer);
             }

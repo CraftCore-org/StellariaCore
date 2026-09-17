@@ -88,4 +88,9 @@ public final class MenuItemUtil {
         player.getInventory().addItem(create(plugin));
         player.sendMessage(plugin.getConfigManager().getMessage("menuitem.given", player));
     }
+
+    /** 退出したプレイヤーのセッション限定クールダウンを破棄する。 */
+    public static void removePlayer(UUID uuid) {
+        LAST_GIVEN_AT.remove(uuid);
+    }
 }

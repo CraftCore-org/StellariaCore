@@ -59,7 +59,7 @@ public class RankingCommand implements CommandExecutor, TabCompleter {
         }
 
         int totalPlayers = type.equals("money")
-                ? plugin.getEconomyManager().getPlayerCount()
+                ? plugin.getEconomyManager().getPublicPlayerCount()
                 : plugin.getPlaytimeManager().getPlayerCount();
         int maxPage = Math.max(1, (int) Math.ceil(totalPlayers / (double) pageSize));
         page = Math.min(page, maxPage);
@@ -80,17 +80,13 @@ public class RankingCommand implements CommandExecutor, TabCompleter {
 
     private boolean showMoney(CommandSender sender, int pageSize, int offset) {
         EconomyManager economy = plugin.getEconomyManager();
-        List<EconomyManager.BalanceEntry> entries = economy.getTopBalances(pageSize, offset);
+        List<EconomyManager.BalanceEntry> entries = economy.getPublicTopBalances(pageSize, offset);
         if (entries.isEmpty()) {
             sender.sendMessage(plugin.getConfigManager().getMessage("ranking.empty", null));
             return false;
         }
         int rank = offset + 1;
         for (EconomyManager.BalanceEntry entry : entries) {
-            if (economy.isHideBalance(Bukkit.getOfflinePlayer(entry.uuid()))) {
-                rank++;
-                continue;
-            }
             String value = economy.formatExact(entry.coins());
             sender.sendMessage(plugin.getConfigManager().getMessage("ranking.money_entry", null)
                     .replace("%rank%", String.valueOf(rank))

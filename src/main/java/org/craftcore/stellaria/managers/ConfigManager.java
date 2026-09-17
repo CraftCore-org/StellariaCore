@@ -166,7 +166,7 @@ public final class ConfigManager {
         return FormatUtil.text(placeholderPlayer, get("messages.yml").get().getString(path, ""));
     }
     public String getMessage(String path, OfflinePlayer placeholderPlayer, Boolean ignoreWarn) {
-        if (!ignoreWarn) warnIfMissing("config.yml", path);
+        if (!ignoreWarn) warnIfMissing("messages.yml", path);
         return FormatUtil.text(placeholderPlayer, get("messages.yml").get().getString(path, ""));
     }
 
@@ -188,7 +188,7 @@ public final class ConfigManager {
         return get("messages.yml").get().getString(path, "");
     }
     public String getRawMessage(String path,Boolean ignoreWarn) {
-        if (!ignoreWarn) warnIfMissing("config.yml", path);
+        if (!ignoreWarn) warnIfMissing("messages.yml", path);
         return get("messages.yml").get().getString(path, "");
     }
 
@@ -201,7 +201,7 @@ public final class ConfigManager {
         return get("messages.yml").get().getStringList(path);
     }
     public List<String> getMessageList(String path, Boolean ignoreWarn) {
-        if (!ignoreWarn) warnIfMissing("config.yml", path);
+        if (!ignoreWarn) warnIfMissing("messages.yml", path);
         return get("messages.yml").get().getStringList(path);
     }
 }

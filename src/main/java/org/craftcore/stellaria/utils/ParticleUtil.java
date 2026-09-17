@@ -7,6 +7,7 @@ import org.bukkit.World;
 import org.bukkit.util.Vector;
 
 import java.util.function.Consumer;
+import java.util.Locale;
 
 /**
  * パーティクル演出をワンショットで出すためのstaticヘルパー。
@@ -16,6 +17,17 @@ import java.util.function.Consumer;
 public final class ParticleUtil {
 
     private ParticleUtil() {
+    }
+
+    /** 設定文字列をParticleへ変換する。不正な値は警告してDUSTへフォールバックする。 */
+    public static Particle resolveParticle(String configuredName, Consumer<String> warn) {
+        String normalized = configuredName == null ? "" : configuredName.trim().toUpperCase(Locale.ROOT);
+        try {
+            return Particle.valueOf(normalized);
+        } catch (IllegalArgumentException e) {
+            warn.accept("パーティクル設定が不正なため、DUSTにフォールバックします: " + configuredName);
+            return Particle.DUST;
+        }
     }
 
     /**

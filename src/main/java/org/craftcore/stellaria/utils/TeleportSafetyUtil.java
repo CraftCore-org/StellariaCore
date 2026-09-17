@@ -59,6 +59,8 @@ public final class TeleportSafetyUtil {
     public enum Result {
         /** 安全だった、または確認済みで強制テレポートした */
         TELEPORTED,
+        /** Bukkitがテレポートを拒否したため移動していない */
+        FAILED,
         /** 不安全だったため警告を出し、確認待ちにした（まだテレポートしていない） */
         WARNED
     }
@@ -74,17 +76,21 @@ public final class TeleportSafetyUtil {
         UUID playerId = player.getUniqueId();
 
         if (isSafe(destination)) {
-            pending.remove(playerId);
-            player.teleport(destination);
-            return Result.TELEPORTED;
+            if (player.teleport(destination)) {
+                pending.remove(playerId);
+                return Result.TELEPORTED;
+            }
+            return Result.FAILED;
         }
 
         long now = System.currentTimeMillis();
         PendingConfirm existing = pending.get(playerId);
         if (existing != null && existing.expiresAtMillis() >= now && sameBlock(existing.destination(), destination)) {
-            pending.remove(playerId);
-            player.teleport(destination);
-            return Result.TELEPORTED;
+            if (player.teleport(destination)) {
+                pending.remove(playerId);
+                return Result.TELEPORTED;
+            }
+            return Result.FAILED;
         }
 
         pending.put(playerId, new PendingConfirm(destination, now + CONFIRM_WINDOW_MILLIS));

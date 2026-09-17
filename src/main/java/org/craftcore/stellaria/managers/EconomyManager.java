@@ -246,9 +246,13 @@ public class EconomyManager extends AbstractEconomy {
             return false;
         }
         long newBalance = (long) amount;
-        DatabaseManager.update("players", java.util.Map.of("coins", newBalance), "uuid = ?", player.getUniqueId().toString());
+        int affected = DatabaseManager.update("players", java.util.Map.of("coins", newBalance), "uuid = ?", player.getUniqueId().toString());
+        if (affected <= 0) {
+            ensurePlayerRecord(player);
+            affected = DatabaseManager.update("players", java.util.Map.of("coins", newBalance), "uuid = ?", player.getUniqueId().toString());
+        }
         balanceCache.remove(player.getUniqueId());
-        return true;
+        return affected > 0;
     }
 
     /** 対象プレイヤーの所持金を他者から非公開にしているかを返す。 */
@@ -316,9 +320,24 @@ public class EconomyManager extends AbstractEconomy {
         );
     }
 
+    /** 非公開設定の残高を除外したランキングを、ページング前に取得する。 */
+    public List<BalanceEntry> getPublicTopBalances(int limit, int offset) {
+        return DatabaseManager.query(
+            "SELECT uuid, name, coins FROM players WHERE hide_balance = 0 ORDER BY coins DESC LIMIT ? OFFSET ?",
+            rs -> new BalanceEntry(UUID.fromString(rs.getString("uuid")), rs.getString("name"), rs.getLong("coins")),
+            limit, offset
+        );
+    }
+
     /** players テーブルの総レコード数（/balance top のページ数計算用）。 */
     public int getPlayerCount() {
         Integer count = DatabaseManager.queryOne("SELECT COUNT(*) as cnt FROM players", rs -> rs.getInt("cnt"));
+        return count != null ? count : 0;
+    }
+
+    /** 非公開設定でないプレイヤーだけの件数を返す。 */
+    public int getPublicPlayerCount() {
+        Integer count = DatabaseManager.queryOne("SELECT COUNT(*) as cnt FROM players WHERE hide_balance = 0", rs -> rs.getInt("cnt"));
         return count != null ? count : 0;
     }
 
@@ -328,42 +347,46 @@ public class EconomyManager extends AbstractEconomy {
 
     @Override
     public boolean hasAccount(OfflinePlayer player) {
-        return true;
+        return player != null && DatabaseManager.exists("players", "uuid = ?", player.getUniqueId().toString());
     }
 
     @Override
     public boolean hasAccount(String playerName) {
-        return true;
+        return hasAccount(Bukkit.getOfflinePlayer(playerName));
     }
 
     @Override
     public boolean hasAccount(String playerName, String worldName) {
-        return true;
+        return hasAccount(playerName);
     }
 
     @Override
     public boolean hasAccount(OfflinePlayer player, String worldName) {
-        return true;
+        return hasAccount(player);
     }
 
     @Override
     public boolean createPlayerAccount(OfflinePlayer player) {
-        return true;
+        if (player == null) {
+            return false;
+        }
+        ensurePlayerRecord(player);
+        return hasAccount(player);
     }
 
     @Override
     public boolean createPlayerAccount(String playerName) {
-        return true;
+        return createPlayerAccount(Bukkit.getOfflinePlayer(playerName));
     }
 
     @Override
     public boolean createPlayerAccount(String playerName, String worldName) {
-        return true;
+        return createPlayerAccount(playerName);
     }
 
     @Override
     public boolean createPlayerAccount(OfflinePlayer player, String worldName) {
-        return true;
+        return createPlayerAccount(player);
     }
 
     // -------------------------------------------------------------

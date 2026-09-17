@@ -4,6 +4,7 @@ import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.utils.SchedulerIntervalUtil;
 
 import java.util.List;
 
@@ -41,7 +42,7 @@ public class AutoBroadcastManager {
             return;
         }
 
-        long intervalTicks = plugin.getConfigManager().getInt("broadcast.auto.interval-minutes", 5) * 60L * 20L;
+        long intervalTicks = SchedulerIntervalUtil.minutesToTicks(plugin.getConfigManager().getInt("broadcast.auto.interval-minutes", 5));
         task = Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, scheduled -> sendNext(), intervalTicks, intervalTicks);
     }
 

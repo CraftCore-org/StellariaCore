@@ -151,7 +151,7 @@ public class TpaCore implements CommandExecutor, Listener, TabCompleter {
     private void playTeleportEffect(Location location) {
         if (!plugin.getConfigManager().getBoolean("teleport-effect.enabled", true)) return;
 
-        Particle particle = Particle.valueOf(plugin.getConfigManager().getString("teleport-effect.particle", "DUST"));
+        Particle particle = ParticleUtil.resolveParticle(plugin.getConfigManager().getString("teleport-effect.particle", "DUST"), plugin.getLogger()::warning);
         double radius = plugin.getConfigManager().getDouble("teleport-effect.radius", 1.0);
         int points = plugin.getConfigManager().getInt("teleport-effect.points", 30);
 
@@ -248,7 +248,9 @@ public class TpaCore implements CommandExecutor, Listener, TabCompleter {
     }
 
     private void performTeleport(Player mover, Player destination) {
-        mover.teleport(destination.getLocation());
+        if (!mover.teleport(destination.getLocation())) {
+            return;
+        }
         playTeleportEffect(destination.getLocation());
         mover.playSound(destination.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 1, 1);
         destination.playSound(destination.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 1, 1);

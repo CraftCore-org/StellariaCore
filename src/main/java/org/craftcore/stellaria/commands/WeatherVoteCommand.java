@@ -17,6 +17,7 @@ import org.craftcore.stellaria.gui.WeatherVoteGui;
 import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
 import org.craftcore.stellaria.utils.WorldBlacklistUtil;
+import org.craftcore.stellaria.utils.SchedulerIntervalUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -61,7 +62,8 @@ public class WeatherVoteCommand implements CommandExecutor, TabCompleter {
             player1.sendMessage(message);
             player1.sendMessage(voteMessage);
         }
-        getServer().getScheduler().runTaskLater(plugin, this::endWeatherVote, plugin.getConfigManager().getInt("weathervote.votetime", 15) * 20L);
+        getServer().getScheduler().runTaskLater(plugin, this::endWeatherVote,
+                SchedulerIntervalUtil.secondsToTicks(plugin.getConfigManager().getInt("weathervote.votetime", 15)));
     }
 
     private void endWeatherVote(){
@@ -142,6 +144,10 @@ public class WeatherVoteCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage(plugin.getConfigManager().getMessage("weathervote.err_notvoting",player));
                 return false;
             }
+            if (!player.getWorld().equals(votingWorld)) {
+                player.sendMessage(plugin.getConfigManager().getMessage("weathervote.world_disabled", player));
+                return false;
+            }
             if (votedPlayers.contains(player)){
                 player.sendMessage(plugin.getConfigManager().getMessage("weathervote.err_voted",player));
                 return false;
@@ -153,6 +159,10 @@ public class WeatherVoteCommand implements CommandExecutor, TabCompleter {
         if (command.getName().equalsIgnoreCase("wvdeny")){
             if (!isVoting){
                 player.sendMessage(plugin.getConfigManager().getMessage("weathervote.err_notvoting",player));
+                return false;
+            }
+            if (!player.getWorld().equals(votingWorld)) {
+                player.sendMessage(plugin.getConfigManager().getMessage("weathervote.world_disabled", player));
                 return false;
             }
             if (votedPlayers.contains(player)){

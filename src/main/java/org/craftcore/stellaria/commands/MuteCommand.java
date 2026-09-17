@@ -79,7 +79,13 @@ public class MuteCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(plugin.getConfigManager().getMessage("mute.invalid_duration", null));
             return;
         }
-        long expiresAt = seconds < 0 ? -1 : System.currentTimeMillis() + seconds * 1000L;
+        long expiresAt;
+        try {
+            expiresAt = DurationParser.expiresAtMillis(System.currentTimeMillis(), seconds);
+        } catch (IllegalArgumentException e) {
+            sender.sendMessage(plugin.getConfigManager().getMessage("mute.invalid_duration", null));
+            return;
+        }
 
         String reason = String.join(" ", Arrays.copyOfRange(args, 3, args.length));
         String moderatorName = sender instanceof Player p ? p.getName() : "CONSOLE";

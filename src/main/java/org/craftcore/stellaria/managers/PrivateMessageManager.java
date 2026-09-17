@@ -58,6 +58,12 @@ public class PrivateMessageManager {
         return lastMessaged.get(uuid);
     }
 
+    /** 退出者を返信先として参照する全セッション状態を破棄する。 */
+    public void removePlayer(UUID uuid) {
+        lastMessaged.remove(uuid);
+        lastMessaged.values().removeIf(uuid::equals);
+    }
+
     private Component attachClickToMessage(Component component, String targetName) {
         Component hint = ColorUtil.component(plugin.getConfigManager().getMessage("msg.click_hint", null));
         return component
