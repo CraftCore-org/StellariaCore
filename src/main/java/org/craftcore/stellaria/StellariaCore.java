@@ -38,6 +38,7 @@ import org.craftcore.stellaria.listeners.MineListener;
 import org.craftcore.stellaria.listeners.LandProtectionListener;
 import org.craftcore.stellaria.listeners.LandAreaStatusListener;
 import org.craftcore.stellaria.listeners.VanishListener;
+import org.craftcore.stellaria.listeners.WorldResetListener;
 import org.craftcore.stellaria.listeners.ContainerLockListener;
 import org.craftcore.stellaria.listeners.VoteListener;
 import org.craftcore.stellaria.listeners.MenuItemListener;
@@ -79,6 +80,7 @@ public class StellariaCore extends JavaPlugin {
     private ContainerLockManager containerLockManager;
     private DiscordBotManager discordBotManager;
     private LandBorderParticleManager landBorderParticleManager;
+    private WorldResetManager worldResetManager;
     private List<Feature> features;
 
     @Override
@@ -195,6 +197,7 @@ public class StellariaCore extends JavaPlugin {
         this.rankManager = new RankManager(this);
         this.homeManager = new HomeManager(this);
         this.warpManager = new WarpManager(this);
+        this.worldResetManager = new WorldResetManager(this);
         this.headshopManager = new HeadshopManager(this);
         this.vanishManager = new VanishManager(this);
         this.kikoriManager = new KikoriManager(this);
@@ -275,6 +278,7 @@ public class StellariaCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ContainerLockListener(this), this);
         getServer().getPluginManager().registerEvents(new LandAreaStatusListener(this), this);
         getServer().getPluginManager().registerEvents(new VanishListener(this), this);
+        getServer().getPluginManager().registerEvents(new WorldResetListener(this), this);
 
         // 6. Scoreboard/Tablist/Belowname のインスタンス化とtick開始
         this.placeholderManager = new PlaceholderManager(this);
@@ -492,6 +496,9 @@ public class StellariaCore extends JavaPlugin {
         getCommand("lock").setExecutor(lockCommand);
         getCommand("lock").setTabCompleter(lockCommand);
         getCommand("unlock").setExecutor(lockCommand);
+        WorldResetCommand worldResetCommand = new WorldResetCommand(this);
+        getCommand("worldreset").setExecutor(worldResetCommand);
+        getCommand("worldreset").setTabCompleter(worldResetCommand);
 
         SudoCommand sudoCommand = new SudoCommand(this);
         getCommand("sudo").setExecutor(sudoCommand);
@@ -501,6 +508,7 @@ public class StellariaCore extends JavaPlugin {
         autoBroadcastManager.start();
 
         headshopManager.start();
+        worldResetManager.start();
 
         ConsoleUtil.printLogo(getPluginMeta().getVersion());
     }
@@ -619,6 +627,10 @@ public class StellariaCore extends JavaPlugin {
         return this.landBorderParticleManager;
     }
 
+    public WorldResetManager getWorldResetManager() {
+        return this.worldResetManager;
+    }
+
     /**
      * config.yml の scoreboard/tablist/belowname 設定を読み直して各Managerに反映する。
      * ConfigManager#reload() で config.yml 自体を読み直した後に呼ぶ想定（ReloadCommand参照）。
@@ -644,6 +656,7 @@ public class StellariaCore extends JavaPlugin {
             configManager.getString("nametag.dot-symbol", "●")
         );
         autoBroadcastManager.restart();
+        worldResetManager.restart();
         rankManager.reload();
     }
 }
