@@ -46,7 +46,7 @@ public class ModerationManager {
                 nullableUuid(rs.getString("moderator_uuid")),
                 rs.getString("reason"),
                 rs.getLong("banned_at"),
-                rs.getObject("expires_at") == null ? null : rs.getLong("expires_at")
+                normalizeBanExpiry(rs.getObject("expires_at") == null ? null : rs.getLong("expires_at"))
             )
         )) {
             if (newestBanTargets.add(entry.targetUuid()) && !entry.isExpired(now)) {
@@ -83,17 +83,18 @@ public class ModerationManager {
     /** BANを履歴に追加し、期限内のBANだけを有効キャッシュへ反映する。 */
     public boolean ban(UUID targetUuid, UUID moderatorUuid, String reason, Long expiresAt) {
         long bannedAt = System.currentTimeMillis();
+        Long normalizedExpiresAt = normalizeBanExpiry(expiresAt);
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("target_uuid", targetUuid.toString());
         values.put("moderator_uuid", nullableUuidString(moderatorUuid));
         values.put("reason", reason);
         values.put("banned_at", bannedAt);
-        values.put("expires_at", expiresAt);
+        values.put("expires_at", normalizedExpiresAt);
 
         OptionalInt id = DatabaseManager.insertAndGetId("bans", values);
         if (id.isPresent()) {
             ActiveBanRegistry.BanEntry entry = new ActiveBanRegistry.BanEntry(
-                id.getAsInt(), targetUuid, moderatorUuid, reason, bannedAt, expiresAt
+                id.getAsInt(), targetUuid, moderatorUuid, reason, bannedAt, normalizedExpiresAt
             );
             // 最新のBAN行は、期限切れであっても過去の有効BANを上書きする。
             activeBans.remove(targetUuid);
@@ -157,6 +158,11 @@ public class ModerationManager {
 
     private static String nullableUuidString(UUID uuid) {
         return uuid == null ? null : uuid.toString();
+    }
+
+    /** BANの永久表現をDB・キャッシュ共通で SQL NULL に統一する。 */
+    static Long normalizeBanExpiry(Long expiresAt) {
+        return expiresAt != null && expiresAt < 0 ? null : expiresAt;
     }
 
     private void sendModerationLog(String type, UUID targetUuid, UUID moderatorUuid, String reason) {
