@@ -327,6 +327,9 @@ land:
     # /land border の常時表示用設定。半径はプレイヤーの現在地を中心にしたチャンク単位。
     toggle-radius-default: 3
     toggle-interval-ticks: 20
+    # /chunkborder や /land border <半径> で指定できる半径の上限（チャンク単位）。
+    # これを超えるキャッシュ構築要求はサーバー負荷が跳ね上がるため拒否する。
+    max-radius: 64
 
 menu:
   rows: 5 # 1〜6。省略/範囲外の場合は5

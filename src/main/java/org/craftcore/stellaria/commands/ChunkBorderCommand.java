@@ -57,9 +57,10 @@ public class ChunkBorderCommand implements CommandExecutor, TabCompleter {
 
         int radius = defaultRadius;
         if (args.length == 2) {
+            int maxRadius = plugin.getConfigManager().getInt("land.border-particle.max-radius", 64);
             try {
                 radius = Integer.parseInt(args[1]);
-                if (radius < 1) {
+                if (radius < 1 || radius > maxRadius) {
                     throw new NumberFormatException();
                 }
             } catch (NumberFormatException e) {

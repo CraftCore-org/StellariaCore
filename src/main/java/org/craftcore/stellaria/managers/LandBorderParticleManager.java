@@ -196,6 +196,7 @@ public class LandBorderParticleManager {
     }
 
     private BorderCache buildCache(LandManager.ChunkKey center, int radius, Mode mode) {
+        radius = Math.min(radius, plugin.getConfigManager().getInt("land.border-particle.max-radius", 64));
         LandManager land = plugin.getLandManager();
 
         if (mode == Mode.ALL_CHUNKS) {
