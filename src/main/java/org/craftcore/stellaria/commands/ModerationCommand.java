@@ -56,7 +56,10 @@ public final class ModerationCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         String reason = joinReason(args, 1);
-        plugin.getModerationManager().warn(target.getUniqueId(), moderatorUuid(sender), reason);
+        if (!plugin.getModerationManager().warn(target.getUniqueId(), moderatorUuid(sender), reason)) {
+            sendDatabaseError(sender);
+            return true;
+        }
 
         Player onlineTarget = target.getPlayer();
         if (onlineTarget != null) {
@@ -84,7 +87,10 @@ public final class ModerationCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         String reason = joinReason(args, 1);
-        plugin.getModerationManager().recordKick(target.getUniqueId(), moderatorUuid(sender), reason);
+        if (!plugin.getModerationManager().recordKick(target.getUniqueId(), moderatorUuid(sender), reason)) {
+            sendDatabaseError(sender);
+            return true;
+        }
 
         sender.sendMessage(plugin.getConfigManager().getMessage("moderation.kicked_sender", target)
                 .replace("%reason%", reason));
@@ -118,7 +124,10 @@ public final class ModerationCommand implements CommandExecutor, TabCompleter {
 
         String reason = joinReason(args, 2);
         String expiresText = DurationParser.formatRemaining(expiresAt);
-        plugin.getModerationManager().ban(target.getUniqueId(), moderatorUuid(sender), reason, expiresAt);
+        if (!plugin.getModerationManager().ban(target.getUniqueId(), moderatorUuid(sender), reason, expiresAt)) {
+            sendDatabaseError(sender);
+            return true;
+        }
 
         sender.sendMessage(plugin.getConfigManager().getMessage("moderation.banned_sender", target)
                 .replace("%reason%", reason)
@@ -151,6 +160,10 @@ public final class ModerationCommand implements CommandExecutor, TabCompleter {
         for (String line : plugin.getConfigManager().getMessageList(path)) {
             sender.sendMessage(ColorUtil.colorize(line));
         }
+    }
+
+    private void sendDatabaseError(CommandSender sender) {
+        sender.sendMessage(plugin.getConfigManager().getMessage("moderation.database_error", null));
     }
 
     private String disconnectMessage(String path, OfflinePlayer target, String reason, String expiresText) {

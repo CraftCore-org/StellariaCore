@@ -35,11 +35,8 @@ commands:
   unmute:
     permission: stellaria.mute
   warn:
-    permission: stellaria.warn
   kick:
-    permission: stellaria.kick
   ban:
-    permission: stellaria.ban
   pay:
   eco:
     permission: stellaria.eco

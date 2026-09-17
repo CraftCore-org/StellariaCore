@@ -99,6 +99,7 @@ moderation:
     - "&%c使用方法: /ban <プレイヤー> <期間|permanent> <理由>"
     - "&%7期間の例: 10m, 1h, 3d, permanent"
   no_permission: "&%cこのコマンドを実行する権限がありません。"
+  database_error: "&%c処理を記録できませんでした。しばらくしてからもう一度お試しください。"
   player_not_found: "&%c%player% &%7はオフラインまたは存在しません。"
   player_not_online: "&%c%player% &%7はオンラインではありません。"
   warned_sender: "&%a%player% &%7に警告しました。（理由: %reason%）"

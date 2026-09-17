@@ -56,28 +56,32 @@ public class ModerationManager {
         plugin.getLogger().info("BAN情報を読み込みました（" + newestBanTargets.size() + "件）");
     }
 
-    public void warn(UUID targetUuid, UUID moderatorUuid, String reason) {
+    public boolean warn(UUID targetUuid, UUID moderatorUuid, String reason) {
         int changed = DatabaseManager.execute(
             "INSERT INTO warns (target_uuid, moderator_uuid, reason, created_at) VALUES (?, ?, ?, ?)",
             targetUuid.toString(), nullableUuidString(moderatorUuid), reason, System.currentTimeMillis()
         );
         if (changed > 0) {
             sendModerationLog("WARN", targetUuid, moderatorUuid, reason);
+            return true;
         }
+        return false;
     }
 
-    public void recordKick(UUID targetUuid, UUID moderatorUuid, String reason) {
+    public boolean recordKick(UUID targetUuid, UUID moderatorUuid, String reason) {
         int changed = DatabaseManager.execute(
             "INSERT INTO kicks (target_uuid, moderator_uuid, reason, created_at) VALUES (?, ?, ?, ?)",
             targetUuid.toString(), nullableUuidString(moderatorUuid), reason, System.currentTimeMillis()
         );
         if (changed > 0) {
             sendModerationLog("KICK", targetUuid, moderatorUuid, reason);
+            return true;
         }
+        return false;
     }
 
     /** BANを履歴に追加し、期限内のBANだけを有効キャッシュへ反映する。 */
-    public void ban(UUID targetUuid, UUID moderatorUuid, String reason, Long expiresAt) {
+    public boolean ban(UUID targetUuid, UUID moderatorUuid, String reason, Long expiresAt) {
         long bannedAt = System.currentTimeMillis();
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("target_uuid", targetUuid.toString());
@@ -97,7 +101,9 @@ public class ModerationManager {
                 activeBans.put(entry);
             }
             sendModerationLog("BAN", targetUuid, moderatorUuid, reason);
+            return true;
         }
+        return false;
     }
 
     /** 現在有効なBANを返す。期限切れ時はキャッシュから外すだけで、履歴行は保持する。 */
