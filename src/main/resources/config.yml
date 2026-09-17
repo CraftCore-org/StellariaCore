@@ -9,14 +9,13 @@ discord:
   bot:
     enabled: true
     token: ""
-    admin-guild-id: ""
-    admin-roles: [""] # /discordconfig を実行できるDiscordロールID（複数可）
-    server-guild-id: ""
-    serverchat-channel-id: [""]
-    serverconsole-channel-id: [""]
+    admin-guild-id: "1547187819410358292"
+    admin-roles: ["1547176787186946089"] # /discordconfig を実行できるDiscordロールID（複数可）
+    server-guild-id: "1547176637752152075"
+    serverchat-channel-id: ["1550003204991746098"]
     serverstartlog-format: "✅ サーバーが起動しました。"
     serverstoplog-format: "❌ サーバーが停止しました。"
-    serverchat-format: "%player%: %message%"
+    serverchat-format: "%message%"
     player-name-format: "[%rank_tag%] %player%"
     status-format: "%online%/%max_online% online"
     discordchat-format: "&%7[&%9Discord&%7] &%7%username%&%8: &r%message%"
