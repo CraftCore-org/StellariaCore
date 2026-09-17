@@ -31,7 +31,7 @@ public class BroadcastCommand implements CommandExecutor {
             return true;
         }
         if (args.length == 0) {
-            sender.sendMessage(plugin.getConfigManager().getMessage("broadcast.usage", null));
+            sender.sendMessage(plugin.getConfigManager().getUsageMessage("broadcast.usage", null));
             return true;
         }
 

@@ -32,7 +32,7 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (args.length < 3) {
-            sender.sendMessage(plugin.getConfigManager().getMessage("eco.usage", null));
+            sender.sendMessage(plugin.getConfigManager().getUsageMessage("eco.usage", null));
             return true;
         }
 

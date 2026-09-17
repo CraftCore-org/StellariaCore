@@ -5,6 +5,7 @@ import net.luckperms.api.model.group.Group;
 import net.luckperms.api.model.user.User;
 import net.luckperms.api.query.QueryOptions;
 import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 
@@ -12,6 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
@@ -99,6 +102,26 @@ public class RankManager {
         }
 
         QueryOptions options = luckPerms.getContextManager().getQueryOptions(player);
+        return rankFor(user, options);
+    }
+
+    /**
+     * Discordのようにオフラインプレイヤーも扱う表示用。オンライン時は現在のコンテキストを使い、
+     * オフライン時はLuckPermsから非コンテキストのユーザー情報を非同期で読み込む。
+     */
+    public CompletableFuture<RankInfo> getRankAsync(OfflinePlayer player) {
+        if (player.isOnline() && player.getPlayer() != null) {
+            return CompletableFuture.completedFuture(getRank(player.getPlayer()));
+        }
+        if (!enabled || luckPerms == null) {
+            return CompletableFuture.completedFuture(defaultRank);
+        }
+        UUID uuid = player.getUniqueId();
+        return luckPerms.getUserManager().loadUser(uuid, player.getName())
+                .thenApply(user -> rankFor(user, QueryOptions.nonContextual()));
+    }
+
+    private RankInfo rankFor(User user, QueryOptions options) {
         Set<String> groupNames = user.getInheritedGroups(options).stream()
                 .map(Group::getName)
                 .collect(Collectors.toSet());

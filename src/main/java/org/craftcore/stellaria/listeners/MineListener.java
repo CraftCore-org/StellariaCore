@@ -9,6 +9,7 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.inventory.ItemStack;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.OreUtil;
 import org.craftcore.stellaria.utils.WorldBlacklistUtil;
 
@@ -44,6 +45,10 @@ public class MineListener implements Listener {
 
         Player player = event.getPlayer();
         if (WorldBlacklistUtil.isBlacklisted(plugin.getConfigManager().getStringList("mine.disabled-worlds", true), block.getWorld().getName())) {
+            if (plugin.getMineManager().isEnabled(player.getUniqueId()) && isHoldingPickaxe(player)) {
+                String warning = plugin.getConfigManager().getMessage("mine.world_disabled", player);
+                plugin.getActionBarManager().flash(player, "mine_warning", ColorUtil.component(warning), 60L);
+            }
             return;
         }
         if (!plugin.getMineManager().isEnabled(player.getUniqueId())) {

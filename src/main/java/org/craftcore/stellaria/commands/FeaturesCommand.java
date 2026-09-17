@@ -44,7 +44,7 @@ public class FeaturesCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        player.sendMessage(plugin.getConfigManager().getMessage("features.usage", player));
+        player.sendMessage(plugin.getConfigManager().getUsageMessage("features.usage", player));
         return true;
     }
 

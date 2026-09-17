@@ -10,6 +10,7 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.inventory.ItemStack;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.TreeUtil;
 import org.craftcore.stellaria.utils.WorldBlacklistUtil;
 
@@ -45,6 +46,10 @@ public class KikoriListener implements Listener {
 
         Player player = event.getPlayer();
         if (WorldBlacklistUtil.isBlacklisted(plugin.getConfigManager().getStringList("kikori.disabled-worlds", true), block.getWorld().getName())) {
+            if (plugin.getKikoriManager().isEnabled(player.getUniqueId()) && isHoldingAxe(player)) {
+                String warning = plugin.getConfigManager().getMessage("kikori.world_disabled", player);
+                plugin.getActionBarManager().flash(player, "kikori_warning", ColorUtil.component(warning), 60L);
+            }
             return;
         }
         if (!plugin.getKikoriManager().isEnabled(player.getUniqueId())) {

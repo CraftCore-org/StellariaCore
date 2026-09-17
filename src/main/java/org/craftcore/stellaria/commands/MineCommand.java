@@ -51,7 +51,7 @@ public class MineCommand implements CommandExecutor, TabCompleter {
             case "on" -> handleSetEnabled(player, manager, true);
             case "off" -> handleSetEnabled(player, manager, false);
             case "" -> handleSetEnabled(player, manager, !manager.isEnabled(player.getUniqueId()));
-            default -> player.sendMessage(plugin.getConfigManager().getMessage("mine.usage", player));
+            default -> player.sendMessage(plugin.getConfigManager().getUsageMessage("mine.usage", player));
         }
         return true;
     }

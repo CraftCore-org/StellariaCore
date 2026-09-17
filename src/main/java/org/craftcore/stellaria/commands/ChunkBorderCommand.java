@@ -51,7 +51,7 @@ public class ChunkBorderCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (!action.equals("on") || args.length > 2) {
-            player.sendMessage(plugin.getConfigManager().getMessage("chunkborder.usage", player));
+            player.sendMessage(plugin.getConfigManager().getUsageMessage("chunkborder.usage", player));
             return true;
         }
 
@@ -63,7 +63,7 @@ public class ChunkBorderCommand implements CommandExecutor, TabCompleter {
                     throw new NumberFormatException();
                 }
             } catch (NumberFormatException e) {
-                player.sendMessage(plugin.getConfigManager().getMessage("chunkborder.usage", player));
+                player.sendMessage(plugin.getConfigManager().getUsageMessage("chunkborder.usage", player));
                 return true;
             }
         }

@@ -39,7 +39,7 @@ public class ProfileCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (args.length > 1) {
-            viewer.sendMessage(plugin.getConfigManager().getMessage("profile.usage", viewer));
+            viewer.sendMessage(plugin.getConfigManager().getUsageMessage("profile.usage", viewer));
             return true;
         }
 
