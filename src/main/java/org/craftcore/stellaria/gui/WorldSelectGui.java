@@ -4,12 +4,14 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.ColorUtil;
+import org.craftcore.stellaria.utils.CustomHeadUtil;
 import org.craftcore.stellaria.utils.WorldNameUtil;
 import org.jetbrains.annotations.Nullable;
 
@@ -84,7 +86,15 @@ public class WorldSelectGui extends Gui {
     }
 
     private ItemStack worldItem(World world) {
-        ItemStack item = new ItemStack(iconFor(world.getEnvironment()));
+        ConfigurationSection customHeads = plugin.getConfigManager().get("config.yml").get()
+                .getConfigurationSection("world.gui-custom-heads");
+        String customHeadId = customHeads == null ? null : customHeads.getString(world.getName());
+        ItemStack item = customHeadId == null || customHeadId.isBlank()
+                ? null
+                : CustomHeadUtil.create(plugin, customHeadId.trim());
+        if (item == null) {
+            item = new ItemStack(iconFor(world.getEnvironment()));
+        }
         ItemMeta meta = item.getItemMeta();
         meta.displayName(Component.text(WorldNameUtil.displayName(plugin.getConfigManager(), world)));
         meta.lore(List.of(Component.text(world.getEnvironment().name())));

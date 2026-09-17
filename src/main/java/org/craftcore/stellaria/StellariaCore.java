@@ -28,6 +28,21 @@ import org.craftcore.stellaria.managers.PlaceholderManager;
 import org.craftcore.stellaria.managers.PrivateMessageManager;
 import org.craftcore.stellaria.managers.ScoreboardManager;
 import org.craftcore.stellaria.managers.TabListManager;
+import org.craftcore.stellaria.listeners.ChatListener;
+import org.craftcore.stellaria.listeners.PlayerJoinListener;
+import org.craftcore.stellaria.listeners.MentionTabCompleteListener;
+import org.craftcore.stellaria.listeners.MuteCommandBlockListener;
+import org.craftcore.stellaria.listeners.PlayerListener;
+import org.craftcore.stellaria.listeners.PlayerQuitListener;
+import org.craftcore.stellaria.listeners.KikoriListener;
+import org.craftcore.stellaria.listeners.MineListener;
+import org.craftcore.stellaria.listeners.LandProtectionListener;
+import org.craftcore.stellaria.listeners.LandAreaStatusListener;
+import org.craftcore.stellaria.listeners.VanishListener;
+import org.craftcore.stellaria.listeners.WorldResetListener;
+import org.craftcore.stellaria.listeners.ContainerLockListener;
+import org.craftcore.stellaria.listeners.VoteListener;
+import org.craftcore.stellaria.listeners.MenuItemListener;
 
 
 import org.craftcore.stellaria.utils.ConsoleUtil;
@@ -67,6 +82,7 @@ public class StellariaCore extends JavaPlugin {
     private DiscordBotManager discordBotManager;
     private LandBorderParticleManager landBorderParticleManager;
     private LobbyManager lobbyManager;
+    private WorldResetManager worldResetManager;
     private List<Feature> features;
 
     @Override
@@ -76,6 +92,7 @@ public class StellariaCore extends JavaPlugin {
         this.configManager = new ConfigManager(this);
         this.configManager.register("config.yml");
         this.configManager.register("messages.yml");
+        this.configManager.register("customhead.yml");
 
         // 1. データベースの接続とテーブル作成
         DatabaseManager.connect(this, "database.db");
@@ -177,12 +194,14 @@ public class StellariaCore extends JavaPlugin {
         DatabaseManager.createTableIfNotExists("container_locks", "lock_id TEXT PRIMARY KEY", "owner_uuid TEXT NOT NULL", "created_at INTEGER NOT NULL");
         DatabaseManager.createTableIfNotExists("container_lock_blocks", "world TEXT NOT NULL", "x INTEGER NOT NULL", "y INTEGER NOT NULL", "z INTEGER NOT NULL", "lock_id TEXT NOT NULL", "PRIMARY KEY (world, x, y, z)");
         DatabaseManager.createTableIfNotExists("container_lock_members", "lock_id TEXT NOT NULL", "member_uuid TEXT NOT NULL", "PRIMARY KEY (lock_id, member_uuid)");
+        DatabaseManager.createTableIfNotExists("container_lock_auto_players", "player_uuid TEXT PRIMARY KEY");
 
         this.afkManager = new AfkManager(this);
         this.playtimeManager = new PlaytimeManager(this);
         this.rankManager = new RankManager(this);
         this.homeManager = new HomeManager(this);
         this.warpManager = new WarpManager(this);
+        this.worldResetManager = new WorldResetManager(this);
         this.headshopManager = new HeadshopManager(this);
         this.vanishManager = new VanishManager(this);
         this.kikoriManager = new KikoriManager(this);
@@ -265,6 +284,7 @@ public class StellariaCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new LandAreaStatusListener(this), this);
         getServer().getPluginManager().registerEvents(new VanishListener(this), this);
         getServer().getPluginManager().registerEvents(new LobbyProtectListener(this),this);
+        getServer().getPluginManager().registerEvents(new WorldResetListener(this), this);
 
         // 6. Scoreboard/Tablist/Belowname のインスタンス化とtick開始
         this.placeholderManager = new PlaceholderManager(this);
@@ -408,6 +428,7 @@ public class StellariaCore extends JavaPlugin {
         WorldCommand worldCommand = new WorldCommand(this);
         getCommand("world").setExecutor(worldCommand);
         getCommand("world").setTabCompleter(worldCommand);
+        getCommand("lobby").setExecutor(new LobbyCommand(this));
 
         ProfileCommand profileCommand = new ProfileCommand(this);
         getCommand("profile").setExecutor(profileCommand);
@@ -482,6 +503,9 @@ public class StellariaCore extends JavaPlugin {
         getCommand("lock").setExecutor(lockCommand);
         getCommand("lock").setTabCompleter(lockCommand);
         getCommand("unlock").setExecutor(lockCommand);
+        WorldResetCommand worldResetCommand = new WorldResetCommand(this);
+        getCommand("worldreset").setExecutor(worldResetCommand);
+        getCommand("worldreset").setTabCompleter(worldResetCommand);
 
         SudoCommand sudoCommand = new SudoCommand(this);
         getCommand("sudo").setExecutor(sudoCommand);
@@ -491,6 +515,7 @@ public class StellariaCore extends JavaPlugin {
         autoBroadcastManager.start();
 
         headshopManager.start();
+        worldResetManager.start();
 
         ConsoleUtil.printLogo(getPluginMeta().getVersion());
     }
@@ -612,6 +637,10 @@ public class StellariaCore extends JavaPlugin {
     public LobbyManager getLobbyManager(){
         return this.lobbyManager;
     }
+  
+    public WorldResetManager getWorldResetManager() {
+        return this.worldResetManager;
+    }
 
     /**
      * config.yml の scoreboard/tablist/belowname 設定を読み直して各Managerに反映する。
@@ -638,6 +667,7 @@ public class StellariaCore extends JavaPlugin {
             configManager.getString("nametag.dot-symbol", "●")
         );
         autoBroadcastManager.restart();
+        worldResetManager.restart();
         rankManager.reload();
     }
 }

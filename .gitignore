@@ -45,3 +45,6 @@ Thumbs.db
 world/
 world_nether/
 world_the_end/
+
+# === Git worktree（superpowers:using-git-worktrees） ===
+/.worktrees/

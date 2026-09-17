@@ -17,6 +17,7 @@ import org.craftcore.stellaria.managers.ContainerLockManager;
 import org.craftcore.stellaria.utils.FormatUtil;
 import org.craftcore.stellaria.utils.TabCompleteUtil;
 import org.craftcore.stellaria.utils.ColorUtil;
+import org.craftcore.stellaria.utils.ContainerLockMessages;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.LinkedHashSet;
@@ -28,7 +29,7 @@ import java.util.UUID;
 /** /lock と /unlock を扱う。対象は実際に視線が当たっている保護可能コンテナだけ。 */
 public class LockCommand implements CommandExecutor, TabCompleter {
 
-    private static final List<String> SUBCOMMANDS = List.of("trust", "untrust", "bypass");
+    private static final List<String> SUBCOMMANDS = List.of("trust", "untrust", "auto", "bypass");
 
     private final StellariaCore plugin;
 
@@ -51,6 +52,7 @@ public class LockCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (command.getName().equalsIgnoreCase("lock") && args.length == 1 && args[0].equalsIgnoreCase("bypass")) { handleBypass(player); return true; }
+        if (command.getName().equalsIgnoreCase("lock") && args.length == 1 && args[0].equalsIgnoreCase("auto")) { handleAuto(player); return true; }
 
         Block target = player.getTargetBlockExact(5);
         if (target == null || !isActionableTarget(target.getType())) {
@@ -85,7 +87,12 @@ public class LockCommand implements CommandExecutor, TabCompleter {
         for (ContainerLock.BlockKey key : keys) {
             Optional<ContainerLock> existing = manager.find(key);
             if (existing.isPresent()) {
-                message(player, "lock.already_locked", "%owner%", ownerName(existing.get().owner()));
+                String messageKey = alreadyLockedMessageKey(existing.get(), player.getUniqueId());
+                if (messageKey.equals("lock.already_locked")) {
+                    message(player, messageKey, "%owner%", ownerName(existing.get().owner()));
+                } else {
+                    message(player, messageKey);
+                }
                 return;
             }
         }
@@ -164,17 +171,28 @@ public class LockCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    static String alreadyLockedMessageKey(ContainerLock lock, UUID playerId) {
+        return lock.owner().equals(playerId) ? "lock.already_locked_self" : "lock.already_locked";
+    }
+
     private String ownerName(UUID owner) {
         String name = Bukkit.getOfflinePlayer(owner).getName();
         return name == null ? owner.toString() : name;
     }
 
     private void message(Player player, String key, String... replacements) {
-        String message = plugin.getConfigManager().getRawMessage(key);
+        String message = ContainerLockMessages.rawMessage(plugin.getConfigManager(), key);
         for (int index = 0; index + 1 < replacements.length; index += 2) {
             message = FormatUtil.replace(message, replacements[index], replacements[index + 1]);
         }
         player.sendMessage(FormatUtil.text(player, message));
+    }
+    private void handleAuto(Player player) {
+        switch (plugin.getContainerLockManager().toggleAutoLock(player.getUniqueId())) {
+            case ENABLED -> message(player, "lock.auto_enabled");
+            case DISABLED -> message(player, "lock.auto_disabled");
+            case DATABASE_ERROR -> message(player, "lock.database_error");
+        }
     }
     private void handleBypass(Player p) { if (!p.hasPermission("stellaria.lock.admin")) { message(p,"lock.no_permission"); return; } boolean on=plugin.getContainerLockManager().toggleBypass(p.getUniqueId()); message(p,on?"lock.bypass_enabled":"lock.bypass_disabled"); if(on) plugin.getActionBarManager().setChannel(p,"lock_bypass",ColorUtil.component(plugin.getConfigManager().getMessage("lock.bypass_indicator",p))); else plugin.getActionBarManager().clearChannel(p,"lock_bypass"); }
 
@@ -182,7 +200,7 @@ public class LockCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias,
                                       @NotNull String @NotNull [] args) {
         if (command.getName().equalsIgnoreCase("unlock")) return List.of();
-        if (args.length == 1) return TabCompleteUtil.filterStartsWith(sender.hasPermission("stellaria.lock.admin") ? SUBCOMMANDS : List.of("trust", "untrust"), args[0]);
+        if (args.length == 1) return TabCompleteUtil.filterStartsWith(sender.hasPermission("stellaria.lock.admin") ? SUBCOMMANDS : List.of("trust", "untrust", "auto"), args[0]);
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return TabCompleteUtil.filterStartsWith(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList(), args[1]);
         }

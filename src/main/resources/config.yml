@@ -9,15 +9,14 @@ discord:
   bot:
     enabled: true
     token: ""
-    admin-guild-id: ""
-    admin-roles: [""] # /discordconfig を実行できるDiscordロールID（複数可）
-    server-guild-id: ""
-    serverchat-channel-id: [""]
-    serverconsole-channel-id: [""]
+    admin-guild-id: "1547187819410358292"
+    admin-roles: ["1547176787186946089"] # /discordconfig を実行できるDiscordロールID（複数可）
+    server-guild-id: "1547176637752152075"
+    serverchat-channel-id: ["1550003204991746098"]
     serverstartlog-format: "✅ サーバーが起動しました。"
     serverstoplog-format: "❌ サーバーが停止しました。"
-    serverchat-format: "%player%: %message%"
-    player-name-format: "[%rank_tag%] %player%"
+    serverchat-format: "%message%"
+    player-name-format: "%rank_tag% %player%"
     status-format: "%online%/%max_online% online"
     discordchat-format: "&%7[&%9Discord&%7] &%7%username%&%8: &r%message%"
     joinlog-format: "%player%が参加しました。"
@@ -68,6 +67,11 @@ world:
   #   world: "生活ワールド"
   #   world_nether: "ネザー"
   display-names: {}
+  # ワールド名ごとにcustomhead.ymlのヘッドIDを指定できる。未指定なら環境別の通常アイコンを使う。
+  gui-custom-heads: {}
+
+lobby:
+  world: "lobby"
 
 home:
   disabled-worlds: []
@@ -114,19 +118,23 @@ first-join-kit:
 
 adminshop:
   enabled: true
-  # rows: 6 # 省略時は商品数に応じて自動決定（1〜6）
+  rows: 3
   items:
     - material: BREAD
       price: 10
-      # slot: 0 # 省略時は空いているスロットへ自動配置
+      slot: 11
     - material: CARROT
       price: 8
+      slot: 12
     - material: POTATO
       price: 8
+      slot: 13
     - material: COOKED_BEEF
       price: 40
+      slot: 14
     - material: OAK_LOG
       price: 20
+      slot: 15
 
 action-bar:
   enabled: true
@@ -419,3 +427,17 @@ sudo:
 lobbyprotect:
   enabled: true
   world-id: "lobby"
+  
+world-reset:
+  enabled: false
+  worlds: []
+  # 退避先ワールド名。空文字ならBukkit上の最初のワールド（デフォルトのメインワールド）のスポーンへ退避する
+  evacuate-to-world: ""
+  schedule:
+    type: "weekly" # "weekly" または "monthly"
+    time: "12:00"            # 24時間表記、両モード共通
+    # type: weekly のとき使用
+    day-of-week: "FRIDAY"    # java.time.DayOfWeek の名前（大文字）
+    interval-weeks: 1        # 1=毎週、2=隔週
+    # type: monthly のとき使用
+    day-of-month: 1          # 1〜31。その月に存在しない日は月末日に丸める

@@ -41,7 +41,7 @@ public final class HeadshopAdminGui extends Gui {
         super(54, title(plugin), parent, BACK_BUTTON_SLOT);
         this.plugin = plugin;
         this.parent = parent;
-        this.pool = plugin.getHeadshopManager().listPool();
+        this.pool = new ArrayList<>(plugin.getHeadshopManager().listPool());
         // pool.size()がちょうど45の倍数でも登録用の空きページが必ず1つ残るよう切り上げしない除算にする
         this.maxPage = Math.max(0, pool.size() / CONTENT_SLOTS);
         this.page = Math.clamp(page, 0, maxPage);
@@ -55,7 +55,10 @@ public final class HeadshopAdminGui extends Gui {
     private void populate() {
         int first = page * CONTENT_SLOTS;
         for (int slot = 0; slot < CONTENT_SLOTS && first + slot < pool.size(); slot++) {
-            getInventory().setItem(slot, poolEntryItem(pool.get(first + slot)));
+            HeadshopManager.PoolHead head = pool.get(first + slot);
+            if (head != null) {
+                getInventory().setItem(slot, poolEntryItem(head));
+            }
         }
 
         if (page > 0) {
@@ -132,24 +135,23 @@ public final class HeadshopAdminGui extends Gui {
         }
 
         int index = page * CONTENT_SLOTS + slot;
-        if (index < pool.size()) {
+        if (index < pool.size() && pool.get(index) != null) {
             if (event.isShiftClick()) {
                 HeadshopManager.PoolHead head = pool.get(index);
                 plugin.getHeadshopManager().removeFromPool(head.id());
                 player.sendMessage(FormatUtil.replace(
                         plugin.getConfigManager().getMessage("headshop.admin.removed", player),
                         "%item%", head.displayName()));
-                // 一覧全体を作り直すとコンテナが閉じてカーソルのアイテムが失われる恐れがあるため、
-                // このスロットだけをその場で空にする（ページ送り等で開き直せば一覧は自然に最新化される）。
+                pool.set(index, null);
                 getInventory().setItem(slot, null);
             }
             return;
         }
 
-        registerFromCursor(player, event.getCursor(), slot);
+        registerFromCursor(player, event.getCursor(), slot, index);
     }
 
-    private void registerFromCursor(Player player, @Nullable ItemStack cursor, int slot) {
+    private void registerFromCursor(Player player, @Nullable ItemStack cursor, int slot, int index) {
         if (cursor == null || cursor.getType() != Material.PLAYER_HEAD || !(cursor.getItemMeta() instanceof SkullMeta skullMeta)) {
             player.sendMessage(plugin.getConfigManager().getMessage("headshop.admin.invalid_head", player));
             return;
@@ -168,12 +170,18 @@ public final class HeadshopAdminGui extends Gui {
         String displayName = skullMeta.hasDisplayName()
                 ? PlainTextComponentSerializer.plainText().serialize(skullMeta.displayName())
                 : plugin.getConfigManager().getMessage("headshop.admin.unnamed-head", player);
-        plugin.getHeadshopManager().addToPool(displayName, texture, player.getUniqueId());
+        HeadshopManager.PoolHead added = plugin.getHeadshopManager().addToPool(displayName, texture, player.getUniqueId());
+        if (added == null) {
+            player.sendMessage(plugin.getConfigManager().getMessage("headshop.admin.save-failed", player));
+            return;
+        }
         player.sendMessage(FormatUtil.replace(
                 plugin.getConfigManager().getMessage("headshop.admin.added", player),
                 "%item%", displayName));
-        // 一覧全体を作り直すとコンテナが閉じてカーソルのアイテムが失われる恐れがあるため、
-        // このスロットだけをその場で登録済み表示に差し替える（pool一覧自体の更新は次に開き直した時に反映される）。
-        getInventory().setItem(slot, poolEntryItem(new HeadshopManager.PoolHead(0, displayName, texture)));
+        while (pool.size() <= index) {
+            pool.add(null);
+        }
+        pool.set(index, added);
+        getInventory().setItem(slot, poolEntryItem(added));
     }
 }

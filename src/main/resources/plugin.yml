@@ -41,6 +41,8 @@ commands:
     aliases: [money, bal]
   world:
     permission: stellaria.world
+  lobby:
+    permission: stellaria.lobby
   colors:
     permission: stellaria.chat.color
   adminshop:
@@ -87,6 +89,8 @@ commands:
     permission: stellaria.vanish
   lock:
   unlock:
+  worldreset:
+    permission: stellaria.worldreset
 
 permissions:
   stellaria.msg:
@@ -96,6 +100,8 @@ permissions:
   stellaria.balance:
     default: true
   stellaria.world:
+    default: true
+  stellaria.lobby:
     default: true
   stellaria.playtime:
     default: true
@@ -124,6 +130,8 @@ permissions:
   stellaria.sudo:
     default: op
   stellaria.vanish:
+    default: op
+  stellaria.worldreset:
     default: op
   stellaria.lock:
     default: true

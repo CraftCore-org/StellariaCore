@@ -188,6 +188,10 @@ world:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   not_found: "&%c指定されたワールドは見つかりません。"
 
+lobby:
+  must-be-player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  world-not-found: "&%cロビーワールドが見つかりません: &%e%world%"
+
 profile:
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   no_permission_others: "&%c他人のプロフィールを確認する権限がありません。"
@@ -556,6 +560,9 @@ headshop:
   insufficient-funds: "&%c所持金が足りません（必要: &%e%price%&%c）"
   inventory-full: "&%cインベントリに空きがありません（&%e%price% &%cコインを返金しました）"
   shop-empty: "&%7本日の商品はまだ登録されていません"
+  reset-success: "&%a本日のおすすめヘッドを再抽選しました。"
+  reset-empty: "&%cヘッドプールが空のため再抽選できません。"
+  reset-failed: "&%c再抽選の保存に失敗しました。コンソールを確認してください。"
   hint-title: "&%bヒント"
   main-hint:
     - "&%9&l| &%bヒント"
@@ -573,6 +580,7 @@ headshop:
   gui-page: "&%7ページ %page%/%max_page%"
   admin:
     added: "&%aヘッドをプールに登録しました：&%e%item%"
+    save-failed: "&%cヘッドの登録を保存できませんでした。コンソールを確認してください。"
     duplicate: "&%cこのヘッドは既に登録されています"
     invalid_head: "&%c頭アイテムをカーソルに乗せた状態でクリックしてください"
     unnamed-head: "名称未設定の頭"
@@ -587,10 +595,11 @@ headshop:
 lock:
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
-  usage: "&%c使用方法: /lock [trust|untrust <player>]"
+  usage: "&%c使用方法: /lock [auto|trust|untrust <player>]"
   look_at_container: "&%cチェスト、樽、またはシュルカーボックスを見て実行してください。"
   created: "&%aこのコンテナを保護しました。"
   already_locked: "&%cこのコンテナは既に &%e%owner% &%cさんに保護されています。"
+  already_locked_self: "&%cこのコンテナはすでに保護済みです。"
   unlocked: "&%aこのコンテナの保護を解除しました。"
   not_locked: "&%cこのコンテナは保護されていません。"
   not_owner: "&%cこのコンテナの所有者ではありません。"
@@ -599,11 +608,17 @@ lock:
   already_trusted: "&%cそのプレイヤーは既に許可されています。"
   not_trusted: "&%cそのプレイヤーは許可されていません。"
   cannot_trust_self: "&%c自分自身を共同利用者には追加できません。"
-  protected: "&%cこのコンテナは保護されています。"
+  protected_chest: "&%cこのチェストは保護されています。"
+  protected_shulker_box: "&%cこのシュルカーボックスは保護されています。"
+  protected_barrel: "&%cこの樽は保護されています。"
   double_chest_denied: "&%c保護されたチェストを二連チェストにできません。"
   bypass_enabled: "&%aコンテナロックのbypassモードをONにしました。"
   bypass_disabled: "&%cコンテナロックのbypassモードをOFFにしました。"
   bypass_indicator: "&%c&l[BYPASS] &%7コンテナロックを無視中"
+  auto_enabled: "&%a設置したコンテナを自動で保護します。"
+  auto_disabled: "&%cコンテナの自動保護を解除しました。"
+  database_error: "&%c保護設定を保存できませんでした。しばらくしてからもう一度お試しください。"
+  auto_failed: "&%c保護設定を保存できなかったため、設置を取り消しました。"
 
 sudo:
   usage: "&%c使用方法: /sudo <プレイヤー> <コマンド>"
@@ -616,3 +631,14 @@ vanish:
   enabled: "&%aVanishを有効にしました。"
   disabled: "&%cVanishを無効にしました。"
   action-bar: "&%c&l[VANISH] &%7現在ステルス中"
+
+world-reset:
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  usage_now: "&%c使用方法: /worldreset now <ワールド名>"
+  not_a_target: "&%c&%f%world% &%cはリセット対象ワールドに設定されていません。"
+  reset_now_started: "&%aワールド &%f%world% &%aを即時リセットします。プレイヤーを退避させました。"
+  announce: "&%e&l[ワールドリセット] &%f%worlds% &%eは%minutes%分後に自動リセットされます。"
+  evacuated: "&%eワールドリセットのため、安全な場所へ避難させました。"
+  lockout_warning: "&%cこのワールドはまもなくリセットされるため、現在は立ち入りできません。もう一度実行すると10秒以内なら強制的に入場します。"
+  next_reset_notice: "&%7このワールドは自動リセット対象です。次回リセット予定: &%f%next_reset%"
+  sethome_warning: "&%cこのワールドは自動リセット対象のため、リセット時にこのhome/warpは削除されます。"

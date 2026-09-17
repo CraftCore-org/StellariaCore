@@ -9,9 +9,11 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.function.Consumer;
 
 /**
@@ -217,6 +219,28 @@ public final class DatabaseManager {
         String placeholders = String.join(", ", values.keySet().stream().map(k -> "?").toArray(String[]::new));
         String sql = "INSERT INTO " + table + " (" + columns + ") VALUES (" + placeholders + ")";
         return execute(sql, values.values().toArray());
+    }
+
+    /** INSERTを実行し、SQLiteが採番した主キーを返す。失敗時または主キー無しなら空を返す。 */
+    public static OptionalInt insertAndGetId(String table, Map<String, Object> values) {
+        String columns = String.join(", ", values.keySet());
+        String placeholders = String.join(", ", values.keySet().stream().map(key -> "?").toArray(String[]::new));
+        String sql = "INSERT INTO " + table + " (" + columns + ") VALUES (" + placeholders + ")";
+        try (PreparedStatement ps = raw().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            Object[] parameters = values.values().toArray();
+            for (int index = 0; index < parameters.length; index++) {
+                ps.setObject(index + 1, parameters[index]);
+            }
+            if (ps.executeUpdate() != 1) {
+                return OptionalInt.empty();
+            }
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                return keys.next() ? OptionalInt.of(keys.getInt(1)) : OptionalInt.empty();
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().severe("SQL INSERTに失敗: " + sql + " / " + e.getMessage());
+            return OptionalInt.empty();
+        }
     }
 
     /** {@link #insert(String, Map)} の非同期版。 */
