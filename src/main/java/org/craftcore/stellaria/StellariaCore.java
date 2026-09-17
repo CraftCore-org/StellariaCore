@@ -518,6 +518,7 @@ public class StellariaCore extends JavaPlugin {
         if (configManager.getBoolean("discord.bot.enabled",true)){
             discordBotManager.stop();
         }
+        playtimeManager.flushAll();
         // プラグイン停止時は Vault から自動解除されるため、DB切断だけでOK
         DatabaseManager.disconnect();
         ConsoleUtil.printDisabledMessage();
