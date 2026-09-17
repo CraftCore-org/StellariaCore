@@ -373,6 +373,10 @@ public class StellariaCore extends JavaPlugin {
 
         getCommand("colors").setExecutor(new ColorsCommand(this));
 
+        SetItemTextCommand setItemTextCommand = new SetItemTextCommand(this);
+        getCommand("setlore").setExecutor(setItemTextCommand);
+        getCommand("setname").setExecutor(setItemTextCommand);
+
         getCommand("adminshop").setExecutor(new AdminShopCommand(this));
 
         getCommand("discord").setExecutor(new DiscordCommand(this));

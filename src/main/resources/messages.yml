@@ -148,6 +148,15 @@ colors:
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   header: "&%6&l--- カラーコード一覧 ---"
 
+item-text:
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  no_item: "&%cメインハンドにアイテムを持ってください。"
+  setlore_usage: "&%c使用方法: /setlore <説明>  (&%f\\n&%c で改行)"
+  setlore_updated: "&%aアイテムの説明欄を更新しました。"
+  setname_usage: "&%c使用方法: /setname <名前>"
+  setname_updated: "&%aアイテム名を更新しました。"
+
 discord:
   message: "&%9&l| &%fDiscordサーバーはこちら&%7: &%b%link%"
 

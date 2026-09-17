@@ -45,6 +45,10 @@ commands:
     permission: stellaria.lobby
   colors:
     permission: stellaria.chat.color
+  setlore:
+    permission: stellaria.setlore
+  setname:
+    permission: stellaria.setname
   adminshop:
   discord:
     aliases: [dc]
@@ -147,6 +151,8 @@ permissions:
       stellaria.eco: true
       stellaria.chat.color: true
       stellaria.heal: true
+      stellaria.setlore: true
+      stellaria.setname: true
       stellaria.lock.admin: true
   stellaria.reload:
     default: false
@@ -159,4 +165,8 @@ permissions:
   stellaria.chat.color:
     default: false
   stellaria.heal:
+    default: false
+  stellaria.setlore:
+    default: false
+  stellaria.setname:
     default: false
