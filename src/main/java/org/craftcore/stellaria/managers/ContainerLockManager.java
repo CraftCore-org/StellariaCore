@@ -24,16 +24,21 @@ public class ContainerLockManager {
     public enum CreateResult { SUCCESS, ALREADY_LOCKED, CONFLICTING_LOCK, DATABASE_ERROR }
     public enum MemberResult { SUCCESS, OWNER, ALREADY_MEMBER, NOT_MEMBER, DATABASE_ERROR }
     public enum RemoveResult { SUCCESS, NOT_FOUND, DATABASE_ERROR }
+    public enum AutoLockToggleResult { ENABLED, DISABLED, DATABASE_ERROR }
 
     private final Map<ContainerLock.BlockKey, ContainerLock> locksByBlock = new ConcurrentHashMap<>();
     private final Map<UUID, ContainerLock> locksById = new ConcurrentHashMap<>();
     private final Set<UUID> bypassEnabled = ConcurrentHashMap.newKeySet();
+    private final Set<UUID> autoLockEnabled = ConcurrentHashMap.newKeySet();
+    private final boolean databaseBacked;
 
     /** テスト用。DBをロードしない。 */
     ContainerLockManager() {
+        databaseBacked = false;
     }
 
     public ContainerLockManager(StellariaCore plugin) {
+        databaseBacked = true;
         loadFromDatabase();
     }
 
@@ -66,6 +71,12 @@ public class ContainerLockManager {
                 registerLoadedLock(new ContainerLock(entry.getKey(), entry.getValue(), lockBlocks,
                         members.getOrDefault(entry.getKey(), Set.of())));
             }
+        }
+
+        for (UUID playerId : DatabaseManager.query(
+                "SELECT player_uuid FROM container_lock_auto_players",
+                rs -> UUID.fromString(rs.getString("player_uuid")))) {
+            autoLockEnabled.add(playerId);
         }
     }
 
@@ -224,6 +235,31 @@ public class ContainerLockManager {
     public boolean hasBypassEnabled(UUID id) { return bypassEnabled.contains(id); }
     public boolean toggleBypass(UUID id) { return bypassEnabled.remove(id) ? false : bypassEnabled.add(id); }
     public boolean isBypassing(Player player) { return player.hasPermission("stellaria.lock.admin") && hasBypassEnabled(player.getUniqueId()); }
+
+    public boolean hasAutoLockEnabled(UUID id) {
+        return autoLockEnabled.contains(id);
+    }
+
+    /** 自動ロックを切り替え、DBへの反映に失敗した場合は現在の状態を維持する。 */
+    public AutoLockToggleResult toggleAutoLock(UUID id) {
+        boolean currentlyEnabled = autoLockEnabled.contains(id);
+        if (databaseBacked) {
+            boolean persisted = currentlyEnabled
+                    ? DatabaseManager.transaction(connection -> execute(connection,
+                    "DELETE FROM container_lock_auto_players WHERE player_uuid = ?", id.toString()))
+                    : DatabaseManager.transaction(connection -> execute(connection,
+                    "INSERT INTO container_lock_auto_players (player_uuid) VALUES (?)", id.toString()));
+            if (!persisted) {
+                return AutoLockToggleResult.DATABASE_ERROR;
+            }
+        }
+        if (currentlyEnabled) {
+            autoLockEnabled.remove(id);
+            return AutoLockToggleResult.DISABLED;
+        }
+        autoLockEnabled.add(id);
+        return AutoLockToggleResult.ENABLED;
+    }
 
     private static void execute(Connection connection, String sql, Object... values) {
         try (PreparedStatement statement = connection.prepareStatement(sql)) {

@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import java.util.Set;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -56,6 +58,18 @@ class ContainerLockManagerTest {
         assertTrue(manager.hasBypassEnabled(admin));
         assertTrue(!manager.toggleBypass(admin));
         assertTrue(!manager.hasBypassEnabled(admin));
+    }
+
+    @Test
+    void autoLockIsDisabledByDefaultAndTogglesPerPlayer() {
+        ContainerLockManager manager = new ContainerLockManager();
+        UUID player = UUID.randomUUID();
+
+        assertFalse(manager.hasAutoLockEnabled(player));
+        assertEquals(ContainerLockManager.AutoLockToggleResult.ENABLED, manager.toggleAutoLock(player));
+        assertTrue(manager.hasAutoLockEnabled(player));
+        assertEquals(ContainerLockManager.AutoLockToggleResult.DISABLED, manager.toggleAutoLock(player));
+        assertFalse(manager.hasAutoLockEnabled(player));
     }
 
     private static ContainerLock lock(ContainerLock.BlockKey... blocks) {
