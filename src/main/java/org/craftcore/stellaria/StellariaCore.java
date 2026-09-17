@@ -192,6 +192,7 @@ public class StellariaCore extends JavaPlugin {
         DatabaseManager.createTableIfNotExists("container_locks", "lock_id TEXT PRIMARY KEY", "owner_uuid TEXT NOT NULL", "created_at INTEGER NOT NULL");
         DatabaseManager.createTableIfNotExists("container_lock_blocks", "world TEXT NOT NULL", "x INTEGER NOT NULL", "y INTEGER NOT NULL", "z INTEGER NOT NULL", "lock_id TEXT NOT NULL", "PRIMARY KEY (world, x, y, z)");
         DatabaseManager.createTableIfNotExists("container_lock_members", "lock_id TEXT NOT NULL", "member_uuid TEXT NOT NULL", "PRIMARY KEY (lock_id, member_uuid)");
+        DatabaseManager.createTableIfNotExists("container_lock_auto_players", "player_uuid TEXT PRIMARY KEY");
 
         this.afkManager = new AfkManager(this);
         this.playtimeManager = new PlaytimeManager(this);
