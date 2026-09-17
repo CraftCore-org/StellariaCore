@@ -297,16 +297,28 @@ public class LandManager {
         Area merged = areas.get(mergedId);
 
         boolean success = DatabaseManager.transaction(conn -> {
-            DatabaseManager.execute("UPDATE land_claims SET territory_id = ? WHERE territory_id = ?", canonicalId, mergedId);
+            int updated = DatabaseManager.execute("UPDATE land_claims SET territory_id = ? WHERE territory_id = ?", canonicalId, mergedId);
+            if (updated < 0) {
+                throw new IllegalStateException("land_claims の territory_id 更新に失敗");
+            }
             if (merged != null) {
                 for (UUID trustedUuid : merged.trusted) {
-                    DatabaseManager.execute(
+                    int inserted = DatabaseManager.execute(
                             "INSERT OR IGNORE INTO land_trusts (territory_id, trusted_uuid) VALUES (?, ?)",
                             canonicalId, trustedUuid.toString());
+                    if (inserted < 0) {
+                        throw new IllegalStateException("land_trusts への付け替えINSERTに失敗");
+                    }
                 }
             }
-            DatabaseManager.execute("DELETE FROM land_trusts WHERE territory_id = ?", mergedId);
-            DatabaseManager.execute("DELETE FROM land_territories WHERE territory_id = ?", mergedId);
+            int deletedTrusts = DatabaseManager.execute("DELETE FROM land_trusts WHERE territory_id = ?", mergedId);
+            if (deletedTrusts < 0) {
+                throw new IllegalStateException("land_trusts の削除に失敗");
+            }
+            int deletedTerritory = DatabaseManager.execute("DELETE FROM land_territories WHERE territory_id = ?", mergedId);
+            if (deletedTerritory < 0) {
+                throw new IllegalStateException("land_territories の削除に失敗");
+            }
         });
 
         if (!success) {
