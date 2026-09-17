@@ -231,6 +231,9 @@ public class WorldResetManager {
                 plugin.getLogger().severe("ワールド '" + worldName + "' の再生成に失敗したため、home/warpデータは保持しました。");
                 continue;
             }
+            if (!plugin.getContainerLockManager().removeWorld(worldName)) {
+                plugin.getLogger().warning("ワールド '" + worldName + "' のコンテナロックを削除できませんでした。");
+            }
             DatabaseManager.execute("DELETE FROM homes WHERE world = ?", worldName);
             DatabaseManager.execute("DELETE FROM warps WHERE world = ?", worldName);
 

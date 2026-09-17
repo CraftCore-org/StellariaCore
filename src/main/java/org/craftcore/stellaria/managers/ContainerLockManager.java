@@ -1,14 +1,21 @@
 package org.craftcore.stellaria.managers;
 
 import org.bukkit.Material;
+import org.bukkit.Bukkit;
 import org.bukkit.block.Block;
+import org.bukkit.block.Chest;
+import org.bukkit.block.DoubleChest;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.InventoryHolder;
 import org.craftcore.stellaria.StellariaCore;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -30,14 +37,17 @@ public class ContainerLockManager {
     private final Map<UUID, ContainerLock> locksById = new ConcurrentHashMap<>();
     private final Set<UUID> bypassEnabled = ConcurrentHashMap.newKeySet();
     private final Set<UUID> autoLockEnabled = ConcurrentHashMap.newKeySet();
+    private final StellariaCore plugin;
     private final boolean databaseBacked;
 
     /** テスト用。DBをロードしない。 */
     ContainerLockManager() {
+        plugin = null;
         databaseBacked = false;
     }
 
     public ContainerLockManager(StellariaCore plugin) {
+        this.plugin = plugin;
         databaseBacked = true;
         loadFromDatabase();
     }
@@ -50,11 +60,13 @@ public class ContainerLockManager {
             owners.put(row.lockId(), row.owner());
         }
 
-        Map<UUID, Set<ContainerLock.BlockKey>> blocks = new HashMap<>();
-        for (BlockRow row : DatabaseManager.query(
+        List<BlockRow> blockRows = DatabaseManager.query(
                 "SELECT lock_id, world, x, y, z FROM container_lock_blocks",
                 rs -> new BlockRow(UUID.fromString(rs.getString("lock_id")),
-                        new ContainerLock.BlockKey(rs.getString("world"), rs.getInt("x"), rs.getInt("y"), rs.getInt("z"))))) {
+                        new ContainerLock.BlockKey(rs.getString("world"), rs.getInt("x"), rs.getInt("y"), rs.getInt("z"))));
+
+        Map<UUID, Set<ContainerLock.BlockKey>> blocks = new HashMap<>();
+        for (BlockRow row : blockRows) {
             blocks.computeIfAbsent(row.lockId(), ignored -> new LinkedHashSet<>()).add(row.key());
         }
 
@@ -65,8 +77,58 @@ public class ContainerLockManager {
             members.computeIfAbsent(row.lockId(), ignored -> new LinkedHashSet<>()).add(row.member());
         }
 
+        Set<BlockRow> discardedRows = new LinkedHashSet<>();
+        Map<ContainerLock.BlockKey, UUID> loadedBlockOwners = new HashMap<>();
+        for (BlockRow row : blockRows) {
+            if (!owners.containsKey(row.lockId())) {
+                discardedRows.add(row);
+                continue;
+            }
+            World world = Bukkit.getWorld(row.key().world());
+            if (world != null && !isLockable(world, row.key())) {
+                discardedRows.add(row);
+                continue;
+            }
+            loadedBlockOwners.put(row.key(), row.lockId());
+        }
+
+        Set<ContainerLock.BlockKey> conflictingKeys = new LinkedHashSet<>();
+        Set<String> loggedConflicts = new HashSet<>();
+        for (BlockRow row : blockRows) {
+            if (discardedRows.contains(row) || !loadedBlockOwners.containsKey(row.key())) continue;
+            World world = Bukkit.getWorld(row.key().world());
+            if (world == null) continue;
+            Set<ContainerLock.BlockKey> doubleChestKeys = doubleChestKeys(world, row.key());
+            for (ContainerLock.BlockKey partner : doubleChestKeys) {
+                UUID partnerLockId = loadedBlockOwners.get(partner);
+                if (partnerLockId == null || partnerLockId.equals(row.lockId())) continue;
+                conflictingKeys.add(row.key());
+                conflictingKeys.add(partner);
+                String conflict = row.key().toString().compareTo(partner.toString()) < 0
+                        ? row.key() + " / " + partner
+                        : partner + " / " + row.key();
+                if (loggedConflicts.add(conflict)) {
+                    warn("異なるロックIDに分割された二連チェストを検出したため、両側のロック座標を削除します: " + conflict);
+                }
+            }
+        }
+        for (BlockRow row : blockRows) {
+            if (conflictingKeys.contains(row.key())) discardedRows.add(row);
+        }
+
+        Map<UUID, Set<ContainerLock.BlockKey>> reconciledBlocks = new HashMap<>();
+        for (BlockRow row : blockRows) {
+            if (!discardedRows.contains(row)) {
+                reconciledBlocks.computeIfAbsent(row.lockId(), ignored -> new LinkedHashSet<>()).add(row.key());
+            }
+        }
+        Set<UUID> emptyLockIds = new LinkedHashSet<>(owners.keySet());
+        emptyLockIds.removeAll(reconciledBlocks.keySet());
+        boolean reconciled = reconcileDatabase(discardedRows, emptyLockIds);
+        Map<UUID, Set<ContainerLock.BlockKey>> blocksToCache = reconciled ? reconciledBlocks : blocks;
+
         for (Map.Entry<UUID, UUID> entry : owners.entrySet()) {
-            Set<ContainerLock.BlockKey> lockBlocks = blocks.getOrDefault(entry.getKey(), Set.of());
+            Set<ContainerLock.BlockKey> lockBlocks = blocksToCache.getOrDefault(entry.getKey(), Set.of());
             if (!lockBlocks.isEmpty()) {
                 registerLoadedLock(new ContainerLock(entry.getKey(), entry.getValue(), lockBlocks,
                         members.getOrDefault(entry.getKey(), Set.of())));
@@ -78,6 +140,49 @@ public class ContainerLockManager {
                 rs -> UUID.fromString(rs.getString("player_uuid")))) {
             autoLockEnabled.add(playerId);
         }
+    }
+
+    private boolean isLockable(World world, ContainerLock.BlockKey key) {
+        try {
+            return isLockable(world.getBlockAt(key.x(), key.y(), key.z()).getType());
+        } catch (RuntimeException exception) {
+            warn("ロック座標の検証に失敗したため、無効な座標として扱います: " + key + " / " + exception.getMessage());
+            return false;
+        }
+    }
+
+    private Set<ContainerLock.BlockKey> doubleChestKeys(World world, ContainerLock.BlockKey key) {
+        Block block = world.getBlockAt(key.x(), key.y(), key.z());
+        if (!(block.getState() instanceof Chest chest)) return Set.of();
+        InventoryHolder holder = chest.getInventory().getHolder();
+        if (!(holder instanceof DoubleChest doubleChest)) return Set.of();
+        Set<ContainerLock.BlockKey> keys = new LinkedHashSet<>();
+        addChestKey(keys, doubleChest.getLeftSide());
+        addChestKey(keys, doubleChest.getRightSide());
+        return keys;
+    }
+
+    private static void addChestKey(Set<ContainerLock.BlockKey> keys, InventoryHolder holder) {
+        if (holder instanceof Chest chest) keys.add(ContainerLock.BlockKey.of(chest.getBlock()));
+    }
+
+    private boolean reconcileDatabase(Set<BlockRow> discardedRows, Set<UUID> emptyLockIds) {
+        if (discardedRows.isEmpty() && emptyLockIds.isEmpty()) return true;
+        boolean persisted = DatabaseManager.transaction(connection -> {
+            for (BlockRow row : discardedRows) {
+                executeDelete(connection,
+                        "DELETE FROM container_lock_blocks WHERE world = ? AND x = ? AND y = ? AND z = ?",
+                        row.key().world(), row.key().x(), row.key().y(), row.key().z());
+            }
+            for (UUID lockId : emptyLockIds) {
+                executeDelete(connection, "DELETE FROM container_lock_members WHERE lock_id = ?", lockId.toString());
+                executeDelete(connection, "DELETE FROM container_locks WHERE lock_id = ?", lockId.toString());
+            }
+        });
+        if (!persisted) {
+            warn("コンテナロックの起動時整合性修復に失敗したため、キャッシュを修正せずロードします。");
+        }
+        return persisted;
     }
 
     public Optional<ContainerLock> find(Block block) {
@@ -232,6 +337,51 @@ public class ContainerLockManager {
         }
     }
 
+    void removeWorldFromCache(String worldName) {
+        for (ContainerLock.BlockKey key : new ArrayList<>(locksByBlock.keySet())) {
+            if (key.world().equals(worldName)) {
+                detachFromCache(key);
+            }
+        }
+    }
+
+    /** ワールド再生成後に、そのワールドに紐づく座標と空ロックを一括削除する。 */
+    public boolean removeWorld(String worldName) {
+        Set<UUID> emptyLockIds = new LinkedHashSet<>();
+        boolean persisted = DatabaseManager.transaction(connection -> {
+            executeDelete(connection, "DELETE FROM container_lock_blocks WHERE world = ?", worldName);
+            emptyLockIds.addAll(emptyLockIds(connection));
+            for (UUID lockId : emptyLockIds) {
+                executeDelete(connection, "DELETE FROM container_lock_members WHERE lock_id = ?", lockId.toString());
+                executeDelete(connection, "DELETE FROM container_locks WHERE lock_id = ?", lockId.toString());
+            }
+        });
+        if (!persisted) {
+            warn("ワールド '" + worldName + "' のコンテナロック削除に失敗しました。");
+            return false;
+        }
+        removeWorldFromCache(worldName);
+        for (UUID lockId : emptyLockIds) {
+            ContainerLock lock = locksById.get(lockId);
+            if (lock != null && lock.isEmpty()) locksById.remove(lockId, lock);
+        }
+        return true;
+    }
+
+    private static Set<UUID> emptyLockIds(Connection connection) {
+        Set<UUID> ids = new LinkedHashSet<>();
+        try (PreparedStatement statement = connection.prepareStatement(
+                "SELECT lock_id FROM container_locks WHERE NOT EXISTS "
+                        + "(SELECT 1 FROM container_lock_blocks WHERE container_lock_blocks.lock_id = container_locks.lock_id)")) {
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) ids.add(UUID.fromString(resultSet.getString("lock_id")));
+            }
+            return ids;
+        } catch (SQLException exception) {
+            throw new IllegalStateException(exception);
+        }
+    }
+
     public boolean hasBypassEnabled(UUID id) { return bypassEnabled.contains(id); }
     public boolean toggleBypass(UUID id) { return bypassEnabled.remove(id) ? false : bypassEnabled.add(id); }
     public void removeBypassState(UUID id) { bypassEnabled.remove(id); }
@@ -278,6 +428,11 @@ public class ContainerLockManager {
         } catch (SQLException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    private void warn(String message) {
+        if (plugin != null) plugin.getLogger().warning(message);
+        else Bukkit.getLogger().warning(message);
     }
 
     private record LockRow(UUID lockId, UUID owner) {}

@@ -74,6 +74,54 @@ class ContainerLockManagerTest {
     }
 
     @Test
+    void removingWorldFromCacheRemovesOnlyKeysInThatWorld() {
+        ContainerLockManager manager = new ContainerLockManager();
+        ContainerLock.BlockKey resetWorldKey = key(0);
+        ContainerLock.BlockKey preservedWorldKey = new ContainerLock.BlockKey("other-world", 0, 64, 0);
+        ContainerLock resetWorldLock = lock(resetWorldKey);
+        ContainerLock preservedWorldLock = lock(preservedWorldKey);
+        manager.registerLoadedLock(resetWorldLock);
+        manager.registerLoadedLock(preservedWorldLock);
+
+        manager.removeWorldFromCache("world");
+
+        assertTrue(manager.findCached(resetWorldKey).isEmpty());
+        assertTrue(manager.findCached(resetWorldLock.lockId()).isEmpty());
+        assertSame(preservedWorldLock, manager.findCached(preservedWorldKey).orElseThrow());
+        assertSame(preservedWorldLock, manager.findCached(preservedWorldLock.lockId()).orElseThrow());
+    }
+
+    @Test
+    void removingWorldDeletesOnlyItsBlocksAndEmptyLocksTransactionally() throws Exception {
+        ContainerLockManager manager = new ContainerLockManager();
+        ContainerLock.BlockKey resetKey = key(0);
+        ContainerLock.BlockKey preservedKey = new ContainerLock.BlockKey("other-world", 0, 64, 0);
+        ContainerLock preservedLock = lock(resetKey, preservedKey);
+        ContainerLock emptyLock = lock(new ContainerLock.BlockKey("world", 1, 64, 0));
+        manager.registerLoadedLock(preservedLock);
+        manager.registerLoadedLock(emptyLock);
+        insertRows(preservedLock, resetKey, preservedKey);
+        insertRows(emptyLock, emptyLock.blocks().iterator().next());
+        UUID member = UUID.randomUUID();
+        try (var statement = connection.prepareStatement(
+                "INSERT INTO container_lock_members (lock_id, member_uuid) VALUES (?, ?)")) {
+            statement.setString(1, emptyLock.lockId().toString());
+            statement.setString(2, member.toString());
+            statement.executeUpdate();
+        }
+
+        assertTrue(manager.removeWorld("world"));
+
+        assertTrue(manager.findCached(resetKey).isEmpty());
+        assertSame(preservedLock, manager.findCached(preservedKey).orElseThrow());
+        assertTrue(manager.findCached(emptyLock.lockId()).isEmpty());
+        assertEquals(1, count("SELECT COUNT(*) FROM container_lock_blocks WHERE world = 'other-world'"));
+        assertEquals(0, count("SELECT COUNT(*) FROM container_lock_blocks WHERE world = 'world'"));
+        assertEquals(1, count("SELECT COUNT(*) FROM container_locks"));
+        assertEquals(0, count("SELECT COUNT(*) FROM container_lock_members"));
+    }
+
+    @Test
     void bypassIsDisabledByDefaultAndTogglesPerPlayer() {
         ContainerLockManager manager = new ContainerLockManager();
         UUID admin = UUID.randomUUID();
@@ -142,6 +190,34 @@ class ContainerLockManagerTest {
             blockStatement.setInt(4, key.z());
             blockStatement.setString(5, lock.lockId().toString());
             blockStatement.executeUpdate();
+        }
+    }
+
+    private void insertRows(ContainerLock lock, ContainerLock.BlockKey... keys) throws Exception {
+        try (var lockStatement = connection.prepareStatement(
+                "INSERT INTO container_locks (lock_id, owner_uuid, created_at) VALUES (?, ?, ?)");
+             var blockStatement = connection.prepareStatement(
+                     "INSERT INTO container_lock_blocks (world, x, y, z, lock_id) VALUES (?, ?, ?, ?, ?)")) {
+            lockStatement.setString(1, lock.lockId().toString());
+            lockStatement.setString(2, lock.owner().toString());
+            lockStatement.setLong(3, 0L);
+            lockStatement.executeUpdate();
+            for (ContainerLock.BlockKey key : keys) {
+                blockStatement.setString(1, key.world());
+                blockStatement.setInt(2, key.x());
+                blockStatement.setInt(3, key.y());
+                blockStatement.setInt(4, key.z());
+                blockStatement.setString(5, lock.lockId().toString());
+                blockStatement.executeUpdate();
+            }
+        }
+    }
+
+    private int count(String sql) throws Exception {
+        try (Statement statement = connection.createStatement();
+             var resultSet = statement.executeQuery(sql)) {
+            resultSet.next();
+            return resultSet.getInt(1);
         }
     }
 
