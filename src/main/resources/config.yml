@@ -424,6 +424,10 @@ sudo:
     - "reload"
     - "sudo"
 
+lobbyprotect:
+  enabled: true
+  world-id: "lobby"
+  
 world-reset:
   enabled: false
   worlds: []
