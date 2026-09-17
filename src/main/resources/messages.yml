@@ -618,6 +618,7 @@ lock:
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   usage: "&%c使用方法: /lock [auto|trust|untrust <player>]"
+  unlock_usage: "&%c使用方法: /unlock"
   look_at_container: "&%cチェスト、樽、またはシュルカーボックスを見て実行してください。"
   player_not_found: "&%c指定したプレイヤーはオンラインではありません。"
   created: "&%aこのコンテナを保護しました。"

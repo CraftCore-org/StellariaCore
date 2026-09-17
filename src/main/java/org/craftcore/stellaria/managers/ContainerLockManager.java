@@ -172,9 +172,9 @@ public class ContainerLockManager {
     public RemoveResult unlock(ContainerLock lock) {
         if (!locksById.containsKey(lock.lockId())) return RemoveResult.NOT_FOUND;
         boolean persisted = DatabaseManager.transaction(connection -> {
-            execute(connection, "DELETE FROM container_lock_blocks WHERE lock_id = ?", lock.lockId().toString());
-            execute(connection, "DELETE FROM container_lock_members WHERE lock_id = ?", lock.lockId().toString());
-            execute(connection, "DELETE FROM container_locks WHERE lock_id = ?", lock.lockId().toString());
+            executeDelete(connection, "DELETE FROM container_lock_blocks WHERE lock_id = ?", lock.lockId().toString());
+            executeDelete(connection, "DELETE FROM container_lock_members WHERE lock_id = ?", lock.lockId().toString());
+            executeDelete(connection, "DELETE FROM container_locks WHERE lock_id = ?", lock.lockId().toString());
         });
         if (!persisted) return RemoveResult.DATABASE_ERROR;
         removeLockFromCache(lock);
@@ -186,11 +186,11 @@ public class ContainerLockManager {
         if (lock == null) return RemoveResult.NOT_FOUND;
         boolean lastBlock = lock.blocks().size() == 1;
         boolean persisted = DatabaseManager.transaction(connection -> {
-            execute(connection, "DELETE FROM container_lock_blocks WHERE world = ? AND x = ? AND y = ? AND z = ?",
+            executeDelete(connection, "DELETE FROM container_lock_blocks WHERE world = ? AND x = ? AND y = ? AND z = ?",
                     key.world(), key.x(), key.y(), key.z());
             if (lastBlock) {
-                execute(connection, "DELETE FROM container_lock_members WHERE lock_id = ?", lock.lockId().toString());
-                execute(connection, "DELETE FROM container_locks WHERE lock_id = ?", lock.lockId().toString());
+                executeDelete(connection, "DELETE FROM container_lock_members WHERE lock_id = ?", lock.lockId().toString());
+                executeDelete(connection, "DELETE FROM container_locks WHERE lock_id = ?", lock.lockId().toString());
             }
         });
         if (!persisted) return RemoveResult.DATABASE_ERROR;
@@ -234,6 +234,7 @@ public class ContainerLockManager {
 
     public boolean hasBypassEnabled(UUID id) { return bypassEnabled.contains(id); }
     public boolean toggleBypass(UUID id) { return bypassEnabled.remove(id) ? false : bypassEnabled.add(id); }
+    public void removeBypassState(UUID id) { bypassEnabled.remove(id); }
     public boolean isBypassing(Player player) { return player.hasPermission("stellaria.lock.admin") && hasBypassEnabled(player.getUniqueId()); }
 
     public boolean hasAutoLockEnabled(UUID id) {
@@ -265,6 +266,15 @@ public class ContainerLockManager {
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             for (int i = 0; i < values.length; i++) statement.setObject(i + 1, values[i]);
             if (statement.executeUpdate() <= 0) throw new SQLException("更新対象がありません: " + sql);
+        } catch (SQLException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static void executeDelete(Connection connection, String sql, Object... values) {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            for (int i = 0; i < values.length; i++) statement.setObject(i + 1, values[i]);
+            statement.executeUpdate();
         } catch (SQLException e) {
             throw new IllegalStateException(e);
         }
