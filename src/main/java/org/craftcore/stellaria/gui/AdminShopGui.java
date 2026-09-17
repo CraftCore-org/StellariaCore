@@ -63,20 +63,26 @@ public class AdminShopGui extends Gui {
             return;
         }
 
-        EconomyResponse response = plugin.getEconomyManager().withdrawPlayer(player, shopItem.price());
-        if (response.transactionSuccess()) {
-            ItemStack itemStack = new ItemStack(shopItem.material());
-            player.getInventory().addItem(itemStack);
-            Component purchasedMessage = ColorUtil.component(plugin.getConfigManager().getMessage("adminshop.purchased", player)
-                    .replace("%price%", plugin.getEconomyManager().format(shopItem.price())))
-                    .replaceText(builder -> builder.matchLiteral("%item%")
-                            .replacement(Component.translatable(itemStack.getType().translationKey())));
-            player.sendMessage(purchasedMessage);
+        ItemStack itemStack = new ItemStack(shopItem.material());
+        Map<Integer, ItemStack> leftover = player.getInventory().addItem(itemStack.clone());
+        if (!leftover.isEmpty()) {
+            player.sendMessage(plugin.getConfigManager().getMessage("adminshop.inventory_full", player));
             return;
         }
 
-        player.sendMessage(plugin.getConfigManager().getMessage("adminshop.insufficient_funds", player)
-                .replace("%price%", plugin.getEconomyManager().format(shopItem.price())));
+        EconomyResponse response = plugin.getEconomyManager().withdrawPlayer(player, shopItem.price());
+        if (!response.transactionSuccess()) {
+            player.getInventory().removeItem(itemStack);
+            player.sendMessage(plugin.getConfigManager().getMessage("adminshop.insufficient_funds", player)
+                    .replace("%price%", plugin.getEconomyManager().format(shopItem.price())));
+            return;
+        }
+
+        Component purchasedMessage = ColorUtil.component(plugin.getConfigManager().getMessage("adminshop.purchased", player)
+                .replace("%price%", plugin.getEconomyManager().format(shopItem.price())))
+                .replaceText(builder -> builder.matchLiteral("%item%")
+                        .replacement(Component.translatable(itemStack.getType().translationKey())));
+        player.sendMessage(purchasedMessage);
     }
 
     private ItemStack createDisplayItem(ShopItem shopItem) {

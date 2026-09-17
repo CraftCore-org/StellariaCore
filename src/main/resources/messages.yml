@@ -391,6 +391,7 @@ adminshop:
   purchased: "&%a%item% を購入しました。（%price%）"
   insufficient_funds: "&%c残高が足りません。（必要: %price%）"
   disabled: "&%c現在このショップは利用できません。"
+  inventory_full: "&%cインベントリに空きがありません。購入をキャンセルしました。"
 
 land:
   world_disabled: "&%cこのワールドでは土地保護を利用できません。"
