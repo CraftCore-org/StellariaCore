@@ -11,6 +11,7 @@ import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.commands.HomeCommand;
 import org.craftcore.stellaria.commands.WarpCommand;
 import org.craftcore.stellaria.utils.ColorUtil;
+import org.craftcore.stellaria.utils.CustomHeadUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
 import org.craftcore.stellaria.utils.MenuItemUtil;
 
@@ -51,10 +52,15 @@ public class MenuGui extends Gui {
                 continue;
             }
             MenuEntry menuEntry = entry.getValue();
-            ItemStack item = new ItemStack(menuEntry.material());
+            ItemStack item = menuEntry.customHeadId() == null ? null
+                    : CustomHeadUtil.create(plugin, menuEntry.customHeadId());
+            if (item == null) {
+                item = new ItemStack(menuEntry.material());
+            }
             ItemMeta meta = item.getItemMeta();
             meta.displayName(ColorUtil.component(menuEntry.name()));
-            if (meta instanceof SkullMeta skullMeta && menuEntry.material() == Material.PLAYER_HEAD) {
+            if (meta instanceof SkullMeta skullMeta && menuEntry.material() == Material.PLAYER_HEAD
+                    && menuEntry.customHeadId() == null) {
                 skullMeta.setOwningPlayer(viewer);
             }
             item.setItemMeta(meta);
@@ -118,6 +124,7 @@ public class MenuGui extends Gui {
             Object materialValue = itemConfig.get("material");
             Object nameValue = itemConfig.get("name");
             Object actionValue = itemConfig.get("action");
+            Object customHeadValue = itemConfig.get("custom-head");
 
             if (!(slotValue instanceof Number slotNumber)) {
                 plugin.getLogger().warning("menu.items に無効なslot指定があります: " + itemConfig);
@@ -130,13 +137,14 @@ public class MenuGui extends Gui {
             }
             String name = nameValue instanceof String ? (String) nameValue : "";
             String action = actionValue instanceof String ? (String) actionValue : "";
+            String customHeadId = customHeadValue instanceof String id && !id.isBlank() ? id.trim() : null;
 
-            entries.put(slotNumber.intValue(), new MenuEntry(material, name, action));
+            entries.put(slotNumber.intValue(), new MenuEntry(material, name, action, customHeadId));
         }
         return entries;
     }
 
-    private record MenuEntry(Material material, String name, String action) {
+    private record MenuEntry(Material material, String name, String action, String customHeadId) {
     }
 
     private static Component messageComponent(StellariaCore plugin, String path, Player player) {

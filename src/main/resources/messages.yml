@@ -188,6 +188,10 @@ world:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   not_found: "&%c指定されたワールドは見つかりません。"
 
+lobby:
+  must-be-player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  world-not-found: "&%cロビーワールドが見つかりません: &%e%world%"
+
 profile:
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   no_permission_others: "&%c他人のプロフィールを確認する権限がありません。"
@@ -556,6 +560,9 @@ headshop:
   insufficient-funds: "&%c所持金が足りません（必要: &%e%price%&%c）"
   inventory-full: "&%cインベントリに空きがありません（&%e%price% &%cコインを返金しました）"
   shop-empty: "&%7本日の商品はまだ登録されていません"
+  reset-success: "&%a本日のおすすめヘッドを再抽選しました。"
+  reset-empty: "&%cヘッドプールが空のため再抽選できません。"
+  reset-failed: "&%c再抽選の保存に失敗しました。コンソールを確認してください。"
   hint-title: "&%bヒント"
   main-hint:
     - "&%9&l| &%bヒント"
@@ -573,6 +580,7 @@ headshop:
   gui-page: "&%7ページ %page%/%max_page%"
   admin:
     added: "&%aヘッドをプールに登録しました：&%e%item%"
+    save-failed: "&%cヘッドの登録を保存できませんでした。コンソールを確認してください。"
     duplicate: "&%cこのヘッドは既に登録されています"
     invalid_head: "&%c頭アイテムをカーソルに乗せた状態でクリックしてください"
     unnamed-head: "名称未設定の頭"

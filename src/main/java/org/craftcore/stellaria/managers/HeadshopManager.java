@@ -10,6 +10,8 @@ import com.destroystokyo.paper.profile.PlayerProfile;
 import com.destroystokyo.paper.profile.ProfileProperty;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.ColorUtil;
+import org.craftcore.stellaria.utils.HeadshopRotationUtil;
+import org.jetbrains.annotations.Nullable;
 
 import java.nio.charset.StandardCharsets;
 import java.sql.ResultSet;
@@ -18,10 +20,11 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalInt;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 
@@ -45,6 +48,12 @@ public class HeadshopManager {
     }
 
     public record RecentPlayer(UUID uuid, String name) {
+    }
+
+    public enum RotationResetResult {
+        SUCCESS,
+        EMPTY_POOL,
+        DATABASE_ERROR
     }
 
     private final StellariaCore plugin;
@@ -79,7 +88,7 @@ public class HeadshopManager {
         if (DatabaseManager.exists("headshop_rotation", "date = ?", shopDate)) {
             return;
         }
-        generateRotation(shopDate);
+        generateRotation(shopDate, listPool(), Set.of());
     }
 
     private LocalTime resetTime() {
@@ -92,40 +101,58 @@ public class HeadshopManager {
         }
     }
 
-    private void generateRotation(String shopDate) {
-        List<PoolHead> pool = listPool();
+    private boolean generateRotation(String shopDate, List<PoolHead> pool, Set<Integer> currentIds) {
         if (pool.isEmpty()) {
             if (!shopDate.equals(emptyPoolWarnedDate)) {
                 plugin.getLogger().warning("headshop_pool が空のため、本日の日替わりヘッドを生成できません。");
                 emptyPoolWarnedDate = shopDate;
             }
-            return;
+            return false;
         }
 
+        List<PoolHead> selected = HeadshopRotationUtil.select(
+                pool, previousRotationIds(shopDate), currentIds, ROTATION_SIZE, new Random());
+        for (PoolHead head : selected) {
+            if (DatabaseManager.insert("headshop_rotation", Map.of("date", shopDate, "pool_id", head.id())) != 1) {
+                DatabaseManager.execute("DELETE FROM headshop_rotation WHERE date = ?", shopDate);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** 現在のショップ日のローテーションを消し、現在表示中のヘッドを避けて再抽選する。 */
+    public RotationResetResult resetTodayRotation() {
+        String today = shopDate().toString();
+        List<PoolHead> pool = listPool();
+        if (pool.isEmpty()) {
+            return RotationResetResult.EMPTY_POOL;
+        }
+
+        Set<Integer> currentIds = rotationIds(today);
+        if (DatabaseManager.execute("DELETE FROM headshop_rotation WHERE date = ?", today) < 0) {
+            return RotationResetResult.DATABASE_ERROR;
+        }
+        return generateRotation(today, pool, currentIds)
+                ? RotationResetResult.SUCCESS
+                : RotationResetResult.DATABASE_ERROR;
+    }
+
+    private Set<Integer> previousRotationIds(String shopDate) {
         String previousDate = DatabaseManager.queryOne(
                 "SELECT date FROM headshop_rotation WHERE date < ? ORDER BY date DESC LIMIT 1",
                 rs -> rs.getString("date"),
                 shopDate
         );
-        Set<Integer> excluded = new HashSet<>();
-        if (previousDate != null) {
-            excluded.addAll(DatabaseManager.query(
-                    "SELECT pool_id FROM headshop_rotation WHERE date = ?",
-                    rs -> rs.getInt("pool_id"),
-                    previousDate
-            ));
-        }
+        return previousDate == null ? Set.of() : rotationIds(previousDate);
+    }
 
-        List<PoolHead> candidates = new ArrayList<>(pool.stream().filter(head -> !excluded.contains(head.id())).toList());
-        if (candidates.size() < ROTATION_SIZE) {
-            plugin.getLogger().warning("headshop_pool が少ないため、前回分の除外を無視して抽選します。");
-            candidates = new ArrayList<>(pool);
-        }
-
-        Collections.shuffle(candidates);
-        for (PoolHead head : candidates.subList(0, Math.min(ROTATION_SIZE, candidates.size()))) {
-            DatabaseManager.insert("headshop_rotation", Map.of("date", shopDate, "pool_id", head.id()));
-        }
+    private Set<Integer> rotationIds(String shopDate) {
+        return new HashSet<>(DatabaseManager.query(
+                "SELECT pool_id FROM headshop_rotation WHERE date = ?",
+                rs -> rs.getInt("pool_id"),
+                shopDate
+        ));
     }
 
     /** 本日（shopDate）のローテーションに選ばれた頭の一覧（headshop_rotationとheadshop_poolのJOIN）。 */
@@ -151,13 +178,14 @@ public class HeadshopManager {
         return DatabaseManager.exists("headshop_pool", "texture = ?", texture);
     }
 
-    public void addToPool(String displayName, String texture, UUID addedBy) {
-        DatabaseManager.insert("headshop_pool", Map.of(
+    public @Nullable PoolHead addToPool(String displayName, String texture, UUID addedBy) {
+        OptionalInt id = DatabaseManager.insertAndGetId("headshop_pool", Map.of(
                 "display_name", displayName,
                 "texture", texture,
                 "added_by", addedBy.toString(),
                 "added_at", System.currentTimeMillis()
         ));
+        return id.isPresent() ? new PoolHead(id.getAsInt(), displayName, texture) : null;
     }
 
     /** プールから削除する。参照が残らないよう、このheadを含む過去のheadshop_rotation行も一緒に削除する。 */

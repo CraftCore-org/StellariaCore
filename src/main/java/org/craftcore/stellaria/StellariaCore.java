@@ -90,6 +90,7 @@ public class StellariaCore extends JavaPlugin {
         this.configManager = new ConfigManager(this);
         this.configManager.register("config.yml");
         this.configManager.register("messages.yml");
+        this.configManager.register("customhead.yml");
 
         // 1. データベースの接続とテーブル作成
         DatabaseManager.connect(this, "database.db");
@@ -422,6 +423,7 @@ public class StellariaCore extends JavaPlugin {
         WorldCommand worldCommand = new WorldCommand(this);
         getCommand("world").setExecutor(worldCommand);
         getCommand("world").setTabCompleter(worldCommand);
+        getCommand("lobby").setExecutor(new LobbyCommand(this));
 
         ProfileCommand profileCommand = new ProfileCommand(this);
         getCommand("profile").setExecutor(profileCommand);

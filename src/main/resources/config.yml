@@ -67,6 +67,11 @@ world:
   #   world: "生活ワールド"
   #   world_nether: "ネザー"
   display-names: {}
+  # ワールド名ごとにcustomhead.ymlのヘッドIDを指定できる。未指定なら環境別の通常アイコンを使う。
+  gui-custom-heads: {}
+
+lobby:
+  world: "lobby"
 
 home:
   disabled-worlds: []

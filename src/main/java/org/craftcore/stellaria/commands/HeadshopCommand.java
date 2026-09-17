@@ -28,6 +28,19 @@ public class HeadshopCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String @NotNull [] args) {
+        if (args.length == 1 && args[0].equalsIgnoreCase("reset")) {
+            if (!sender.hasPermission("stellaria.headshop.admin")) {
+                sender.sendMessage(plugin.getConfigManager().getMessage("headshop.no_permission", sender instanceof Player player ? player : null));
+                return true;
+            }
+            switch (plugin.getHeadshopManager().resetTodayRotation()) {
+                case SUCCESS -> sender.sendMessage(plugin.getConfigManager().getMessage("headshop.reset-success", sender instanceof Player player ? player : null));
+                case EMPTY_POOL -> sender.sendMessage(plugin.getConfigManager().getMessage("headshop.reset-empty", sender instanceof Player player ? player : null));
+                case DATABASE_ERROR -> sender.sendMessage(plugin.getConfigManager().getMessage("headshop.reset-failed", sender instanceof Player player ? player : null));
+            }
+            return true;
+        }
+
         if (!(sender instanceof Player player)) {
             sender.sendMessage(plugin.getConfigManager().getMessage("headshop.must_be_player", null));
             return true;
@@ -49,7 +62,7 @@ public class HeadshopCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String @NotNull [] args) {
         if (args.length == 1) {
-            return TabCompleteUtil.filterStartsWith(List.of("admin"), args[0]);
+            return TabCompleteUtil.filterStartsWith(List.of("admin", "reset"), args[0]);
         }
         return List.of();
     }
