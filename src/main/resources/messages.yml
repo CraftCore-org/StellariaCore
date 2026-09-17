@@ -645,3 +645,6 @@ world-reset:
   lockout_warning: "&%cこのワールドはまもなくリセットされるため、現在は立ち入りできません。もう一度実行すると10秒以内なら強制的に入場します。"
   next_reset_notice: "&%7このワールドは自動リセット対象です。次回リセット予定: &%f%next_reset%"
   sethome_warning: "&%cこのワールドは自動リセット対象のため、リセット時にこのhome/warpは削除されます。"
+reload:
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  success: "&%a設定を再読み込みしました。"

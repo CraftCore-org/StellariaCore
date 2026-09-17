@@ -1,6 +1,7 @@
 package org.craftcore.stellaria;
 
 import org.bukkit.Bukkit;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.craftcore.stellaria.commands.*;
@@ -46,6 +47,7 @@ import org.craftcore.stellaria.listeners.MenuItemListener;
 
 
 import org.craftcore.stellaria.utils.ConsoleUtil;
+import org.craftcore.stellaria.utils.SchedulerIntervalUtil;
 
 import net.milkbowl.vault.economy.Economy;
 
@@ -84,6 +86,17 @@ public class StellariaCore extends JavaPlugin {
     private LobbyManager lobbyManager;
     private WorldResetManager worldResetManager;
     private List<Feature> features;
+    private ScheduledTask actionBarTask;
+    private ScheduledTask persistentActionBarTask;
+    private ScheduledTask bossBarTask;
+    private ScheduledTask scoreboardTask;
+    private ScheduledTask tabListTask;
+    private ScheduledTask belownameTask;
+    private ScheduledTask nametagTask;
+    private ScheduledTask landBorderTask;
+    private ScheduledTask afkTask;
+    private ScheduledTask kikoriTask;
+    private ScheduledTask mineTask;
 
     @Override
     public void onEnable() {
@@ -218,26 +231,8 @@ public class StellariaCore extends JavaPlugin {
         this.placeholderManager = new PlaceholderManager(this);
 
         this.actionBarManager = new ActionBarManager(this);
-        if (configManager.getBoolean("action-bar.enabled", true)) {
-            long actionBarInterval = configManager.getInt("action-bar.update-interval-ticks", 5);
-            Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> actionBarManager.tick(), actionBarInterval, actionBarInterval);
-
-            if (configManager.getBoolean("action-bar.persistent.enabled", false)) {
-                Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> {
-                    String template = configManager.getString("action-bar.persistent.template", "");
-                    for (org.bukkit.entity.Player online : Bukkit.getOnlinePlayers()) {
-                        String resolved = placeholderManager.resolve(template, online);
-                        actionBarManager.setChannel(online, "persistent", org.craftcore.stellaria.utils.ColorUtil.component(resolved));
-                    }
-                }, actionBarInterval, actionBarInterval);
-            }
-        }
 
         this.bossBarManager = new BossBarManager(this);
-        if (configManager.getBoolean("boss-bar.enabled", true)) {
-            long bossBarInterval = configManager.getInt("boss-bar.update-interval-ticks", 5);
-            Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> bossBarManager.tick(), bossBarInterval, bossBarInterval);
-        }
 
         // 2. EconomyManager のインスタンス化
         this.economyManager = new EconomyManager(this);
@@ -314,36 +309,11 @@ public class StellariaCore extends JavaPlugin {
             configManager.getString("nametag.dot-symbol", "●")
         );
 
-        long scoreboardInterval = configManager.getInt("scoreboard.update-interval-ticks", 20);
-        long tabListInterval = configManager.getInt("tablist.update-interval-ticks", 20);
-        long belownameInterval = configManager.getInt("belowname.update-interval-ticks", 20);
-        long nametagInterval = configManager.getInt("nametag.update-interval-ticks", 20);
-
-        Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> scoreboardManager.tick(), scoreboardInterval, scoreboardInterval);
-        Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> tabListManager.tick(), tabListInterval, tabListInterval);
-        Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> belownameManager.tick(), belownameInterval, belownameInterval);
-        Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> nametagManager.tick(), nametagInterval, nametagInterval);
-
-        if (configManager.getBoolean("afk.enabled", true)) {
-            Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> afkManager.tick(), 200L, 200L);
-        }
-
-        if (configManager.getBoolean("kikori.enabled", true)) {
-            Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> kikoriManager.tick(), 200L, 200L);
-        }
-
-        if (configManager.getBoolean("mine.enabled", true)) {
-            Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> mineManager.tick(), 200L, 200L);
-        }
+        restartConfigScheduledTasks();
 
         if (configManager.getBoolean("discord.bot.enabled",true)){
             discordBotManager.startBot();
         }
-        long landBorderInterval = Math.max(1L, configManager.getInt(
-                "land.border-particle.toggle-interval-ticks", 20));
-        Bukkit.getGlobalRegionScheduler().runAtFixedRate(this,
-                task -> landBorderParticleManager.tick(), landBorderInterval, landBorderInterval);
-
         // 7. チャットフォーマット・メンション
         this.mentionService = new MentionService(this);
         if (configManager.getBoolean("chat.enabled", true)) {
@@ -669,6 +639,64 @@ public class StellariaCore extends JavaPlugin {
         );
         autoBroadcastManager.restart();
         worldResetManager.restart();
+        headshopManager.start();
         rankManager.reload();
+        restartConfigScheduledTasks();
+    }
+
+    private void restartConfigScheduledTasks() {
+        cancelTask(actionBarTask);
+        cancelTask(persistentActionBarTask);
+        cancelTask(bossBarTask);
+        cancelTask(scoreboardTask);
+        cancelTask(tabListTask);
+        cancelTask(belownameTask);
+        cancelTask(nametagTask);
+        cancelTask(landBorderTask);
+        cancelTask(afkTask);
+        cancelTask(kikoriTask);
+        cancelTask(mineTask);
+
+        if (configManager.getBoolean("action-bar.enabled", true)) {
+            long interval = SchedulerIntervalUtil.ticks(configManager.getInt("action-bar.update-interval-ticks", 5));
+            actionBarTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> actionBarManager.tick(), interval, interval);
+            if (configManager.getBoolean("action-bar.persistent.enabled", false)) {
+                persistentActionBarTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> {
+                    String template = configManager.getString("action-bar.persistent.template", "");
+                    for (org.bukkit.entity.Player online : Bukkit.getOnlinePlayers()) {
+                        actionBarManager.setChannel(online, "persistent", org.craftcore.stellaria.utils.ColorUtil.component(placeholderManager.resolve(template, online)));
+                    }
+                }, interval, interval);
+            }
+        }
+        if (configManager.getBoolean("boss-bar.enabled", true)) {
+            long interval = SchedulerIntervalUtil.ticks(configManager.getInt("boss-bar.update-interval-ticks", 5));
+            bossBarTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> bossBarManager.tick(), interval, interval);
+        }
+        long scoreboardInterval = SchedulerIntervalUtil.ticks(configManager.getInt("scoreboard.update-interval-ticks", 20));
+        long tabListInterval = SchedulerIntervalUtil.ticks(configManager.getInt("tablist.update-interval-ticks", 20));
+        long belownameInterval = SchedulerIntervalUtil.ticks(configManager.getInt("belowname.update-interval-ticks", 20));
+        long nametagInterval = SchedulerIntervalUtil.ticks(configManager.getInt("nametag.update-interval-ticks", 20));
+        scoreboardTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> scoreboardManager.tick(), scoreboardInterval, scoreboardInterval);
+        tabListTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> tabListManager.tick(), tabListInterval, tabListInterval);
+        belownameTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> belownameManager.tick(), belownameInterval, belownameInterval);
+        nametagTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> nametagManager.tick(), nametagInterval, nametagInterval);
+        long landInterval = SchedulerIntervalUtil.ticks(configManager.getInt("land.border-particle.toggle-interval-ticks", 20));
+        landBorderTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> landBorderParticleManager.tick(), landInterval, landInterval);
+        if (configManager.getBoolean("afk.enabled", true)) {
+            afkTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> afkManager.tick(), 200L, 200L);
+        }
+        if (configManager.getBoolean("kikori.enabled", true)) {
+            kikoriTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> kikoriManager.tick(), 200L, 200L);
+        }
+        if (configManager.getBoolean("mine.enabled", true)) {
+            mineTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> mineManager.tick(), 200L, 200L);
+        }
+    }
+
+    private static void cancelTask(ScheduledTask task) {
+        if (task != null && !task.isCancelled()) {
+            task.cancel();
+        }
     }
 }

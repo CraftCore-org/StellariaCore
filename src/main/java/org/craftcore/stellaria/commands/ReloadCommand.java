@@ -20,13 +20,13 @@ public class ReloadCommand implements CommandExecutor {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String @NotNull [] args) {
         if (!sender.hasPermission("stellaria.reload")) {
-            sender.sendMessage("§c§l>>> §7No Permission!");
+            sender.sendMessage(plugin.getConfigManager().getMessage("reload.no_permission", null));
             return true;
         }
 
         plugin.getConfigManager().reload();
         plugin.reloadFeatureManagers();
-        sender.sendMessage("§a§l>>> §7Config Reloaded!");
+        sender.sendMessage(plugin.getConfigManager().getMessage("reload.success", null));
         return true;
     }
 }

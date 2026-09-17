@@ -47,6 +47,7 @@ public class NametagManager {
         Collection<? extends Player> online = Bukkit.getOnlinePlayers();
         for (Player viewer : online) {
             Scoreboard board = BoardUtil.ensurePersonalBoard(viewer);
+            if (board == null) continue;
             for (Player target : online) {
                 applyNametag(board, target);
             }

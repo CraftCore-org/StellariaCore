@@ -111,7 +111,7 @@ public class HomeCommand implements CommandExecutor, TabCompleter {
         TeleportSafetyUtil.Result result = TeleportSafetyUtil.attempt(player, destination, PENDING_CONFIRM);
         if (result == TeleportSafetyUtil.Result.TELEPORTED) {
             playTeleportEffect(destination);
-        } else {
+        } else if (result == TeleportSafetyUtil.Result.WARNED) {
             player.sendMessage(plugin.getConfigManager().getMessage("home.unsafe_warning", player));
         }
     }
@@ -123,7 +123,7 @@ public class HomeCommand implements CommandExecutor, TabCompleter {
     private void playTeleportEffect(Location location) {
         if (!plugin.getConfigManager().getBoolean("home.teleport-effect.enabled", true)) return;
 
-        Particle particle = Particle.valueOf(plugin.getConfigManager().getString("home.teleport-effect.particle", "DUST"));
+        Particle particle = ParticleUtil.resolveParticle(plugin.getConfigManager().getString("home.teleport-effect.particle", "DUST"), plugin.getLogger()::warning);
         double radius = plugin.getConfigManager().getDouble("home.teleport-effect.radius", 1.0);
         int points = plugin.getConfigManager().getInt("home.teleport-effect.points", 30);
 
@@ -134,6 +134,10 @@ public class HomeCommand implements CommandExecutor, TabCompleter {
         } else {
             ParticleUtil.spawnCircle(location, radius, points, particle);
         }
+    }
+
+    public static void clearPendingConfirm(UUID uuid) {
+        PENDING_CONFIRM.remove(uuid);
     }
 
     private void handleDelHome(Player player, String[] args) {

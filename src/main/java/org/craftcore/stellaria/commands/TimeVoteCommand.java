@@ -16,6 +16,7 @@ import org.craftcore.stellaria.gui.TimeVoteGui;
 import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
 import org.craftcore.stellaria.utils.WorldBlacklistUtil;
+import org.craftcore.stellaria.utils.SchedulerIntervalUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -60,7 +61,8 @@ public class TimeVoteCommand implements CommandExecutor, TabCompleter {
             player1.sendMessage(message);
             player1.sendMessage(voteMessage);
         }
-        getServer().getScheduler().runTaskLater(plugin, this::endtimeVote, plugin.getConfigManager().getInt("timevote.votetime", 15) * 20L);
+        getServer().getScheduler().runTaskLater(plugin, this::endtimeVote,
+                SchedulerIntervalUtil.secondsToTicks(plugin.getConfigManager().getInt("timevote.votetime", 15)));
     }
 
     private void endtimeVote(){
@@ -143,6 +145,10 @@ public class TimeVoteCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage(plugin.getConfigManager().getMessage("timevote.err_notvoting",player));
                 return false;
             }
+            if (!player.getWorld().equals(votingWorld)) {
+                player.sendMessage(plugin.getConfigManager().getMessage("timevote.world_disabled", player));
+                return false;
+            }
             if (votedPlayers.contains(player)){
                 player.sendMessage(plugin.getConfigManager().getMessage("timevote.err_voted",player));
                 return false;
@@ -154,6 +160,10 @@ public class TimeVoteCommand implements CommandExecutor, TabCompleter {
         if (command.getName().equalsIgnoreCase("tvdeny")){
             if (!isVoting){
                 player.sendMessage(plugin.getConfigManager().getMessage("timevote.err_notvoting",player));
+                return false;
+            }
+            if (!player.getWorld().equals(votingWorld)) {
+                player.sendMessage(plugin.getConfigManager().getMessage("timevote.world_disabled", player));
                 return false;
             }
             if (votedPlayers.contains(player)){

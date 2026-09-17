@@ -111,7 +111,7 @@ public class WarpCommand implements CommandExecutor, TabCompleter {
         TeleportSafetyUtil.Result result = TeleportSafetyUtil.attempt(player, destination, PENDING_CONFIRM);
         if (result == TeleportSafetyUtil.Result.TELEPORTED) {
             playTeleportEffect(destination);
-        } else {
+        } else if (result == TeleportSafetyUtil.Result.WARNED) {
             player.sendMessage(plugin.getConfigManager().getMessage("warp.unsafe_warning", player));
         }
     }
@@ -123,7 +123,7 @@ public class WarpCommand implements CommandExecutor, TabCompleter {
     private void playTeleportEffect(Location location) {
         if (!plugin.getConfigManager().getBoolean("warp.teleport-effect.enabled", true)) return;
 
-        Particle particle = Particle.valueOf(plugin.getConfigManager().getString("warp.teleport-effect.particle", "DUST"));
+        Particle particle = ParticleUtil.resolveParticle(plugin.getConfigManager().getString("warp.teleport-effect.particle", "DUST"), plugin.getLogger()::warning);
         double radius = plugin.getConfigManager().getDouble("warp.teleport-effect.radius", 1.0);
         int points = plugin.getConfigManager().getInt("warp.teleport-effect.points", 30);
 
@@ -134,6 +134,10 @@ public class WarpCommand implements CommandExecutor, TabCompleter {
         } else {
             ParticleUtil.spawnCircle(location, radius, points, particle);
         }
+    }
+
+    public static void clearPendingConfirm(UUID uuid) {
+        PENDING_CONFIRM.remove(uuid);
     }
 
     private void handleDelWarp(Player player, String[] args) {
