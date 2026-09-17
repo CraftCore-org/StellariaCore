@@ -10,6 +10,12 @@ previous spawn position.
 Add opt-in synchronization for selected worlds so their visible sun position
 matches Japan Standard Time (JST) continuously.
 
+The two features are functionally independent. A world may use either feature,
+both features, or neither: `world-reset` never reads time-sync configuration,
+and `world-time-sync` never reads reset configuration or invokes Multiverse.
+They share only the plugin lifecycle that starts and restarts their separate
+scheduled tasks.
+
 ## Scope
 
 ### Multiverse reset
