@@ -12,10 +12,13 @@ import java.util.List;
 import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class EconomyManager extends AbstractEconomy {
 
     private final StellariaCore plugin;
+    private static final long BALANCE_CACHE_TTL_MILLIS = 2000;
+    private final Map<UUID, long[]> balanceCache = new ConcurrentHashMap<>(); // [coins, cachedAtMillis]
 
     public EconomyManager(StellariaCore plugin) {
         this.plugin = plugin;
@@ -73,13 +76,20 @@ public class EconomyManager extends AbstractEconomy {
     @Override
     public double getBalance(OfflinePlayer player) {
         if (player == null) return 0;
-        String uuid = player.getUniqueId().toString();
+        UUID uuid = player.getUniqueId();
+        long now = System.currentTimeMillis();
+        long[] cached = balanceCache.get(uuid);
+        if (cached != null && now - cached[1] < BALANCE_CACHE_TTL_MILLIS) {
+            return cached[0];
+        }
         Long coins = DatabaseManager.queryOne(
             "SELECT coins FROM players WHERE uuid = ?",
             rs -> rs.getLong("coins"),
-            uuid
+            uuid.toString()
         );
-        return (coins != null) ? coins : 0;
+        long value = (coins != null) ? coins : 0;
+        balanceCache.put(uuid, new long[]{value, now});
+        return value;
     }
 
     @Override
@@ -135,6 +145,7 @@ public class EconomyManager extends AbstractEconomy {
             "UPDATE players SET coins = coins - ? WHERE uuid = ? AND coins >= ?",
             amountLong, player.getUniqueId().toString(), amountLong
         );
+        balanceCache.remove(player.getUniqueId());
         if (affected <= 0) {
             return new EconomyResponse(0, getBalance(player), EconomyResponse.ResponseType.FAILURE, "残高が足りません");
         }
@@ -175,6 +186,7 @@ public class EconomyManager extends AbstractEconomy {
             "UPDATE players SET coins = coins + ? WHERE uuid = ?",
             amountLong, player.getUniqueId().toString()
         );
+        balanceCache.remove(player.getUniqueId());
 
         return new EconomyResponse(amount, getBalance(player), EconomyResponse.ResponseType.SUCCESS, null);
     }
@@ -223,6 +235,7 @@ public class EconomyManager extends AbstractEconomy {
         }
         long newBalance = (long) amount;
         DatabaseManager.updateAsync("players", java.util.Map.of("coins", newBalance), "uuid = ?", player.getUniqueId().toString());
+        balanceCache.remove(player.getUniqueId());
         return true;
     }
 
@@ -259,10 +272,12 @@ public class EconomyManager extends AbstractEconomy {
                 "UPDATE players SET coins = coins - ? WHERE uuid = ? AND coins >= ?",
                 amountLong, from.getUniqueId().toString(), amountLong
             );
+            balanceCache.remove(from.getUniqueId());
             if (affected <= 0) {
                 throw new IllegalStateException("残高不足のため送金を中止");
             }
             DatabaseManager.execute("UPDATE players SET coins = coins + ? WHERE uuid = ?", amountLong, to.getUniqueId().toString());
+            balanceCache.remove(to.getUniqueId());
         });
     }
 

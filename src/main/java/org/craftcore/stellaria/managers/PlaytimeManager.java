@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 最終ログアウト日時・累計プレイ時間を player_stats テーブルに記録する。
@@ -21,6 +22,8 @@ public class PlaytimeManager {
 
     private final StellariaCore plugin;
     private final Map<UUID, Long> sessionStart = new HashMap<>();
+    private static final long PLAYTIME_CACHE_TTL_MILLIS = 5000;
+    private final Map<UUID, long[]> storedPlaytimeCache = new ConcurrentHashMap<>(); // [seconds, cachedAtMillis]
 
     public PlaytimeManager(StellariaCore plugin) {
         this.plugin = plugin;
@@ -51,6 +54,7 @@ public class PlaytimeManager {
             "UPDATE player_stats SET playtime_seconds = ?, last_logout = ? WHERE uuid = ?",
             newPlaytime, System.currentTimeMillis(), uuid.toString()
         );
+        storedPlaytimeCache.remove(uuid);
     }
 
     /**
@@ -74,6 +78,7 @@ public class PlaytimeManager {
                 Map.of("playtime_seconds", newPlaytime, "last_logout", System.currentTimeMillis()),
                 "uuid = ?", uuid.toString()
             );
+            storedPlaytimeCache.remove(uuid);
         }
     }
 
@@ -98,12 +103,19 @@ public class PlaytimeManager {
     }
 
     private long getStoredPlaytimeSeconds(UUID uuid) {
+        long now = System.currentTimeMillis();
+        long[] cached = storedPlaytimeCache.get(uuid);
+        if (cached != null && now - cached[1] < PLAYTIME_CACHE_TTL_MILLIS) {
+            return cached[0];
+        }
         Long value = DatabaseManager.queryOne(
             "SELECT playtime_seconds FROM player_stats WHERE uuid = ?",
             rs -> rs.getLong("playtime_seconds"),
             uuid.toString()
         );
-        return value != null ? value : 0;
+        long seconds = value != null ? value : 0;
+        storedPlaytimeCache.put(uuid, new long[]{seconds, now});
+        return seconds;
     }
 
     /** /ranking playtime の1行分。 */
