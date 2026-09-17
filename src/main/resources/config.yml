@@ -10,15 +10,20 @@ discord:
     enabled: true
     token: ""
     admin-guild-id: ""
+    admin-roles: [""] # /discordconfig を実行できるDiscordロールID（複数可）
     server-guild-id: ""
     serverchat-channel-id: [""]
     serverconsole-channel-id: [""]
     serverstartlog-format: "✅ サーバーが起動しました。"
     serverstoplog-format: "❌ サーバーが停止しました。"
     serverchat-format: "%player%: %message%"
+    player-name-format: "[%rank_tag%] %player%"
+    status-format: "%online%/%max_online% online"
     discordchat-format: "&%7[&%9Discord&%7] &%7%username%&%8: &r%message%"
     joinlog-format: "%player%が参加しました。"
     quitlog-format: "%player%が退出しました。"
+    admin:
+      no-permission: "権限がありません。"
 
 map:
   link: "https://map.craftcore.org" #
