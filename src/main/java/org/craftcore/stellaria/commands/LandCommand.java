@@ -311,9 +311,10 @@ public class LandCommand implements CommandExecutor, TabCompleter {
     }
 
     private int parseBorderRadius(Player player, String value) {
+        int maxRadius = plugin.getConfigManager().getInt("land.border-particle.max-radius", 64);
         try {
             int radius = Integer.parseInt(value);
-            if (radius >= 1) {
+            if (radius >= 1 && radius <= maxRadius) {
                 return radius;
             }
         } catch (NumberFormatException ignored) {

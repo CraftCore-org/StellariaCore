@@ -292,6 +292,7 @@ warp:
   gui_page: "&%7ページ %page%/%max_page%"
 
 weathervote:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   world_disabled: "&%cこのワールドでは天気投票を利用できません。"
   gui:
     title: "&%9&l天気投票"
@@ -317,6 +318,7 @@ weathervote:
   err_world: "&%cこのワールドは天気を変更できません。"
 
 timevote:
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   world_disabled: "&%cこのワールドでは時間投票を利用できません。"
   gui:
     title: "&%9&l時間投票"
@@ -395,6 +397,7 @@ adminshop:
   purchased: "&%a%item% を購入しました。（%price%）"
   insufficient_funds: "&%c残高が足りません。（必要: %price%）"
   disabled: "&%c現在このショップは利用できません。"
+  inventory_full: "&%cインベントリに空きがありません。購入をキャンセルしました。"
 
 land:
   world_disabled: "&%cこのワールドでは土地保護を利用できません。"

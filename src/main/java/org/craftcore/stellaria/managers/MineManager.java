@@ -226,6 +226,7 @@ public class MineManager {
             Block current = frontier.poll();
             if (!current.equals(origin) && isArtificialOre(current)) {
                 if (passAvailable) {
+                    passAvailable = false;
                     passUsed = true;
                 } else {
                     aborted = true;

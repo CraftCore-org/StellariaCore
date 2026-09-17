@@ -89,7 +89,7 @@ public class LandManager {
         }
     }
 
-    public enum ClaimResult { SUCCESS, ALREADY_CLAIMED, UNCLAIMABLE, LIMIT_REACHED, INSUFFICIENT_FUNDS, WORLD_DISABLED }
+    public enum ClaimResult { SUCCESS, ALREADY_CLAIMED, UNCLAIMABLE, LIMIT_REACHED, INSUFFICIENT_FUNDS, WORLD_DISABLED, DATABASE_ERROR }
 
     public enum ActionResult { SUCCESS, NOT_CLAIMED, NOT_OWNER, SELF_TARGET }
 
@@ -230,17 +230,25 @@ public class LandManager {
         }
 
         double cost = plugin.getConfigManager().getDouble("land.cost-per-chunk", 500);
-        EconomyManager economy = plugin.getEconomyManager();
-        if (cost > 0 && !economy.has(player, cost)) {
-            return ClaimOutcome.of(ClaimResult.INSUFFICIENT_FUNDS);
-        }
         if (cost > 0) {
-            economy.withdrawPlayer(player, cost);
+            net.milkbowl.vault.economy.EconomyResponse response = plugin.getEconomyManager().withdrawPlayer(player, cost);
+            if (!response.transactionSuccess()) {
+                return ClaimOutcome.of(ClaimResult.INSUFFICIENT_FUNDS);
+            }
         }
 
         AreaResolution resolution = resolveAreaForNewClaim(key, owner);
+        if (resolution == null) {
+            // land_territories へのINSERTに失敗（新規エリア作成時のみ発生しうる）。
+            // 引き落とし済みのコストを返金し、キャッシュには一切触れずに失敗を返す。
+            if (cost > 0) {
+                plugin.getEconomyManager().depositPlayer(player, cost);
+            }
+            plugin.getLogger().severe("land_territories へのINSERTに失敗したためclaimを中止しました: " + key);
+            return ClaimOutcome.of(ClaimResult.DATABASE_ERROR);
+        }
 
-        DatabaseManager.insert("land_claims", Map.of(
+        int inserted = DatabaseManager.insert("land_claims", Map.of(
                 "world", key.world(),
                 "chunk_x", key.chunkX(),
                 "chunk_z", key.chunkZ(),
@@ -248,6 +256,13 @@ public class LandManager {
                 "territory_id", resolution.areaId(),
                 "claimed_at", System.currentTimeMillis()
         ));
+        if (inserted <= 0) {
+            if (cost > 0) {
+                plugin.getEconomyManager().depositPlayer(player, cost);
+            }
+            plugin.getLogger().severe("land_claims へのINSERTに失敗したためclaimを中止しました: " + key);
+            return ClaimOutcome.of(ClaimResult.DATABASE_ERROR);
+        }
         claimsByChunk.put(key, Claim.newClaim(owner, resolution.areaId()));
         claimsVersion++;
 
@@ -276,10 +291,13 @@ public class LandManager {
 
         if (adjacentAreas.isEmpty()) {
             String areaId = UUID.randomUUID().toString();
-            areas.put(areaId, new Area(false, false, false, false));
-            DatabaseManager.insert("land_territories", Map.of(
+            int inserted = DatabaseManager.insert("land_territories", Map.of(
                     "territory_id", areaId, "pvp_enabled", 0,
                     "explosions_allowed", 0, "doors_open", 0, "chests_open", 0));
+            if (inserted <= 0) {
+                return null;
+            }
+            areas.put(areaId, new Area(false, false, false, false));
             return new AreaResolution(areaId, false);
         }
 
@@ -295,28 +313,48 @@ public class LandManager {
     /** mergedIdの全claim・信頼リストをcanonicalIdへ付け替え、mergedId側のエリアは削除する。 */
     private void mergeAreas(String mergedId, String canonicalId) {
         Area canonical = areas.get(canonicalId);
-        Area merged = areas.remove(mergedId);
+        Area merged = areas.get(mergedId);
+
+        boolean success = DatabaseManager.transaction(conn -> {
+            int updated = DatabaseManager.execute("UPDATE land_claims SET territory_id = ? WHERE territory_id = ?", canonicalId, mergedId);
+            if (updated < 0) {
+                throw new IllegalStateException("land_claims の territory_id 更新に失敗");
+            }
+            if (merged != null) {
+                for (UUID trustedUuid : merged.trusted) {
+                    int inserted = DatabaseManager.execute(
+                            "INSERT OR IGNORE INTO land_trusts (territory_id, trusted_uuid) VALUES (?, ?)",
+                            canonicalId, trustedUuid.toString());
+                    if (inserted < 0) {
+                        throw new IllegalStateException("land_trusts への付け替えINSERTに失敗");
+                    }
+                }
+            }
+            int deletedTrusts = DatabaseManager.execute("DELETE FROM land_trusts WHERE territory_id = ?", mergedId);
+            if (deletedTrusts < 0) {
+                throw new IllegalStateException("land_trusts の削除に失敗");
+            }
+            int deletedTerritory = DatabaseManager.execute("DELETE FROM land_territories WHERE territory_id = ?", mergedId);
+            if (deletedTerritory < 0) {
+                throw new IllegalStateException("land_territories の削除に失敗");
+            }
+        });
+
+        if (!success) {
+            plugin.getLogger().severe("エリアのマージに失敗しました（DBはロールバック済み、キャッシュは変更していません）: " + mergedId + " -> " + canonicalId);
+            return;
+        }
+
+        areas.remove(mergedId);
         if (merged != null) {
             canonical.trusted.addAll(merged.trusted);
         }
-
         for (Map.Entry<ChunkKey, Claim> entry : claimsByChunk.entrySet()) {
             Claim claim = entry.getValue();
             if (claim.areaId().equals(mergedId)) {
                 entry.setValue(claim.withAreaId(canonicalId));
             }
         }
-
-        DatabaseManager.execute("UPDATE land_claims SET territory_id = ? WHERE territory_id = ?", canonicalId, mergedId);
-        if (merged != null) {
-            for (UUID trustedUuid : merged.trusted) {
-                DatabaseManager.execute(
-                        "INSERT OR IGNORE INTO land_trusts (territory_id, trusted_uuid) VALUES (?, ?)",
-                        canonicalId, trustedUuid.toString());
-            }
-        }
-        DatabaseManager.execute("DELETE FROM land_trusts WHERE territory_id = ?", mergedId);
-        DatabaseManager.execute("DELETE FROM land_territories WHERE territory_id = ?", mergedId);
     }
 
     /**
@@ -334,10 +372,18 @@ public class LandManager {
             return ActionResult.NOT_OWNER;
         }
 
+        int affected = DatabaseManager.execute("DELETE FROM land_claims WHERE world = ? AND chunk_x = ? AND chunk_z = ?",
+                key.world(), key.chunkX(), key.chunkZ());
+        if (affected <= 0) {
+            // キャッシュ上はclaim済みだったがDB側に該当行が無かった（矛盾した状態）。
+            // 証明済みで誤りのキャッシュエントリなので、放置せずここで取り除く。
+            claimsByChunk.remove(key);
+            claimsVersion++;
+            return ActionResult.NOT_CLAIMED;
+        }
+
         claimsByChunk.remove(key);
         claimsVersion++;
-        DatabaseManager.execute("DELETE FROM land_claims WHERE world = ? AND chunk_x = ? AND chunk_z = ?",
-                key.world(), key.chunkX(), key.chunkZ());
 
         if (plugin.getConfigManager().getBoolean("land.refund-on-unclaim", true)) {
             double cost = plugin.getConfigManager().getDouble("land.cost-per-chunk", 500);
@@ -574,11 +620,14 @@ public class LandManager {
         if (area == null) {
             return ActionResult.NOT_CLAIMED;
         }
-        if (area.trusted.add(target)) {
-            DatabaseManager.insert("land_trusts", Map.of(
+        if (!area.trusted.contains(target)) {
+            int inserted = DatabaseManager.insert("land_trusts", Map.of(
                     "territory_id", claim.areaId(),
                     "trusted_uuid", target.toString()
             ));
+            if (inserted > 0) {
+                area.trusted.add(target);
+            }
         }
         return ActionResult.SUCCESS;
     }
@@ -594,9 +643,12 @@ public class LandManager {
         if (area == null) {
             return ActionResult.NOT_CLAIMED;
         }
-        if (area.trusted.remove(target)) {
-            DatabaseManager.execute("DELETE FROM land_trusts WHERE territory_id = ? AND trusted_uuid = ?",
+        if (area.trusted.contains(target)) {
+            int deleted = DatabaseManager.execute("DELETE FROM land_trusts WHERE territory_id = ? AND trusted_uuid = ?",
                     claim.areaId(), target.toString());
+            if (deleted > 0) {
+                area.trusted.remove(target);
+            }
         }
         return ActionResult.SUCCESS;
     }
@@ -612,14 +664,18 @@ public class LandManager {
         if (area == null) {
             return ActionResult.NOT_CLAIMED;
         }
+        int affected = DatabaseManager.update("land_territories", Map.of(dbColumnFor(flag), enabled ? 1 : 0),
+                "territory_id = ?", claim.areaId());
+        if (affected <= 0) {
+            plugin.getLogger().severe("land_territories の更新に失敗したためキャッシュは変更していません: " + claim.areaId());
+            return ActionResult.SUCCESS;
+        }
         switch (flag) {
             case PVP -> area.pvpEnabled = enabled;
             case EXPLOSIONS -> area.explosionsAllowed = enabled;
             case DOORS -> area.doorsOpenToOthers = enabled;
             case CHESTS -> area.chestsOpenToOthers = enabled;
         }
-        DatabaseManager.update("land_territories", Map.of(dbColumnFor(flag), enabled ? 1 : 0),
-                "territory_id = ?", claim.areaId());
         return ActionResult.SUCCESS;
     }
 
@@ -644,13 +700,16 @@ public class LandManager {
         if (error != null) {
             return error;
         }
-        claimsByChunk.put(key, claim.withOverride(flag, value));
-
         // Map.of(...)はnull値を許容しないため、個別設定の解除（value=null）ではHashMapを使う。
         Map<String, Object> values = new HashMap<>();
         values.put(dbColumnForOverride(flag), value == null ? null : (value ? 1 : 0));
-        DatabaseManager.update("land_claims", values,
+        int affected = DatabaseManager.update("land_claims", values,
                 "world = ? AND chunk_x = ? AND chunk_z = ?", key.world(), key.chunkX(), key.chunkZ());
+        if (affected <= 0) {
+            plugin.getLogger().severe("land_claims の個別設定更新に失敗したためキャッシュは変更していません: " + key);
+            return ActionResult.SUCCESS;
+        }
+        claimsByChunk.put(key, claim.withOverride(flag, value));
         return ActionResult.SUCCESS;
     }
 

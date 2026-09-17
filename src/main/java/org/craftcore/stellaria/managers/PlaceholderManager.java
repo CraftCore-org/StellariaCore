@@ -81,11 +81,17 @@ public class PlaceholderManager {
         int x = player.getLocation().getBlockX();
         int y = player.getLocation().getBlockY();
         int z = player.getLocation().getBlockZ();
-        double balance = plugin.getEconomyManager().getBalance(player);
-        String money = plugin.getEconomyManager().format(balance);
-        if (template.contains("%money%") && shouldHideBalance(player, viewer)) {
-            money = plugin.getConfigManager().getMessage("profile.balance_hidden", player);
+
+        String money = "";
+        if (template.contains("%money%")) {
+            money = shouldHideBalance(player, viewer)
+                    ? plugin.getConfigManager().getMessage("profile.balance_hidden", player)
+                    : plugin.getEconomyManager().format(plugin.getEconomyManager().getBalance(player));
         }
+        String playtime = template.contains("%playtime%")
+                ? DurationParser.formatDuration(plugin.getPlaytimeManager().getPlaytimeSeconds(player.getUniqueId()))
+                : "";
+
         String worldDisplayName = WorldNameUtil.displayName(plugin.getConfigManager(), player.getWorld());
 
         return template
@@ -103,7 +109,7 @@ public class PlaceholderManager {
                 .replace("%date%", LocalDateTime.now().format(DATE_FORMAT))
                 .replace("%time%", LocalDateTime.now().format(TIME_FORMAT))
                 .replace("%money%", money)
-                .replace("%playtime%", DurationParser.formatDuration(plugin.getPlaytimeManager().getPlaytimeSeconds(player.getUniqueId())))
+                .replace("%playtime%", playtime)
                 // マイクラのハート表示（10ハート=満タン）に合わせて、生のHP(0〜20)を2で割った値にする
                 .replace("%health%", trimTrailingZero(player.getHealth() / 2.0))
                 .replace("%max_health%", trimTrailingZero(player.getMaxHealth() / 2.0));

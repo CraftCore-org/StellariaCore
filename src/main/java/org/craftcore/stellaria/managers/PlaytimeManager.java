@@ -1,5 +1,6 @@
 package org.craftcore.stellaria.managers;
 
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 
@@ -7,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 最終ログアウト日時・累計プレイ時間を player_stats テーブルに記録する。
@@ -20,6 +22,8 @@ public class PlaytimeManager {
 
     private final StellariaCore plugin;
     private final Map<UUID, Long> sessionStart = new HashMap<>();
+    private static final long PLAYTIME_CACHE_TTL_MILLIS = 5000;
+    private final Map<UUID, long[]> storedPlaytimeCache = new ConcurrentHashMap<>(); // [seconds, cachedAtMillis]
 
     public PlaytimeManager(StellariaCore plugin) {
         this.plugin = plugin;
@@ -50,6 +54,32 @@ public class PlaytimeManager {
             "UPDATE player_stats SET playtime_seconds = ?, last_logout = ? WHERE uuid = ?",
             newPlaytime, System.currentTimeMillis(), uuid.toString()
         );
+        storedPlaytimeCache.remove(uuid);
+    }
+
+    /**
+     * シャットダウン時に呼ぶ。オンライン中の全プレイヤーのセッションを同期的に確定保存する
+     * （DB接続が閉じられる前に完了させる必要があるため、onQuitと違い非同期にしない）。
+     */
+    public void flushAll() {
+        for (UUID uuid : List.copyOf(sessionStart.keySet())) {
+            Player player = Bukkit.getPlayer(uuid);
+            if (player == null) {
+                continue;
+            }
+            Long start = sessionStart.remove(uuid);
+            if (start == null) {
+                continue;
+            }
+            long elapsedSeconds = Math.max(0, (System.currentTimeMillis() - start) / 1000L);
+            long newPlaytime = getStoredPlaytimeSeconds(uuid) + elapsedSeconds;
+            DatabaseManager.update(
+                "player_stats",
+                Map.of("playtime_seconds", newPlaytime, "last_logout", System.currentTimeMillis()),
+                "uuid = ?", uuid.toString()
+            );
+            storedPlaytimeCache.remove(uuid);
+        }
     }
 
     /** 累計プレイ時間（秒）。オンライン中なら現在のセッション経過分も加算して返す。 */
@@ -73,12 +103,19 @@ public class PlaytimeManager {
     }
 
     private long getStoredPlaytimeSeconds(UUID uuid) {
+        long now = System.currentTimeMillis();
+        long[] cached = storedPlaytimeCache.get(uuid);
+        if (cached != null && now - cached[1] < PLAYTIME_CACHE_TTL_MILLIS) {
+            return cached[0];
+        }
         Long value = DatabaseManager.queryOne(
             "SELECT playtime_seconds FROM player_stats WHERE uuid = ?",
             rs -> rs.getLong("playtime_seconds"),
             uuid.toString()
         );
-        return value != null ? value : 0;
+        long seconds = value != null ? value : 0;
+        storedPlaytimeCache.put(uuid, new long[]{seconds, now});
+        return seconds;
     }
 
     /** /ranking playtime の1行分。 */

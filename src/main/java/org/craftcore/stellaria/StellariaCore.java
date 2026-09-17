@@ -215,6 +215,8 @@ public class StellariaCore extends JavaPlugin {
         muteManager.loadAll();
         this.privateMessageManager = new PrivateMessageManager(this);
 
+        this.placeholderManager = new PlaceholderManager(this);
+
         this.actionBarManager = new ActionBarManager(this);
         if (configManager.getBoolean("action-bar.enabled", true)) {
             long actionBarInterval = configManager.getInt("action-bar.update-interval-ticks", 5);
@@ -287,8 +289,6 @@ public class StellariaCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new WorldResetListener(this), this);
 
         // 6. Scoreboard/Tablist/Belowname のインスタンス化とtick開始
-        this.placeholderManager = new PlaceholderManager(this);
-
         this.scoreboardManager = new ScoreboardManager(
             placeholderManager,
             configManager.getString("scoreboard.title", ""),
@@ -525,6 +525,7 @@ public class StellariaCore extends JavaPlugin {
         if (configManager.getBoolean("discord.bot.enabled",true)){
             discordBotManager.stop();
         }
+        playtimeManager.flushAll();
         // プラグイン停止時は Vault から自動解除されるため、DB切断だけでOK
         DatabaseManager.disconnect();
         ConsoleUtil.printDisabledMessage();

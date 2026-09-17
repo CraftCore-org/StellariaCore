@@ -12,10 +12,13 @@ import java.util.List;
 import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class EconomyManager extends AbstractEconomy {
 
     private final StellariaCore plugin;
+    private static final long BALANCE_CACHE_TTL_MILLIS = 2000;
+    private final Map<UUID, long[]> balanceCache = new ConcurrentHashMap<>(); // [coins, cachedAtMillis]
 
     public EconomyManager(StellariaCore plugin) {
         this.plugin = plugin;
@@ -73,13 +76,20 @@ public class EconomyManager extends AbstractEconomy {
     @Override
     public double getBalance(OfflinePlayer player) {
         if (player == null) return 0;
-        String uuid = player.getUniqueId().toString();
+        UUID uuid = player.getUniqueId();
+        long now = System.currentTimeMillis();
+        long[] cached = balanceCache.get(uuid);
+        if (cached != null && now - cached[1] < BALANCE_CACHE_TTL_MILLIS) {
+            return cached[0];
+        }
         Long coins = DatabaseManager.queryOne(
             "SELECT coins FROM players WHERE uuid = ?",
             rs -> rs.getLong("coins"),
-            uuid
+            uuid.toString()
         );
-        return (coins != null) ? coins : 0;
+        long value = (coins != null) ? coins : 0;
+        balanceCache.put(uuid, new long[]{value, now});
+        return value;
     }
 
     @Override
@@ -130,15 +140,17 @@ public class EconomyManager extends AbstractEconomy {
             return new EconomyResponse(0, getBalance(player), EconomyResponse.ResponseType.FAILURE, "負の数値は指定できません");
         }
 
-        double current = getBalance(player);
-        if (current < amount) {
-            return new EconomyResponse(0, current, EconomyResponse.ResponseType.FAILURE, "残高が足りません");
+        long amountLong = (long) amount;
+        int affected = DatabaseManager.execute(
+            "UPDATE players SET coins = coins - ? WHERE uuid = ? AND coins >= ?",
+            amountLong, player.getUniqueId().toString(), amountLong
+        );
+        balanceCache.remove(player.getUniqueId());
+        if (affected <= 0) {
+            return new EconomyResponse(0, getBalance(player), EconomyResponse.ResponseType.FAILURE, "残高が足りません");
         }
 
-        long newBalance = (long) (current - amount);
-        DatabaseManager.updateAsync("players", java.util.Map.of("coins", newBalance), "uuid = ?", player.getUniqueId().toString());
-
-        return new EconomyResponse(amount, newBalance, EconomyResponse.ResponseType.SUCCESS, null);
+        return new EconomyResponse(amount, getBalance(player), EconomyResponse.ResponseType.SUCCESS, null);
     }
 
     @Override
@@ -169,11 +181,26 @@ public class EconomyManager extends AbstractEconomy {
             return new EconomyResponse(0, getBalance(player), EconomyResponse.ResponseType.FAILURE, "負の数値は指定できません");
         }
 
-        double current = getBalance(player);
-        long newBalance = (long) (current + amount);
-        DatabaseManager.updateAsync("players", java.util.Map.of("coins", newBalance), "uuid = ?", player.getUniqueId().toString());
+        long amountLong = (long) amount;
+        int affected = DatabaseManager.execute(
+            "UPDATE players SET coins = coins + ? WHERE uuid = ?",
+            amountLong, player.getUniqueId().toString()
+        );
+        if (affected <= 0) {
+            // UUIDに対応する行がまだ存在しない（未ログインの投票者など）場合はここに来る。
+            // 行を作ってから一度だけ再試行し、それでも失敗すればFAILUREを返す。
+            ensurePlayerRecord(player);
+            affected = DatabaseManager.execute(
+                "UPDATE players SET coins = coins + ? WHERE uuid = ?",
+                amountLong, player.getUniqueId().toString()
+            );
+        }
+        balanceCache.remove(player.getUniqueId());
+        if (affected <= 0) {
+            return new EconomyResponse(0, getBalance(player), EconomyResponse.ResponseType.FAILURE, "プレイヤーの残高レコードを作成できませんでした");
+        }
 
-        return new EconomyResponse(amount, newBalance, EconomyResponse.ResponseType.SUCCESS, null);
+        return new EconomyResponse(amount, getBalance(player), EconomyResponse.ResponseType.SUCCESS, null);
     }
 
     /**
@@ -219,7 +246,8 @@ public class EconomyManager extends AbstractEconomy {
             return false;
         }
         long newBalance = (long) amount;
-        DatabaseManager.updateAsync("players", java.util.Map.of("coins", newBalance), "uuid = ?", player.getUniqueId().toString());
+        DatabaseManager.update("players", java.util.Map.of("coins", newBalance), "uuid = ?", player.getUniqueId().toString());
+        balanceCache.remove(player.getUniqueId());
         return true;
     }
 
@@ -242,24 +270,37 @@ public class EconomyManager extends AbstractEconomy {
     }
 
     /**
-     * from -> to へ amount を送金する。DatabaseManager.transaction() で2件のUPDATEを
-     * 1トランザクションにまとめる。from の残高が不足していれば何もせず false を返す。
+     * from -> to へ amount を送金する。from の残高が不足していれば何もせず false を返す
+     * （DatabaseManager.transaction() 内で条件付きUPDATEを使い、残高不足を例外でロールバックの
+     * トリガーにすることでアトミック性を確保する）。
      */
     public boolean transfer(OfflinePlayer from, OfflinePlayer to, double amount) {
         if (from == null || to == null || amount <= 0) {
             return false;
         }
-        double currentFrom = getBalance(from);
-        if (currentFrom < amount) {
-            return false;
-        }
-        long newFromBalance = (long) (currentFrom - amount);
-        long newToBalance = (long) (getBalance(to) + amount);
-        DatabaseManager.transaction(conn -> {
-            DatabaseManager.execute("UPDATE players SET coins = ? WHERE uuid = ?", newFromBalance, from.getUniqueId().toString());
-            DatabaseManager.execute("UPDATE players SET coins = ? WHERE uuid = ?", newToBalance, to.getUniqueId().toString());
+        long amountLong = (long) amount;
+        return DatabaseManager.transaction(conn -> {
+            int affected = DatabaseManager.execute(
+                "UPDATE players SET coins = coins - ? WHERE uuid = ? AND coins >= ?",
+                amountLong, from.getUniqueId().toString(), amountLong
+            );
+            balanceCache.remove(from.getUniqueId());
+            if (affected <= 0) {
+                throw new IllegalStateException("残高不足のため送金を中止");
+            }
+            int creditAffected = DatabaseManager.execute("UPDATE players SET coins = coins + ? WHERE uuid = ?", amountLong, to.getUniqueId().toString());
+            if (creditAffected <= 0) {
+                // toのUUIDにまだplayers行が無い場合はここに来る。行を作ってから一度だけ再試行し、
+                // それでも失敗すればロールバックさせて送金を無かったことにする（fromからの引き落としだけが
+                // 残ってしまう事態を避ける）。
+                ensurePlayerRecord(to);
+                creditAffected = DatabaseManager.execute("UPDATE players SET coins = coins + ? WHERE uuid = ?", amountLong, to.getUniqueId().toString());
+            }
+            balanceCache.remove(to.getUniqueId());
+            if (creditAffected <= 0) {
+                throw new IllegalStateException("送金先の残高レコードを作成できなかったため送金を中止");
+            }
         });
-        return true;
     }
 
     /** /balance top のランキング1行分。 */

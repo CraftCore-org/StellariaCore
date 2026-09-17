@@ -71,11 +71,11 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
                 notify(sender, target, "eco.set_sender", "eco.set_receiver", amount);
             }
             case "take" -> {
-                if (economy.getBalance(target) < amount) {
+                net.milkbowl.vault.economy.EconomyResponse response = economy.withdrawPlayer(target, amount);
+                if (!response.transactionSuccess()) {
                     sender.sendMessage(plugin.getConfigManager().getMessage("eco.insufficient_balance", target));
                     return true;
                 }
-                economy.withdrawPlayer(target, amount);
                 notify(sender, target, "eco.take_sender", "eco.take_receiver", amount);
             }
         }
