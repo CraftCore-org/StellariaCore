@@ -1,3 +1,22 @@
 # heads.<id>.texture にヘッド配布サイト等のbase64 textures値を設定します。
 # 変更後は /stellariareload を実行してください。
-heads: {}
+heads:
+  stone_bricks:
+    texture: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMTQ3NjZiNjc4MThiN2VkMzQyN2VjODFmZjM4ZWEyOWU0YTg2MTkxMTU3ODAxYWQ0YzZhNTNkYmQ5NTZjYTQ0NyJ9fX0="
+    # /give @p minecraft:player_head[minecraft:custom_name={text:"Stone Bricks",color:"gold",underlined:true,bold:true,italic:false},minecraft:lore=[{text:"Custom Head ID: 25849",color:"gray",italic:false},{text:"www.minecraft-heads.com",color:"blue",italic:false}],profile={properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMTQ3NjZiNjc4MThiN2VkMzQyN2VjODFmZjM4ZWEyOWU0YTg2MTkxMTU3ODAxYWQ0YzZhNTNkYmQ5NTZjYTQ0NyJ9fX0="}]}] 1
+
+  grass_block:
+    texture: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjYwNWFiNDllODdhYzI2NTc3MGEzMmFkMWZkOGZjMjRhN2NjZDZlN2UwMTRiM2FiNGJkOTI4NzYwZDY1YjkzOCJ9fX0="
+    # /give @p minecraft:player_head[minecraft:custom_name={text:"Grass Block (forest)",color:"gold",underlined:true,bold:true,italic:false},minecraft:lore=[{text:"Custom Head ID: 101554",color:"gray",italic:false},{text:"www.minecraft-heads.com",color:"blue",italic:false}],profile={properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjYwNWFiNDllODdhYzI2NTc3MGEzMmFkMWZkOGZjMjRhN2NjZDZlN2UwMTRiM2FiNGJkOTI4NzYwZDY1YjkzOCJ9fX0="}]}] 1
+
+  earth:
+    texture: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNTU3N2M0ZGUxZjUxYTcwNzIyMDIzZTg1NmI1NDNjZDU3MGYxZDBlZTZiOWQxNjdiNTkwMjhjZTFiYzkyZTQ1OCJ9fX0="
+    # /give @p minecraft:player_head[minecraft:custom_name={text:"Earth",color:"gold",underlined:true,bold:true,italic:false},minecraft:lore=[{text:"Custom Head ID: 104673",color:"gray",italic:false},{text:"www.minecraft-heads.com",color:"blue",italic:false}],profile={properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNTU3N2M0ZGUxZjUxYTcwNzIyMDIzZTg1NmI1NDNjZDU3MGYxZDBlZTZiOWQxNjdiNTkwMjhjZTFiYzkyZTQ1OCJ9fX0="}]}] 1
+
+  netherrack:
+    texture: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOTljNmEzNzhhNzJkYTE3NTgzMWM5Mzk0ZmE0NWViNzM0M2YzMWQ3ZDA1OGZhNzZhOWE2NDZiZTAwN2I3ODg4ZCJ9fX0="
+    # /give @p minecraft:player_head[minecraft:custom_name={text:"Netherrack",color:"gold",underlined:true,bold:true,italic:false},minecraft:lore=[{text:"Custom Head ID: 88019",color:"gray",italic:false},{text:"www.minecraft-heads.com",color:"blue",italic:false}],profile={properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOTljNmEzNzhhNzJkYTE3NTgzMWM5Mzk0ZmE0NWViNzM0M2YzMWQ3ZDA1OGZhNzZhOWE2NDZiZTAwN2I3ODg4ZCJ9fX0="}]}] 1
+
+  endstone:
+    texture: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDI4MTNjZjhjNGZkMDEzYmFmNWJmNTVhOGM5MzEyMWM0ODJkYTFjZjZlMTA1NGMxODBmZjNlODE3MjdiNjVkZCJ9fX0="
+    # /give @p minecraft:player_head[minecraft:custom_name={text:"End Stone",color:"gold",underlined:true,bold:true,italic:false},minecraft:lore=[{text:"Custom Head ID: 29455",color:"gray",italic:false},{text:"www.minecraft-heads.com",color:"blue",italic:false}],profile={properties:[{name:"textures",value:"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDI4MTNjZjhjNGZkMDEzYmFmNWJmNTVhOGM5MzEyMWM0ODJkYTFjZjZlMTA1NGMxODBmZjNlODE3MjdiNjVkZCJ9fX0="}]}] 1

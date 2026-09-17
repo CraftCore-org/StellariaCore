@@ -336,7 +336,7 @@ menu:
   rows: 5 # 1〜6。省略/範囲外の場合は5
   items:
     - slot: 0
-      material: LIGHTNING_ROD
+      material: BLUE_ORCHID
       name: "&%b天気投票"
       action: "weathervote"
     - slot: 1
@@ -352,7 +352,7 @@ menu:
       name: "&%bプロフィール"
       action: "profile"
     - slot: 17
-      material: PAPER
+      material: SOUL_LANTERN
       name: "&%9Discord"
       action: "discord"
     - slot: 18
@@ -364,7 +364,7 @@ menu:
       name: "&%9ホーム"
       action: "home"
     - slot: 21
-      material: REDSTONE
+      material: COMPARATOR
       name: "&%c便利機能"
       action: "features"
     - slot: 23
@@ -384,11 +384,11 @@ menu:
       name: "&%aサーバー投票"
       action: "vote"
     - slot: 36
-      material: SHIELD
+      material: SOUL_TORCH
       name: "&%a土地保護のヘルプ"
       action: "land-help"
     - slot: 37
-      material: ENDER_PEARL
+      material: COPPER_TORCH
       name: "&%dテレポートリクエストの使い方"
       action: "tpa-help"
     - slot: 44
@@ -425,7 +425,7 @@ sudo:
     - "sudo"
 
 world-reset:
-  enabled: false
+  enabled:
   worlds: []
   # 退避先ワールド名。空文字ならBukkit上の最初のワールド（デフォルトのメインワールド）のスポーンへ退避する
   evacuate-to-world: ""
