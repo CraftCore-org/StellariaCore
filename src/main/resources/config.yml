@@ -114,19 +114,23 @@ first-join-kit:
 
 adminshop:
   enabled: true
-  # rows: 6 # 省略時は商品数に応じて自動決定（1〜6）
+  rows: 3
   items:
     - material: BREAD
       price: 10
-      # slot: 0 # 省略時は空いているスロットへ自動配置
+      slot: 11
     - material: CARROT
       price: 8
+      slot: 12
     - material: POTATO
       price: 8
+      slot: 13
     - material: COOKED_BEEF
       price: 40
+      slot: 14
     - material: OAK_LOG
       price: 20
+      slot: 15
 
 action-bar:
   enabled: true
