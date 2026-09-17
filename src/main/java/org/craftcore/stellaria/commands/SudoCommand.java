@@ -34,7 +34,7 @@ public class SudoCommand implements CommandExecutor, TabCompleter {
         OfflinePlayer placeholderPlayer = sender instanceof Player player ? player : null;
 
         if (args.length < 2) {
-            sender.sendMessage(plugin.getConfigManager().getMessage("sudo.usage", placeholderPlayer));
+            sender.sendMessage(plugin.getConfigManager().getUsageMessage("sudo.usage", placeholderPlayer));
             return true;
         }
 

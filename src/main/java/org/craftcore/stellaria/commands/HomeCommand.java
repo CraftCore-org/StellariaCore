@@ -68,7 +68,7 @@ public class HomeCommand implements CommandExecutor, TabCompleter {
 
     private void handleSetHome(Player player, String[] args) {
         if (args.length < 1) {
-            player.sendMessage(plugin.getConfigManager().getMessage("home.usage_sethome", player));
+            player.sendMessage(plugin.getConfigManager().getUsageMessage("home.usage_sethome", player));
             return;
         }
         String name = args[0];
@@ -88,7 +88,7 @@ public class HomeCommand implements CommandExecutor, TabCompleter {
 
     private void handleHome(Player player, String[] args) {
         if (args.length < 1) {
-            player.sendMessage(plugin.getConfigManager().getMessage("home.usage_home", player));
+            player.sendMessage(plugin.getConfigManager().getUsageMessage("home.usage_home", player));
             return;
         }
         teleportToHome(player, args[0]);
@@ -138,7 +138,7 @@ public class HomeCommand implements CommandExecutor, TabCompleter {
 
     private void handleDelHome(Player player, String[] args) {
         if (args.length < 1) {
-            player.sendMessage(plugin.getConfigManager().getMessage("home.usage_delhome", player));
+            player.sendMessage(plugin.getConfigManager().getUsageMessage("home.usage_delhome", player));
             return;
         }
         String name = args[0];

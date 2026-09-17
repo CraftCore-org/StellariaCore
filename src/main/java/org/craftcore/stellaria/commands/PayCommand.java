@@ -35,7 +35,7 @@ public class PayCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (args.length < 2) {
-            player.sendMessage(plugin.getConfigManager().getMessage("pay.usage", player));
+            player.sendMessage(plugin.getConfigManager().getUsageMessage("pay.usage", player));
             return true;
         }
 

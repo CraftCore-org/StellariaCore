@@ -24,7 +24,7 @@ public final class SettingsCommand implements CommandExecutor {
             return true;
         }
         if (args.length > 0) {
-            player.sendMessage(plugin.getConfigManager().getMessage("settings.usage", player));
+            player.sendMessage(plugin.getConfigManager().getUsageMessage("settings.usage", player));
             return true;
         }
 

@@ -38,7 +38,7 @@ public class RankingCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (args.length == 0) {
-            sender.sendMessage(plugin.getConfigManager().getMessage("ranking.usage", null));
+            sender.sendMessage(plugin.getConfigManager().getUsageMessage("ranking.usage", null));
             return true;
         }
 
