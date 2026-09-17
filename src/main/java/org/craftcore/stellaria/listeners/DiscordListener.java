@@ -22,7 +22,7 @@ public class DiscordListener extends ListenerAdapter {
         List<String> channels = plugin.getConfigManager().getStringList("discord.bot.serverchat-channel-id");
         if (!channels.contains(event.getChannel().getId())) { return; }
         if (!event.getChannelType().isMessage()) { return; }
-        String username = event.getAuthor().getName();
+        String username = event.getMember() != null ? event.getMember().getEffectiveName() : event.getAuthor().getName();
         String message = event.getMessage().getContentDisplay();
         Bukkit.getScheduler().runTask(plugin, () -> {
             Bukkit.broadcastMessage(FormatUtil.color(plugin.getConfigManager().getString("discord.bot.discordchat-format","").replace("%username%",username).replace("%message%",message)));

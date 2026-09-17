@@ -36,6 +36,7 @@ public final class LobbyCommand implements CommandExecutor {
         }
 
         player.teleportAsync(world.getSpawnLocation());
+        player.sendMessage(plugin.getConfigManager().getMessage("lobby.teleported", player));
         return true;
     }
 

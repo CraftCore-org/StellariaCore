@@ -136,19 +136,23 @@ public final class HeadshopAdminGui extends Gui {
 
         int index = page * CONTENT_SLOTS + slot;
         if (index < pool.size() && pool.get(index) != null) {
-            if (event.isShiftClick()) {
-                HeadshopManager.PoolHead head = pool.get(index);
-                plugin.getHeadshopManager().removeFromPool(head.id());
-                player.sendMessage(FormatUtil.replace(
-                        plugin.getConfigManager().getMessage("headshop.admin.removed", player),
-                        "%item%", head.displayName()));
-                pool.set(index, null);
-                getInventory().setItem(slot, null);
+            if (event.isShiftClick() || !event.getCursor().getType().isAir()) {
+                return;
             }
+            HeadshopManager.PoolHead head = pool.get(index);
+            plugin.getHeadshopManager().removeFromPool(head.id());
+            player.setItemOnCursor(plugin.getHeadshopManager().createHeadItem(head));
+            player.sendMessage(FormatUtil.replace(
+                    plugin.getConfigManager().getMessage("headshop.admin.removed", player),
+                    "%item%", head.displayName()));
+            pool.set(index, null);
+            getInventory().setItem(slot, null);
             return;
         }
 
-        registerFromCursor(player, event.getCursor(), slot, index);
+        if (event.isShiftClick()) {
+            registerFromCursor(player, event.getCursor(), slot, index);
+        }
     }
 
     private void registerFromCursor(Player player, @Nullable ItemStack cursor, int slot, int index) {

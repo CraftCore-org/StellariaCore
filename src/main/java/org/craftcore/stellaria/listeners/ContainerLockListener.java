@@ -71,7 +71,7 @@ public class ContainerLockListener implements Listener {
     public void removeBroken(BlockBreakEvent event) {
         plugin.getContainerLockManager().find(event.getBlock()).ifPresent(lock -> {
             if (canDestroy(lock, event.getPlayer().getUniqueId(), plugin.getContainerLockManager().isBypassing(event.getPlayer()))) {
-                scheduleDestroyedBlockCleanup(event.getBlock(), ContainerLock.BlockKey.of(event.getBlock()));
+                scheduleDestroyedBlockCleanup(event.getPlayer(), event.getBlock(), ContainerLock.BlockKey.of(event.getBlock()));
             }
         });
     }
@@ -91,6 +91,8 @@ public class ContainerLockListener implements Listener {
                     ColorUtil.component(ContainerLockMessages.message(plugin.getConfigManager(), "lock.auto_failed", event.getPlayer())), 40L);
             return;
         }
+        plugin.getActionBarManager().flash(event.getPlayer(), CHANNEL,
+                ColorUtil.component(ContainerLockMessages.message(plugin.getConfigManager(), "lock.auto_locked", event.getPlayer())), 40L);
         ContainerLock lock = manager.find(placed).orElseThrow();
         scheduleAutoLockVerification(placed, lock.lockId());
     }
@@ -124,15 +126,20 @@ public class ContainerLockListener implements Listener {
     private static void addChestKey(Set<ContainerLock.BlockKey> keys, InventoryHolder holder) {
         if (holder instanceof Chest chest) keys.add(ContainerLock.BlockKey.of(chest.getBlock()));
     }
-    private void scheduleDestroyedBlockCleanup(Block block, ContainerLock.BlockKey key) {
-        plugin.getServer().getScheduler().runTask(plugin, () -> cleanupDestroyedBlock(block, key));
+    private void scheduleDestroyedBlockCleanup(Player player, Block block, ContainerLock.BlockKey key) {
+        plugin.getServer().getScheduler().runTask(plugin, () -> cleanupDestroyedBlock(player, block, key));
     }
-    private void cleanupDestroyedBlock(Block block, ContainerLock.BlockKey key) {
+    private void cleanupDestroyedBlock(Player player, Block block, ContainerLock.BlockKey key) {
         if (isPlacementConfirmed(block.getType())) return;
         ContainerLockManager.RemoveResult result = plugin.getContainerLockManager().removeDestroyedBlock(key);
         if (result == ContainerLockManager.RemoveResult.DATABASE_ERROR) {
             plugin.getLogger().warning("破壊済みコンテナのロック削除に失敗したため再試行します: " + key);
-            plugin.getServer().getScheduler().runTaskLater(plugin, () -> cleanupDestroyedBlock(block, key), 20L);
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> cleanupDestroyedBlock(player, block, key), 20L);
+            return;
+        }
+        if (result == ContainerLockManager.RemoveResult.SUCCESS) {
+            plugin.getActionBarManager().flash(player, CHANNEL,
+                    ColorUtil.component(ContainerLockMessages.message(plugin.getConfigManager(), "lock.auto_unlocked", player)), 40L);
         }
     }
     private void scheduleAttachedBlockVerification(Block block, ContainerLock.BlockKey key, java.util.UUID lockId) {

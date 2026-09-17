@@ -9,8 +9,6 @@ discord:
   bot:
     enabled: true
     token: ""
-    admin-guild-id: "1547187819410358292"
-    admin-roles: ["1547176787186946089"] # /discordconfig を実行できるDiscordロールID（複数可）
     server-guild-id: "1547176637752152075"
     serverchat-channel-id: ["1550003204991746098"]
     serverstartlog-format: "✅ サーバーが起動しました。"
@@ -21,8 +19,6 @@ discord:
     discordchat-format: "&%7[&%9Discord&%7] &%7%username%&%8: &r%message%"
     joinlog-format: "%player%が参加しました。"
     quitlog-format: "%player%が退出しました。"
-    admin:
-      no-permission: "権限がありません。"
 
 map:
   link: "https://map.craftcore.org" #
@@ -68,7 +64,8 @@ world:
   #   world_nether: "ネザー"
   display-names: {}
   # ワールド名ごとにcustomhead.ymlのヘッドIDを指定できる。未指定なら環境別の通常アイコンを使う。
-  gui-custom-heads: {}
+  gui-custom-heads:
+    world: "earth"
 
 lobby:
   world: "lobby"
@@ -371,7 +368,8 @@ menu:
       name: "&%c便利機能"
       action: "features"
     - slot: 23
-      material: COMPASS
+      material: PLAYER_HEAD
+      custom-head: "earth"
       name: "&%eワールド移動"
       action: "world"
     - slot: 26

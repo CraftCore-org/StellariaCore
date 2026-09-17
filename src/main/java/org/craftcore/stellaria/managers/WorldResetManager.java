@@ -24,9 +24,11 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -103,8 +105,11 @@ public class WorldResetManager {
             return false;
         }
         lockoutWorlds.add(worldName);
-        evacuate(List.of(worldName));
-        performReset(List.of(worldName));
+        // evacuate()のteleportAsyncは即座には完了しないため、退避が終わる前にワールドを
+        // アンロードすると失敗し（プレイヤーが残っている）、createWorld()が既存ワールドを
+        // そのまま返してしまい再生成されない。退避完了を待ってからリセットする。
+        evacuate(List.of(worldName)).thenRun(() ->
+                Bukkit.getGlobalRegionScheduler().execute(plugin, () -> performReset(List.of(worldName))));
         return true;
     }
 
@@ -153,14 +158,16 @@ public class WorldResetManager {
         Bukkit.broadcast(ColorUtil.component(message));
     }
 
-    private void evacuate(List<String> worldNames) {
+    private CompletableFuture<Void> evacuate(List<String> worldNames) {
         Location destination = evacuationDestination();
+        List<CompletableFuture<Boolean>> teleports = new ArrayList<>();
         for (Player player : Bukkit.getOnlinePlayers()) {
             if (worldNames.contains(player.getWorld().getName())) {
-                player.teleportAsync(destination);
+                teleports.add(player.teleportAsync(destination));
                 player.sendMessage(plugin.getConfigManager().getMessage("world-reset.evacuated", player));
             }
         }
+        return CompletableFuture.allOf(teleports.toArray(CompletableFuture[]::new));
     }
 
     private Location evacuationDestination() {
@@ -187,8 +194,11 @@ public class WorldResetManager {
             WorldType worldType = world != null ? world.getWorldType() : WorldType.NORMAL;
             File worldFolder = world != null ? world.getWorldFolder() : new File(Bukkit.getWorldContainer(), worldName);
 
-            if (world != null) {
-                Bukkit.unloadWorld(world, false);
+            if (world != null && !Bukkit.unloadWorld(world, false)) {
+                // アンロード失敗（例: プレイヤーが残っている）時にフォルダ削除→createWorld()まで
+                // 進めると、Bukkitが既存のロード済みワールドをそのまま返してしまい再生成されない。
+                plugin.getLogger().warning("ワールド '" + worldName + "' のアンロードに失敗したため、再生成をスキップしました。");
+                continue;
             }
             deleteWorldFolder(worldFolder);
 
