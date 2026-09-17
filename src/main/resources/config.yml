@@ -419,3 +419,17 @@ sudo:
     - "save-on"
     - "reload"
     - "sudo"
+
+world-reset:
+  enabled: false
+  worlds: []
+  # 退避先ワールド名。空文字ならBukkit上の最初のワールド（デフォルトのメインワールド）のスポーンへ退避する
+  evacuate-to-world: ""
+  schedule:
+    type: "weekly" # "weekly" または "monthly"
+    time: "12:00"            # 24時間表記、両モード共通
+    # type: weekly のとき使用
+    day-of-week: "FRIDAY"    # java.time.DayOfWeek の名前（大文字）
+    interval-weeks: 1        # 1=毎週、2=隔週
+    # type: monthly のとき使用
+    day-of-month: 1          # 1〜31。その月に存在しない日は月末日に丸める

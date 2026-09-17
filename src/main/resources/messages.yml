@@ -616,3 +616,14 @@ vanish:
   enabled: "&%aVanishを有効にしました。"
   disabled: "&%cVanishを無効にしました。"
   action-bar: "&%c&l[VANISH] &%7現在ステルス中"
+
+world-reset:
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  usage_now: "&%c使用方法: /worldreset now <ワールド名>"
+  not_a_target: "&%c&%f%world% &%cはリセット対象ワールドに設定されていません。"
+  reset_now_started: "&%aワールド &%f%world% &%aを即時リセットします。プレイヤーを退避させました。"
+  announce: "&%e&l[ワールドリセット] &%f%worlds% &%eは%minutes%分後に自動リセットされます。"
+  evacuated: "&%eワールドリセットのため、安全な場所へ避難させました。"
+  lockout_warning: "&%cこのワールドはまもなくリセットされるため、現在は立ち入りできません。もう一度実行すると10秒以内なら強制的に入場します。"
+  next_reset_notice: "&%7このワールドは自動リセット対象です。次回リセット予定: &%f%next_reset%"
+  sethome_warning: "&%cこのワールドは自動リセット対象のため、リセット時にこのhome/warpは削除されます。"

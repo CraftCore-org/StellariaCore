@@ -87,6 +87,8 @@ commands:
     permission: stellaria.vanish
   lock:
   unlock:
+  worldreset:
+    permission: stellaria.worldreset
 
 permissions:
   stellaria.msg:
@@ -124,6 +126,8 @@ permissions:
   stellaria.sudo:
     default: op
   stellaria.vanish:
+    default: op
+  stellaria.worldreset:
     default: op
   stellaria.lock:
     default: true
