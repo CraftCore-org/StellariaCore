@@ -26,7 +26,7 @@ public class KikoriListener implements Listener {
         this.plugin = plugin;
     }
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent event) {
         Block block = event.getBlockPlaced();
         if (TreeUtil.isLog(block.getType())) {

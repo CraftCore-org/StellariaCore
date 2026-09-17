@@ -25,7 +25,7 @@ public class MineListener implements Listener {
         this.plugin = plugin;
     }
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent event) {
         Block block = event.getBlockPlaced();
         if (OreUtil.isOre(block.getType())) {
