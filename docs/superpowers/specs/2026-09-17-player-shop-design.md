@@ -135,8 +135,17 @@ UNIQUE (world, x, y, z)
 
 ## 実装者（Codex）への指示
 
+Codex側にもsuperpowersプラグインが入っている前提で、以下のスキルを次の順番で使うこと。
+
+1. **`superpowers:writing-plans`** — 本設計書（このファイル）を入力として、実装計画（plan）をまず作成すること。着手前に必ずこのスキルを通すこと。
+2. **`superpowers:test-driven-development`** — 計画に沿って実装する各ステップで、可能な範囲でこの進め方に従うこと（本リポジトリに`src/test`は無いが、小さく実装して都度`./gradlew build`で確認するサイクルという原則自体は守ること）。
+3. **`superpowers:systematic-debugging`** — 実装中に既存挙動との食い違いや原因不明の不具合に遭遇したら、憶測で直さずこのスキルの手順で原因を特定してから修正すること。
+4. **`superpowers:verification-before-completion`** — 実装完了を報告する前に必ず使うこと。「動くはず」ではなく、`./gradlew build`の成功と、可能であれば`./gradlew runServer`での実際の動作確認結果を根拠にすること。
+5. **`superpowers:requesting-code-review`** — 実装が完了しビルド・動作確認が済んだ後、マージ前にコードレビューを依頼する際に使うこと。
+6. **`superpowers:finishing-a-development-branch`** — レビュー完了後、ブランチをどう統合するか（マージ/PR等）を決める際に使うこと。
+
+加えて、これらのスキルを使う際も以下を守ること。
+
 - 実装前に本設計書に加えて、参照元として`ContainerLockManager`/`ContainerLockListener`（保護委譲の実装）、`MuteManager`（起動時フルロード＋メモリキャッシュのパターン）、`TpaCore`/`KikoriManager`（チャット入力捕捉の保留状態パターン）、`HomeCommand`/`WarpCommand`（`gui/Gui`の使い方があれば参考に）を実際に読み、既存の書き方・命名・エラーハンドリングの作法に合わせること。独自のスタイルを持ち込まない。
 - `CLAUDE.md`に書かれている既存の規約（`ConfigManager`経由でしかメッセージを出さない、`DatabaseManager`の静的メソッド経由でしかDBを触らない、`managers/`と`listeners/`の役割分担、`utils/`は状態を持たない等）を厳守すること。
 - 本設計書に無い機能・リファクタ・最適化を勝手に追加しないこと（YAGNI）。設計と矛盾する挙動や未決事項を見つけた場合は、独断で仕様を決めずに一旦立ち止まって報告すること。
-- 可能な範囲で「小さく実装する→`./gradlew build`を通す」のサイクルを繰り返し、一気に全部書いてから動かすことは避けること。本リポジトリに自動テストは無いが、疑わしい挙動があれば`./gradlew runServer`で実際に手を動かして確認してから次に進むこと。
-- 実装完了を報告する前に、必ず`./gradlew build`が成功することを確認し、可能であれば上記テスト方針の項目を`runServer`上で一通り触って確認すること。「動くはず」で終わらせず、実際に確認した事実を根拠に完了を主張すること。
