@@ -14,6 +14,7 @@ import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,7 @@ import java.util.Map;
 /** /headshop で開くメインGUI（3行）。中央5マスに本日の日替わりヘッド、下段中央にプレイヤーヘッド一覧への導線。 */
 public class HeadshopGui extends Gui {
 
+    private static final int HINT_SLOT = 4;
     private static final int[] HEAD_SLOTS = {11, 12, 13, 14, 15};
     private static final int EMPTY_HINT_SLOT = 13;
     private static final int PLAYER_HEADS_BUTTON_SLOT = 22;
@@ -55,6 +57,7 @@ public class HeadshopGui extends Gui {
                 getInventory().setItem(HEAD_SLOTS[i], createDisplayItem(head, price));
             }
         }
+        getInventory().setItem(HINT_SLOT, hintItem(viewer));
         getInventory().setItem(PLAYER_HEADS_BUTTON_SLOT, playerHeadsButtonItem(viewer));
     }
 
@@ -70,6 +73,20 @@ public class HeadshopGui extends Gui {
         ItemStack item = new ItemStack(Material.BARRIER);
         ItemMeta meta = item.getItemMeta();
         meta.displayName(ColorUtil.component(plugin.getConfigManager().getMessage("headshop.shop-empty", viewer)));
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private ItemStack hintItem(Player viewer) {
+        ItemStack item = new ItemStack(Material.BOOK);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(ColorUtil.component(plugin.getConfigManager().getMessage("headshop.hint-title", viewer)));
+        String resetTime = plugin.getConfigManager().getString("headshop.reset-time", "12:00");
+        List<Component> lore = new ArrayList<>();
+        for (String line : plugin.getConfigManager().getMessageList("headshop.main-hint")) {
+            lore.add(ColorUtil.component(FormatUtil.replace(line, "%reset_time%", resetTime)));
+        }
+        meta.lore(lore);
         item.setItemMeta(meta);
         return item;
     }

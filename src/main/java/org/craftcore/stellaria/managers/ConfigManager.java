@@ -3,6 +3,7 @@ package org.craftcore.stellaria.managers;
 import org.bukkit.OfflinePlayer;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.FormatUtil;
+import org.craftcore.stellaria.utils.UsageFormatUtil;
 
 import java.io.File;
 import java.util.List;
@@ -167,6 +168,14 @@ public final class ConfigManager {
     public String getMessage(String path, OfflinePlayer placeholderPlayer, Boolean ignoreWarn) {
         if (!ignoreWarn) warnIfMissing("config.yml", path);
         return FormatUtil.text(placeholderPlayer, get("messages.yml").get().getString(path, ""));
+    }
+
+    /**
+     * usageメッセージを取得する。生文字列のまま {@link UsageFormatUtil} で &lt;&gt;/| を整形してから、
+     * プレースホルダー置換・カラーコード変換を行う。
+     */
+    public String getUsageMessage(String path, OfflinePlayer placeholderPlayer) {
+        return FormatUtil.text(placeholderPlayer, UsageFormatUtil.format(getRawMessage(path)));
     }
 
     /**

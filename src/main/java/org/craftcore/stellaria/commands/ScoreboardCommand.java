@@ -42,7 +42,7 @@ public class ScoreboardCommand implements CommandExecutor, TabCompleter {
         } else if (args[0].equalsIgnoreCase("show")) {
             newHidden = false;
         } else {
-            player.sendMessage(plugin.getConfigManager().getMessage("scoreboard.usage", player));
+            player.sendMessage(plugin.getConfigManager().getUsageMessage("scoreboard.usage", player));
             return true;
         }
 

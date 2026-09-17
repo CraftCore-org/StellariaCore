@@ -68,7 +68,7 @@ public class WarpCommand implements CommandExecutor, TabCompleter {
 
     private void handleSetWarp(Player player, String[] args) {
         if (args.length < 1) {
-            player.sendMessage(plugin.getConfigManager().getMessage("warp.usage_setwarp", player));
+            player.sendMessage(plugin.getConfigManager().getUsageMessage("warp.usage_setwarp", player));
             return;
         }
         String name = args[0];
@@ -88,7 +88,7 @@ public class WarpCommand implements CommandExecutor, TabCompleter {
 
     private void handleWarp(Player player, String[] args) {
         if (args.length < 1) {
-            player.sendMessage(plugin.getConfigManager().getMessage("warp.usage_warp", player));
+            player.sendMessage(plugin.getConfigManager().getUsageMessage("warp.usage_warp", player));
             return;
         }
         teleportToWarp(player, args[0]);
@@ -138,7 +138,7 @@ public class WarpCommand implements CommandExecutor, TabCompleter {
 
     private void handleDelWarp(Player player, String[] args) {
         if (args.length < 1) {
-            player.sendMessage(plugin.getConfigManager().getMessage("warp.usage_delwarp", player));
+            player.sendMessage(plugin.getConfigManager().getUsageMessage("warp.usage_delwarp", player));
             return;
         }
         String name = args[0];

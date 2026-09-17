@@ -51,7 +51,7 @@ public class MuteCommand implements CommandExecutor, TabCompleter {
             return;
         }
         if (args.length < 4) {
-            sender.sendMessage(plugin.getConfigManager().getMessage("mute.usage", null));
+            sender.sendMessage(plugin.getConfigManager().getUsageMessage("mute.usage", null));
             return;
         }
 
@@ -90,7 +90,7 @@ public class MuteCommand implements CommandExecutor, TabCompleter {
 
     private void handleUnmute(CommandSender sender, String[] args) {
         if (args.length < 1) {
-            sender.sendMessage(plugin.getConfigManager().getMessage("mute.usage", null));
+            sender.sendMessage(plugin.getConfigManager().getUsageMessage("mute.usage", null));
             return;
         }
         OfflinePlayer target = Bukkit.getOfflinePlayer(args[0]);

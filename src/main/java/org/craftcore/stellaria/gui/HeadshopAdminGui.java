@@ -96,7 +96,7 @@ public final class HeadshopAdminGui extends Gui {
     }
 
     private ItemStack hintItem() {
-        ItemStack item = new ItemStack(Material.WRITTEN_BOOK);
+        ItemStack item = new ItemStack(Material.BOOK);
         ItemMeta meta = item.getItemMeta();
         meta.displayName(ColorUtil.component(plugin.getConfigManager().getMessage("headshop.hint-title", null)));
         List<Component> lore = new ArrayList<>();
@@ -110,10 +110,10 @@ public final class HeadshopAdminGui extends Gui {
 
     @Override
     public void onClick(InventoryClickEvent event) {
-        event.setCancelled(true);
         if (!(event.getWhoClicked() instanceof Player player) || event.getRawSlot() < 0 || event.getRawSlot() >= getInventory().getSize()) {
             return;
         }
+        event.setCancelled(true);
         if (handleBackButton(event, player)) {
             return;
         }

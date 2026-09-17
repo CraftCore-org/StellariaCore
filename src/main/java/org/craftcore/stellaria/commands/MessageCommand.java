@@ -49,7 +49,7 @@ public class MessageCommand implements CommandExecutor, TabCompleter {
 
     private void handleMsg(Player sender, String[] args) {
         if (args.length < 2) {
-            sender.sendMessage(plugin.getConfigManager().getMessage("msg.usage", sender));
+            sender.sendMessage(plugin.getConfigManager().getUsageMessage("msg.usage", sender));
             return;
         }
         Player target = Bukkit.getPlayer(args[0]);
@@ -66,7 +66,7 @@ public class MessageCommand implements CommandExecutor, TabCompleter {
 
     private void handleReply(Player sender, String[] args) {
         if (args.length < 1) {
-            sender.sendMessage(plugin.getConfigManager().getMessage("msg.usage", sender));
+            sender.sendMessage(plugin.getConfigManager().getUsageMessage("msg.usage", sender));
             return;
         }
         UUID lastUuid = plugin.getPrivateMessageManager().getLastMessaged(sender.getUniqueId());
