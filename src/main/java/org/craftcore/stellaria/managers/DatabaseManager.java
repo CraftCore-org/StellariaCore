@@ -135,7 +135,7 @@ public final class DatabaseManager {
      * @param table       テーブル名
      * @param columnDefs  "カラム名 型 制約" の形式で1つずつ渡す
      */
-    public static void createTableIfNotExists(String table, String... columnDefs) {
+    public static synchronized void createTableIfNotExists(String table, String... columnDefs) {
         String columns = String.join(", ", columnDefs);
         String sql = "CREATE TABLE IF NOT EXISTS " + table + " (" + columns + ")";
         try (PreparedStatement ps = raw().prepareStatement(sql)) {
@@ -152,7 +152,7 @@ public final class DatabaseManager {
      * @param table     テーブル名
      * @param columnDef "カラム名 型 制約"の形式（{@link #createTableIfNotExists}と同じ書式）
      */
-    public static void addColumnIfNotExists(String table, String columnDef) {
+    public static synchronized void addColumnIfNotExists(String table, String columnDef) {
         String columnName = columnDef.trim().split("\\s+")[0];
         try (PreparedStatement ps = raw().prepareStatement("PRAGMA table_info(" + table + ")");
              ResultSet rs = ps.executeQuery()) {
@@ -186,7 +186,7 @@ public final class DatabaseManager {
      * @param params {@code ?} に埋め込む値(順番通り)
      * @return 影響を受けた行数
      */
-    public static int execute(String sql, Object... params) {
+    public static synchronized int execute(String sql, Object... params) {
         try (PreparedStatement ps = prepare(sql, params)) {
             return ps.executeUpdate();
         } catch (SQLException e) {
@@ -271,7 +271,7 @@ public final class DatabaseManager {
      * );
      * }</pre>
      */
-    public static <T> List<T> query(String sql, RowMapper<T> mapper, Object... params) {
+    public static synchronized <T> List<T> query(String sql, RowMapper<T> mapper, Object... params) {
         List<T> results = new ArrayList<>();
         try (PreparedStatement ps = prepare(sql, params);
              ResultSet rs = ps.executeQuery()) {
@@ -318,7 +318,7 @@ public final class DatabaseManager {
      * );
      * }</pre>
      */
-    public static <T> T queryOne(String sql, RowMapper<T> mapper, Object... params) {
+    public static synchronized <T> T queryOne(String sql, RowMapper<T> mapper, Object... params) {
         try (PreparedStatement ps = prepare(sql, params);
              ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
@@ -367,7 +367,7 @@ public final class DatabaseManager {
      * });
      * }</pre>
      */
-    public static boolean transaction(Consumer<Connection> action) {
+    public static synchronized boolean transaction(Consumer<Connection> action) {
         Connection conn = raw();
         try {
             conn.setAutoCommit(false);
