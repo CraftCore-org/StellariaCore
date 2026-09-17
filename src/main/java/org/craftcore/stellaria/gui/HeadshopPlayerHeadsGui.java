@@ -111,7 +111,7 @@ public final class HeadshopPlayerHeadsGui extends Gui {
     }
 
     private ItemStack hintItem() {
-        ItemStack item = new ItemStack(Material.WRITTEN_BOOK);
+        ItemStack item = new ItemStack(Material.BOOK);
         ItemMeta meta = item.getItemMeta();
         meta.displayName(ColorUtil.component(plugin.getConfigManager().getMessage("headshop.hint-title", null)));
         String resetTime = plugin.getConfigManager().getString("headshop.reset-time", "12:00");
