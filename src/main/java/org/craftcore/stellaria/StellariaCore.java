@@ -366,6 +366,12 @@ public class StellariaCore extends JavaPlugin {
         getCommand("unmute").setExecutor(muteCommand);
         getCommand("mute").setTabCompleter(muteCommand);
         getCommand("unmute").setTabCompleter(muteCommand);
+
+        ModerationCommand moderationCommand = new ModerationCommand(this);
+        for (String name : new String[]{"warn", "kick", "ban"}) {
+            getCommand(name).setExecutor(moderationCommand);
+            getCommand(name).setTabCompleter(moderationCommand);
+        }
         getServer().getPluginManager().registerEvents(new MuteCommandBlockListener(this), this);
         getServer().getPluginManager().registerEvents(new GuiListener(), this);
         getServer().getPluginManager().registerEvents(new MenuItemListener(this), this);

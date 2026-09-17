@@ -88,6 +88,26 @@ mute:
   blocked_pm: "&%cミュート中のためメッセージを送信できません。（残り: %remaining%、理由: %reason%）"
   blocked_command: "&%cミュート中のためこのコマンドは使用できません。（残り: %remaining%、理由: %reason%）"
 
+moderation:
+  warn_usage:
+    - "&%c使用方法: /warn <プレイヤー> <理由>"
+    - "&%7理由を省略せずに入力してください。"
+  kick_usage:
+    - "&%c使用方法: /kick <プレイヤー> <理由>"
+    - "&%7対象プレイヤーはオンラインである必要があります。"
+  ban_usage:
+    - "&%c使用方法: /ban <プレイヤー> <期間|permanent> <理由>"
+    - "&%7期間の例: 10m, 1h, 3d, permanent"
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  player_not_found: "&%c%player% &%7はオフラインまたは存在しません。"
+  player_not_online: "&%c%player% &%7はオンラインではありません。"
+  warned_sender: "&%a%player% &%7に警告しました。（理由: %reason%）"
+  warned_target_actionbar: "&%c警告を受けました。（理由: %reason%）"
+  kicked_sender: "&%a%player% &%7をキックしました。（理由: %reason%）"
+  kick_screen: "&%cサーバーからキックされました。\n&%7理由: &%f%reason%\n&%7Discord: &%b%discord_invite%"
+  banned_sender: "&%a%player% &%7をBANしました。（理由: %reason%、期限: %expires%）"
+  ban_screen: "&%cあなたはBANされています。\n&%7理由: &%f%reason%\n&%7期限: &%f%expires%\n&%7Discord: &%b%discord_invite%"
+
 msg:
   usage: "&%c使用方法: /msg <プレイヤー> <メッセージ>"
   no_permission: "&%cこのコマンドを実行する権限がありません。"

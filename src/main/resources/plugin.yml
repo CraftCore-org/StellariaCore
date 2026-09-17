@@ -34,6 +34,12 @@ commands:
     permission: stellaria.mute
   unmute:
     permission: stellaria.mute
+  warn:
+    permission: stellaria.warn
+  kick:
+    permission: stellaria.kick
+  ban:
+    permission: stellaria.ban
   pay:
   eco:
     permission: stellaria.eco
@@ -148,6 +154,9 @@ permissions:
       stellaria.reload: true
       stellaria.broadcast: true
       stellaria.mute: true
+      stellaria.warn: true
+      stellaria.kick: true
+      stellaria.ban: true
       stellaria.eco: true
       stellaria.chat.color: true
       stellaria.heal: true
@@ -159,6 +168,12 @@ permissions:
   stellaria.broadcast:
     default: false
   stellaria.mute:
+    default: false
+  stellaria.warn:
+    default: false
+  stellaria.kick:
+    default: false
+  stellaria.ban:
     default: false
   stellaria.eco:
     default: false
