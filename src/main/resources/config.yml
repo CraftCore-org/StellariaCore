@@ -415,3 +415,7 @@ sudo:
     - "save-on"
     - "reload"
     - "sudo"
+
+lobbyprotect:
+  enabled: true
+  world-id: "lobby"

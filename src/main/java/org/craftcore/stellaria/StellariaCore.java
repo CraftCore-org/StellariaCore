@@ -10,6 +10,7 @@ import org.craftcore.stellaria.commands.WarpCommand;
 import org.craftcore.stellaria.commands.KikoriCommand;
 import org.craftcore.stellaria.commands.MineCommand;
 import org.craftcore.stellaria.commands.LandCommand;
+import org.craftcore.stellaria.listeners.*;
 import org.craftcore.stellaria.managers.*;
 import org.craftcore.stellaria.gui.GuiListener;
 import org.craftcore.stellaria.features.Feature;
@@ -27,20 +28,6 @@ import org.craftcore.stellaria.managers.PlaceholderManager;
 import org.craftcore.stellaria.managers.PrivateMessageManager;
 import org.craftcore.stellaria.managers.ScoreboardManager;
 import org.craftcore.stellaria.managers.TabListManager;
-import org.craftcore.stellaria.listeners.ChatListener;
-import org.craftcore.stellaria.listeners.PlayerJoinListener;
-import org.craftcore.stellaria.listeners.MentionTabCompleteListener;
-import org.craftcore.stellaria.listeners.MuteCommandBlockListener;
-import org.craftcore.stellaria.listeners.PlayerListener;
-import org.craftcore.stellaria.listeners.PlayerQuitListener;
-import org.craftcore.stellaria.listeners.KikoriListener;
-import org.craftcore.stellaria.listeners.MineListener;
-import org.craftcore.stellaria.listeners.LandProtectionListener;
-import org.craftcore.stellaria.listeners.LandAreaStatusListener;
-import org.craftcore.stellaria.listeners.VanishListener;
-import org.craftcore.stellaria.listeners.ContainerLockListener;
-import org.craftcore.stellaria.listeners.VoteListener;
-import org.craftcore.stellaria.listeners.MenuItemListener;
 
 
 import org.craftcore.stellaria.utils.ConsoleUtil;
@@ -79,6 +66,7 @@ public class StellariaCore extends JavaPlugin {
     private ContainerLockManager containerLockManager;
     private DiscordBotManager discordBotManager;
     private LandBorderParticleManager landBorderParticleManager;
+    private LobbyManager lobbyManager;
     private List<Feature> features;
 
     @Override
@@ -199,6 +187,7 @@ public class StellariaCore extends JavaPlugin {
         this.vanishManager = new VanishManager(this);
         this.kikoriManager = new KikoriManager(this);
         this.mineManager = new MineManager(this);
+        this.lobbyManager = new LobbyManager(this);
         this.features = List.of(new KikoriFeature(kikoriManager), new MineFeature(mineManager));
 
         this.discordBotManager = new DiscordBotManager(this);
@@ -275,6 +264,7 @@ public class StellariaCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ContainerLockListener(this), this);
         getServer().getPluginManager().registerEvents(new LandAreaStatusListener(this), this);
         getServer().getPluginManager().registerEvents(new VanishListener(this), this);
+        getServer().getPluginManager().registerEvents(new LobbyProtectListener(this),this);
 
         // 6. Scoreboard/Tablist/Belowname のインスタンス化とtick開始
         this.placeholderManager = new PlaceholderManager(this);
@@ -617,6 +607,10 @@ public class StellariaCore extends JavaPlugin {
   
     public LandBorderParticleManager getLandBorderParticleManager() {
         return this.landBorderParticleManager;
+    }
+
+    public LobbyManager getLobbyManager(){
+        return this.lobbyManager;
     }
 
     /**
