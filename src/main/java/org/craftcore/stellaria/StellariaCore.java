@@ -242,6 +242,7 @@ public class StellariaCore extends JavaPlugin {
         muteManager.loadAll();
         this.moderationManager = new ModerationManager(this);
         moderationManager.loadAllBans();
+        getServer().getPluginManager().registerEvents(new BanLoginListener(this), this);
         this.reportManager = new ReportManager(this);
         this.privateMessageManager = new PrivateMessageManager(this);
 

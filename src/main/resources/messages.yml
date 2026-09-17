@@ -108,6 +108,7 @@ moderation:
   kick_screen: "&%cサーバーからキックされました。\n&%7理由: &%f%reason%\n&%7Discord: &%b%discord_invite%"
   banned_sender: "&%a%player% &%7をBANしました。（理由: %reason%、期限: %expires%）"
   ban_screen: "&%cあなたはBANされています。\n&%7理由: &%f%reason%\n&%7期限: &%f%expires%\n&%7Discord: &%b%discord_invite%"
+  ban_login_screen: "&%cあなたはBANされています。\n&%7理由: &%f%reason%\n&%7期限: &%f%expires%\n&%7異議申し立て: &%b%discord_invite%"
 
 msg:
   usage: "&%c使用方法: /msg <プレイヤー> <メッセージ>"
