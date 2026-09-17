@@ -230,12 +230,11 @@ public class LandManager {
         }
 
         double cost = plugin.getConfigManager().getDouble("land.cost-per-chunk", 500);
-        EconomyManager economy = plugin.getEconomyManager();
-        if (cost > 0 && !economy.has(player, cost)) {
-            return ClaimOutcome.of(ClaimResult.INSUFFICIENT_FUNDS);
-        }
         if (cost > 0) {
-            economy.withdrawPlayer(player, cost);
+            net.milkbowl.vault.economy.EconomyResponse response = plugin.getEconomyManager().withdrawPlayer(player, cost);
+            if (!response.transactionSuccess()) {
+                return ClaimOutcome.of(ClaimResult.INSUFFICIENT_FUNDS);
+            }
         }
 
         AreaResolution resolution = resolveAreaForNewClaim(key, owner);

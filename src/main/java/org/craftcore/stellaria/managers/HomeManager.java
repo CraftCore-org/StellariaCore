@@ -53,12 +53,11 @@ public class HomeManager {
             return SetResult.NAME_TAKEN;
         }
         double cost = plugin.getConfigManager().getDouble("home.cost", 0);
-        EconomyManager economy = plugin.getEconomyManager();
-        if (cost > 0 && !economy.has(player, cost)) {
-            return SetResult.INSUFFICIENT_FUNDS;
-        }
         if (cost > 0) {
-            economy.withdrawPlayer(player, cost);
+            net.milkbowl.vault.economy.EconomyResponse response = plugin.getEconomyManager().withdrawPlayer(player, cost);
+            if (!response.transactionSuccess()) {
+                return SetResult.INSUFFICIENT_FUNDS;
+            }
         }
         DatabaseManager.insert("homes", Map.of(
                 "uuid", owner.toString(),
