@@ -1,0 +1,3 @@
+# heads.<id>.texture にヘッド配布サイト等のbase64 textures値を設定します。
+# 変更後は /stellariareload を実行してください。
+heads: {}

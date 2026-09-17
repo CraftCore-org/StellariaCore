@@ -90,6 +90,7 @@ public class StellariaCore extends JavaPlugin {
         this.configManager = new ConfigManager(this);
         this.configManager.register("config.yml");
         this.configManager.register("messages.yml");
+        this.configManager.register("customhead.yml");
 
         // 1. データベースの接続とテーブル作成
         DatabaseManager.connect(this, "database.db");
