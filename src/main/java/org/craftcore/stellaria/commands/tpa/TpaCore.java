@@ -90,6 +90,20 @@ public class TpaCore implements CommandExecutor, Listener, TabCompleter {
         if (task != null) task.cancel();
         ScheduledTask countdownTask = pendingCountdown.remove(playerId);
         if (countdownTask != null) countdownTask.cancel();
+
+        // playerId宛て（destination）に送信中だった他プレイヤーの送信状態を解除する
+        // （tpaPendingSender/tpHerePendingSenderは 送信者UUID -> 送信先UUID のマップなので、
+        //   playerIdをキーで消すだけでは「playerId宛てに送っていた別の誰か」は消えない）
+        tpaPendingSender.values().removeIf(destination -> destination.equals(playerId));
+        tpHerePendingSender.values().removeIf(destination -> destination.equals(playerId));
+
+        // playerIdが送信者として残っている、他プレイヤーの受信箱（inbox）エントリも除去する
+        for (List<UUID> requesters : tpRequest.values()) {
+            requesters.remove(playerId);
+        }
+        for (List<UUID> requesters : tpHere.values()) {
+            requesters.remove(playerId);
+        }
     }
 
     /**
