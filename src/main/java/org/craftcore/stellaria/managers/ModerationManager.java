@@ -1,5 +1,8 @@
 package org.craftcore.stellaria.managers;
 
+import net.dv8tion.jda.api.EmbedBuilder;
+import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 import org.craftcore.stellaria.StellariaCore;
 
 import java.util.HashSet;
@@ -54,17 +57,23 @@ public class ModerationManager {
     }
 
     public void warn(UUID targetUuid, UUID moderatorUuid, String reason) {
-        DatabaseManager.execute(
+        int changed = DatabaseManager.execute(
             "INSERT INTO warns (target_uuid, moderator_uuid, reason, created_at) VALUES (?, ?, ?, ?)",
             targetUuid.toString(), nullableUuidString(moderatorUuid), reason, System.currentTimeMillis()
         );
+        if (changed > 0) {
+            sendModerationLog("WARN", targetUuid, moderatorUuid, reason);
+        }
     }
 
     public void recordKick(UUID targetUuid, UUID moderatorUuid, String reason) {
-        DatabaseManager.execute(
+        int changed = DatabaseManager.execute(
             "INSERT INTO kicks (target_uuid, moderator_uuid, reason, created_at) VALUES (?, ?, ?, ?)",
             targetUuid.toString(), nullableUuidString(moderatorUuid), reason, System.currentTimeMillis()
         );
+        if (changed > 0) {
+            sendModerationLog("KICK", targetUuid, moderatorUuid, reason);
+        }
     }
 
     /** BANを履歴に追加し、期限内のBANだけを有効キャッシュへ反映する。 */
@@ -87,6 +96,7 @@ public class ModerationManager {
             if (!entry.isExpired(bannedAt)) {
                 activeBans.put(entry);
             }
+            sendModerationLog("BAN", targetUuid, moderatorUuid, reason);
         }
     }
 
@@ -141,5 +151,20 @@ public class ModerationManager {
 
     private static String nullableUuidString(UUID uuid) {
         return uuid == null ? null : uuid.toString();
+    }
+
+    private void sendModerationLog(String type, UUID targetUuid, UUID moderatorUuid, String reason) {
+        plugin.getDiscordBotManager().sendModerationLog(
+            new EmbedBuilder().setTitle(type)
+                .addField("実行者", playerName(moderatorUuid), true)
+                .addField("対象", playerName(targetUuid), true)
+                .addField("理由", reason, false)
+        );
+    }
+
+    private static String playerName(UUID uuid) {
+        if (uuid == null) return "CONSOLE";
+        OfflinePlayer player = Bukkit.getOfflinePlayer(uuid);
+        return player.getName() != null ? player.getName() : uuid.toString();
     }
 }

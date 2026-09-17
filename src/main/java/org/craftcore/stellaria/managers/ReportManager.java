@@ -1,6 +1,9 @@
 package org.craftcore.stellaria.managers;
 
+import net.dv8tion.jda.api.EmbedBuilder;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 
@@ -9,10 +12,11 @@ import java.util.UUID;
 /** 通報の入力待ち状態を保持し、確定した通報を永続化する。 */
 public class ReportManager {
 
+    private final StellariaCore plugin;
     private final PendingReportRegistry pendingReports = new PendingReportRegistry();
 
     public ReportManager(StellariaCore plugin) {
-        // 他のマネージャーと同じ生成契約を維持する。現在はプラグイン参照を保持する必要がない。
+        this.plugin = plugin;
     }
 
     /** カテゴリ選択時点の位置を同期的に記録し、続くチャット入力を待機する。 */
@@ -33,14 +37,29 @@ public class ReportManager {
     }
 
     public void completeReport(Player reporter, PendingReportRegistry.PendingReport pending, String reason) {
-        DatabaseManager.execute(
+        int changed = DatabaseManager.execute(
             "INSERT INTO reports (reporter_uuid, target_uuid, category, reason, world, x, y, z, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             reporter.getUniqueId().toString(), pending.targetUuid().toString(), pending.category(), reason,
             pending.world(), pending.x(), pending.y(), pending.z(), System.currentTimeMillis()
         );
+        if (changed > 0) {
+            plugin.getDiscordBotManager().sendReportLog(
+                new EmbedBuilder().setTitle("REPORT")
+                    .addField("報告者", reporter.getName(), true)
+                    .addField("対象", playerName(pending.targetUuid()), true)
+                    .addField("カテゴリ", pending.category(), true)
+                    .addField("理由", reason, false)
+                    .addField("場所", pending.world() + " (" + pending.x() + ", " + pending.y() + ", " + pending.z() + ")", false)
+            );
+        }
     }
 
     public void clearPending(UUID reporterUuid) {
         pendingReports.remove(reporterUuid);
+    }
+
+    private static String playerName(UUID uuid) {
+        OfflinePlayer player = Bukkit.getOfflinePlayer(uuid);
+        return player.getName() != null ? player.getName() : uuid.toString();
     }
 }
