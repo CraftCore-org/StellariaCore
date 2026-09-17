@@ -82,6 +82,8 @@ public class ModerationManager {
             ActiveBanRegistry.BanEntry entry = new ActiveBanRegistry.BanEntry(
                 id.getAsInt(), targetUuid, moderatorUuid, reason, bannedAt, expiresAt
             );
+            // 最新のBAN行は、期限切れであっても過去の有効BANを上書きする。
+            activeBans.remove(targetUuid);
             if (!entry.isExpired(bannedAt)) {
                 activeBans.put(entry);
             }
