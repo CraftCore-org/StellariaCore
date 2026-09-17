@@ -14,11 +14,12 @@ discord:
     serverstartlog-format: "✅ サーバーが起動しました。"
     serverstoplog-format: "❌ サーバーが停止しました。"
     serverchat-format: "%message%"
-    player-name-format: "%rank_tag% %player%"
+    player-name-format: "%player%"
+#    player-name-format: "%rank_tag% %player%" # 見にくいためランクは非表示
     status-format: "%online%/%max_online% online"
     discordchat-format: "&%7[&%9Discord&%7] &%7%username%&%8: &r%message%"
-    joinlog-format: "%player%が参加しました。"
-    quitlog-format: "%player%が退出しました。"
+    joinlog-format: "**%player%が参加しました。**"
+    quitlog-format: "**%player%が退出しました。**"
 
 map:
   link: "https://map.craftcore.org" #
@@ -32,8 +33,8 @@ vote:
   reward:
     money: 500
   sites:
-    mineportal: "https://example.com/mineportal" # TODO: 実際の投票URLに差し替え
-    minecraftjp: "https://example.com/minecraftjp" # TODO: 実際の投票URLに差し替え
+    mineportal: "https://mineportal.jp/servers/cmu54wi1o0000ofujlywoxbwk"
+    minecraftjp: "https://minecraft.jp/servers/stellaria.craftcore.org" # NOTE: 対応してないかも
 
 rank:
   enabled: true
@@ -430,7 +431,7 @@ lobbyprotect:
   world-id: "lobby"
   
 world-reset:
-  enabled:
+  enabled: false
   worlds: []
   # 退避先ワールド名。空文字ならBukkit上の最初のワールド（デフォルトのメインワールド）のスポーンへ退避する
   evacuate-to-world: ""
