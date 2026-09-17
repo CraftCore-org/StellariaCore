@@ -5,12 +5,15 @@ import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Webhook;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.interactions.InteractionHook;
+import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
@@ -116,6 +119,7 @@ public class DiscordBotManager {
 
     private void initializeWebhooks() {
         if (jda == null) return;
+        webhookUrls.clear();
         if (!plugin.getConfigManager().getStringList("discord.bot.serverchat-channel-id").isEmpty()) {
             plugin.getLogger().info("Discord Webhook中継を初期化します。Botには対象チャンネルのMANAGE_WEBHOOKS権限が必要です。");
         }
@@ -235,16 +239,20 @@ public class DiscordBotManager {
     private void registerPublicCommands() {
         String serverGuildId = plugin.getConfigManager().getString("discord.bot.server-guild-id", "");
         if (serverGuildId.isBlank()) {
-            plugin.getLogger().warning("discord.bot.server-guild-id が未設定のため /players と /whois は登録しません。");
+            plugin.getLogger().warning("discord.bot.server-guild-id が未設定のため /players と /profile と /settings は登録しません。");
             return;
         }
         Guild guild = guildById(serverGuildId, "一般");
         if (guild == null) return;
         guild.upsertCommand(Commands.slash("players", "オンラインのMinecraftプレイヤー一覧"))
                 .queue(null, error -> plugin.getLogger().warning("/players の登録に失敗しました: " + error.getMessage()));
-        guild.upsertCommand(Commands.slash("whois", "Minecraftプレイヤー情報を確認します")
+        guild.upsertCommand(Commands.slash("profile", "Minecraftプレイヤー情報を確認します")
                         .addOption(OptionType.STRING, "player", "Minecraftプレイヤー名", true))
-                .queue(null, error -> plugin.getLogger().warning("/whois の登録に失敗しました: " + error.getMessage()));
+                .queue(null, error -> plugin.getLogger().warning("/profile の登録に失敗しました: " + error.getMessage()));
+        guild.upsertCommand(Commands.slash("settings", "Discord連携の設定を行います")
+                        .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MANAGE_SERVER))
+                        .addSubcommands(new SubcommandData("chat-channel", "このチャンネルをMinecraftチャットの中継先に設定します")))
+                .queue(null, error -> plugin.getLogger().warning("/settings の登録に失敗しました: " + error.getMessage()));
     }
 
     private Guild guildById(String guildId, String description) {
@@ -263,7 +271,8 @@ public class DiscordBotManager {
         switch (event.getName()) {
             case "discordconfig" -> handleDiscordConfig(event);
             case "players" -> handlePlayers(event);
-            case "whois" -> handleWhois(event);
+            case "profile" -> handleProfile(event);
+            case "settings" -> handleSettings(event);
             default -> { }
         }
     }
@@ -287,7 +296,7 @@ public class DiscordBotManager {
     }
 
     private void handleDiscordConfigOnServerThread(SlashCommandInteractionEvent event,
-                                                    net.dv8tion.jda.api.interactions.InteractionHook hook) {
+                                                    InteractionHook hook) {
         String key = event.getOption("key").getAsString();
         YamlConfiguration configuration = plugin.getConfigManager().get("config.yml").get();
         if (!key.startsWith("discord.") || !configuration.contains(key) || configuration.isConfigurationSection(key)) {
@@ -354,7 +363,7 @@ public class DiscordBotManager {
         }));
     }
 
-    private void handleWhois(SlashCommandInteractionEvent event) {
+    private void handleProfile(SlashCommandInteractionEvent event) {
         if (!isServerGuild(event)) {
             event.reply("このコマンドはこのGuildでは利用できません。").setEphemeral(true).queue();
             return;
@@ -391,12 +400,42 @@ public class DiscordBotManager {
                 .equals(plugin.getConfigManager().getString("discord.bot.server-guild-id", ""));
     }
 
+    private void handleSettings(SlashCommandInteractionEvent event) {
+        if (!isServerGuild(event)) {
+            event.reply("このコマンドはこのGuildでは利用できません。").setEphemeral(true).queue();
+            return;
+        }
+        if (!"chat-channel".equals(event.getSubcommandName())) {
+            event.reply("不明なサブコマンドです。").setEphemeral(true).queue();
+            return;
+        }
+        String channelId = event.getChannel().getId();
+        event.deferReply(true).queue(hook -> Bukkit.getGlobalRegionScheduler().execute(plugin,
+                () -> handleSettingsChatChannelOnServerThread(channelId, hook)));
+    }
+
+    private void handleSettingsChatChannelOnServerThread(String channelId, InteractionHook hook) {
+        List<String> value = List.of(channelId);
+        plugin.getConfigManager().get("config.yml").get().set("discord.bot.serverchat-channel-id", value);
+        boolean saved = YamlScalarPatcher.patch(plugin.getConfigManager().get("config.yml").getFile(),
+                "discord.bot.serverchat-channel-id", value);
+        if (!saved) {
+            plugin.getLogger().warning("チャットチャンネル設定の保存に失敗しました。");
+            hook.editOriginal("設定はメモリ上で変更されましたが、config.yml への保存に失敗しました。").queue();
+            return;
+        }
+        initializeWebhooks();
+        hook.editOriginal("このチャンネルをMinecraftチャットの中継先に設定しました。").queue();
+    }
+
     private record Conversion(Object value, String error) { }
 
     public void sendPlayerJoinLog(PlayerJoinEvent event) {
         if (!hasConfiguredGuild() || jda == null) return;
+        Player player = event.getPlayer();
         EmbedBuilder embed = new EmbedBuilder();
-        embed.setDescription(plugin.getConfigManager().getString("discord.bot.joinlog-format", "").replace("%player%", event.getPlayer().getName()));
+        embed.setDescription(plugin.getConfigManager().getString("discord.bot.joinlog-format", "").replace("%player%", player.getName()));
+        embed.setThumbnail("https://crafatar.com/avatars/" + player.getUniqueId() + "?overlay");
         embed.setColor(Color.GREEN);
         sendEmbedToChatChannels(embed);
     }

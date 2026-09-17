@@ -16,7 +16,7 @@ discord:
     serverstartlog-format: "✅ サーバーが起動しました。"
     serverstoplog-format: "❌ サーバーが停止しました。"
     serverchat-format: "%message%"
-    player-name-format: "[%rank_tag%] %player%"
+    player-name-format: "%rank_tag% %player%"
     status-format: "%online%/%max_online% online"
     discordchat-format: "&%7[&%9Discord&%7] &%7%username%&%8: &r%message%"
     joinlog-format: "%player%が参加しました。"
