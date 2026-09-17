@@ -227,6 +227,7 @@ public class KikoriManager {
             Block current = frontier.poll();
             if (!current.equals(origin) && isArtificialLog(current)) {
                 if (passAvailable) {
+                    passAvailable = false;
                     passUsed = true;
                 } else {
                     aborted = true;
