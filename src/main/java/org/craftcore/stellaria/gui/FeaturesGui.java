@@ -92,6 +92,7 @@ public class FeaturesGui extends Gui {
             case ALREADY_UNLOCKED -> player.sendMessage(message("features.already_unlocked", player));
             case INSUFFICIENT_FUNDS -> player.sendMessage(message("features.buy_insufficient_funds", player)
                     .replace("%price%", priceText(feature)));
+            case DATABASE_ERROR -> player.sendMessage(message("features.buy_failed", player));
         }
     }
 

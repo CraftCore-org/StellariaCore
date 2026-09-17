@@ -101,4 +101,19 @@ public final class ParticleUtil {
         String value = hex.startsWith("#") ? hex.substring(1) : hex;
         return Color.fromRGB(Integer.parseInt(value, 16));
     }
+
+    /**
+     * 設定値のカラーを読み取る。不正値は呼び出し元の処理を止めず、指定した既定色へ戻す。
+     */
+    public static Color parseColorOrFallback(String configuredValue, Color fallback, Consumer<String> warn) {
+        try {
+            if (configuredValue == null || !configuredValue.matches("#?[0-9a-fA-F]{6}")) {
+                throw new IllegalArgumentException("6桁の16進数ではありません");
+            }
+            return parseColor(configuredValue);
+        } catch (IllegalArgumentException e) {
+            warn.accept("パーティクル色設定が不正なため、既定色にフォールバックします: " + configuredValue);
+            return fallback;
+        }
+    }
 }

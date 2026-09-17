@@ -156,7 +156,9 @@ public class TpaCore implements CommandExecutor, Listener, TabCompleter {
         int points = plugin.getConfigManager().getInt("teleport-effect.points", 30);
 
         if (particle == Particle.DUST) {
-            Color color = ParticleUtil.parseColor(plugin.getConfigManager().getString("teleport-effect.color", "#FFFFFF"));
+            Color color = ParticleUtil.parseColorOrFallback(
+                    plugin.getConfigManager().getString("teleport-effect.color", "#FFFFFF"), Color.WHITE,
+                    plugin.getLogger()::warning);
             float size = (float) plugin.getConfigManager().getDouble("teleport-effect.size", 1.0);
             ParticleUtil.spawnCircle(location, radius, points, color, size);
         } else {

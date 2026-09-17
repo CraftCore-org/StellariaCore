@@ -1,6 +1,5 @@
 package org.craftcore.stellaria.managers;
 
-import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Material;
@@ -114,24 +113,27 @@ public class MineManager {
         return unlocked != null && unlocked != 0;
     }
 
-    public enum PurchaseResult { SUCCESS, ALREADY_UNLOCKED, INSUFFICIENT_FUNDS }
+    public enum PurchaseResult { SUCCESS, ALREADY_UNLOCKED, INSUFFICIENT_FUNDS, DATABASE_ERROR }
 
     public int getPrice() {
-        return plugin.getConfigManager().getInt("mine.price", 3000);
+        return Math.max(0, plugin.getConfigManager().getInt("mine.price", 3000));
     }
 
     /** /mine buy から呼ぶ。mine.price をEconomyManagerから引き落とし、成功したらDBのフラグを立てる。 */
     public PurchaseResult purchase(Player player) {
-        if (isUnlocked(player)) {
-            return PurchaseResult.ALREADY_UNLOCKED;
-        }
         int price = getPrice();
-        EconomyResponse response = plugin.getEconomyManager().withdrawPlayer(player, price);
-        if (!response.transactionSuccess()) {
-            return PurchaseResult.INSUFFICIENT_FUNDS;
+        int affected = DatabaseManager.execute(
+                "UPDATE players SET coins = coins - ?, mine_unlocked = 1 " +
+                        "WHERE uuid = ? AND coins >= ? AND mine_unlocked = 0",
+                price, player.getUniqueId().toString(), price);
+        if (affected == 1) {
+            plugin.getEconomyManager().invalidateBalance(player.getUniqueId());
+            return PurchaseResult.SUCCESS;
         }
-        DatabaseManager.updateAsync("players", Map.of("mine_unlocked", 1), "uuid = ?", player.getUniqueId().toString());
-        return PurchaseResult.SUCCESS;
+        if (affected < 0) {
+            return PurchaseResult.DATABASE_ERROR;
+        }
+        return isUnlocked(player) ? PurchaseResult.ALREADY_UNLOCKED : PurchaseResult.INSUFFICIENT_FUNDS;
     }
 
     // ------------------------------------------------------------------

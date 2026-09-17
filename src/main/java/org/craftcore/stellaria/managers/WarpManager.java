@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * warpsテーブル（name主キー, owner_uuid, world, x, y, z, yaw, pitch）へのCRUDと、
@@ -18,7 +19,7 @@ import java.util.UUID;
  */
 public class WarpManager {
 
-    public enum SetResult { SUCCESS, LIMIT_REACHED, NAME_TAKEN, INSUFFICIENT_FUNDS }
+    public enum SetResult { SUCCESS, LIMIT_REACHED, NAME_TAKEN, INSUFFICIENT_FUNDS, DATABASE_ERROR }
 
     /** /warps 表示用の1行分（所有者名はplayersテーブルとのLEFT JOINで取得、居なければnull）。 */
     public record WarpEntry(String name, String ownerName) {
@@ -49,31 +50,43 @@ public class WarpManager {
      */
     public SetResult set(Player player, String name, Location location) {
         UUID owner = player.getUniqueId();
-        int max = plugin.getConfigManager().getInt("warp.max-per-player", 5);
-        if (count(owner) >= max) {
-            return SetResult.LIMIT_REACHED;
-        }
-        if (exists(name)) {
-            return SetResult.NAME_TAKEN;
-        }
+        int max = Math.max(0, plugin.getConfigManager().getInt("warp.max-per-player", 5));
         double cost = plugin.getConfigManager().getDouble("warp.cost", 0);
-        if (cost > 0) {
-            net.milkbowl.vault.economy.EconomyResponse response = plugin.getEconomyManager().withdrawPlayer(player, cost);
-            if (!response.transactionSuccess()) {
-                return SetResult.INSUFFICIENT_FUNDS;
-            }
+        if (cost < 0 || !Double.isFinite(cost) || cost > Long.MAX_VALUE || cost != Math.rint(cost)) {
+            plugin.getLogger().severe("warp.cost は0以上の整数で指定してください: " + cost);
+            return SetResult.DATABASE_ERROR;
         }
-        DatabaseManager.insert("warps", Map.of(
-                "name", name,
-                "owner_uuid", owner.toString(),
-                "world", location.getWorld().getName(),
-                "x", location.getX(),
-                "y", location.getY(),
-                "z", location.getZ(),
-                "yaw", location.getYaw(),
-                "pitch", location.getPitch()
-        ));
-        return SetResult.SUCCESS;
+        long costLong = (long) cost;
+        AtomicReference<SetResult> result = new AtomicReference<>(SetResult.DATABASE_ERROR);
+        boolean committed = DatabaseManager.transaction(connection -> {
+            if (count(owner) >= max) {
+                result.set(SetResult.LIMIT_REACHED);
+                return;
+            }
+            if (exists(name)) {
+                result.set(SetResult.NAME_TAKEN);
+                return;
+            }
+            int debitAffected = costLong > 0 ? DatabaseManager.execute(
+                    "UPDATE players SET coins = coins - ? WHERE uuid = ? AND coins >= ?",
+                    costLong, owner.toString(), costLong) : 1;
+            if (debitAffected < 0) {
+                throw new IllegalStateException("warpの料金引き落としに失敗しました");
+            }
+            if (debitAffected == 0) {
+                result.set(SetResult.INSUFFICIENT_FUNDS);
+                return;
+            }
+            if (DatabaseManager.insert("warps", Map.of(
+                    "name", name, "owner_uuid", owner.toString(), "world", location.getWorld().getName(),
+                    "x", location.getX(), "y", location.getY(), "z", location.getZ(),
+                    "yaw", location.getYaw(), "pitch", location.getPitch())) != 1) {
+                throw new IllegalStateException("warpの保存に失敗しました");
+            }
+            result.set(SetResult.SUCCESS);
+        });
+        plugin.getEconomyManager().invalidateBalance(owner);
+        return committed ? result.get() : SetResult.DATABASE_ERROR;
     }
 
     /** 所有者UUID。存在しなければnull（delete権限チェック用）。 */

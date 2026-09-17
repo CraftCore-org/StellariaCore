@@ -63,6 +63,7 @@ public class MineCommand implements CommandExecutor, TabCompleter {
             case ALREADY_UNLOCKED -> player.sendMessage(plugin.getConfigManager().getMessage("mine.already_unlocked", player));
             case INSUFFICIENT_FUNDS -> player.sendMessage(plugin.getConfigManager().getMessage("mine.buy_insufficient_funds", player)
                     .replace("%price%", currentPriceText()));
+            case DATABASE_ERROR -> player.sendMessage(plugin.getConfigManager().getMessage("mine.buy_failed", player));
         }
     }
 

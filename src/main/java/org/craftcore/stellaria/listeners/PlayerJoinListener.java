@@ -99,7 +99,9 @@ public class PlayerJoinListener implements Listener {
         int points = plugin.getConfigManager().getInt("join-effect.points", 30);
 
         if (particle == Particle.DUST) {
-            Color color = ParticleUtil.parseColor(plugin.getConfigManager().getString("join-effect.color", "#FFFFFF"));
+            Color color = ParticleUtil.parseColorOrFallback(
+                    plugin.getConfigManager().getString("join-effect.color", "#FFFFFF"), Color.WHITE,
+                    plugin.getLogger()::warning);
             float size = (float) plugin.getConfigManager().getDouble("join-effect.size", 1.0);
             ParticleUtil.spawnCircle(player.getLocation(), radius, points, color, size);
         } else {

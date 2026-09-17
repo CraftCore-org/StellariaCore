@@ -59,6 +59,7 @@ public class MineFeature implements Feature {
             case SUCCESS -> PurchaseResult.SUCCESS;
             case ALREADY_UNLOCKED -> PurchaseResult.ALREADY_UNLOCKED;
             case INSUFFICIENT_FUNDS -> PurchaseResult.INSUFFICIENT_FUNDS;
+            case DATABASE_ERROR -> PurchaseResult.DATABASE_ERROR;
         };
     }
 }

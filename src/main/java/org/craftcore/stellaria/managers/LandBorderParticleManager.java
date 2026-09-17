@@ -357,10 +357,12 @@ public class LandBorderParticleManager {
     /** ALL_CHUNKSモードや、resolveParticleがDUST以外の色を無視するケースで使う固定色。 */
     private Color resolveColor() {
         try {
-            return ParticleUtil.parseColor(plugin.getConfigManager().getString("land.border-particle.color", "#55FF55"));
+            return ParticleUtil.parseColorOrFallback(
+                    plugin.getConfigManager().getString("land.border-particle.color", "#55FF55"), Color.fromRGB(0x55FF55),
+                    plugin.getLogger()::warning);
         } catch (IllegalArgumentException e) {
             plugin.getLogger().warning("land.border-particle.color の値が不正なため、デフォルト色にフォールバックします: " + e.getMessage());
-            return ParticleUtil.parseColor("#55FF55");
+            return Color.fromRGB(0x55FF55);
         }
     }
 

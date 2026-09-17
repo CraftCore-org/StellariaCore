@@ -1,7 +1,6 @@
 package org.craftcore.stellaria.managers;
 
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
-import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.NamespacedKey;
@@ -116,24 +115,27 @@ public class KikoriManager {
         return unlocked != null && unlocked != 0;
     }
 
-    public enum PurchaseResult { SUCCESS, ALREADY_UNLOCKED, INSUFFICIENT_FUNDS }
+    public enum PurchaseResult { SUCCESS, ALREADY_UNLOCKED, INSUFFICIENT_FUNDS, DATABASE_ERROR }
 
     public int getPrice() {
-        return plugin.getConfigManager().getInt("kikori.price", 50000);
+        return Math.max(0, plugin.getConfigManager().getInt("kikori.price", 50000));
     }
 
     /** /kikori buy から呼ぶ。kikori.price をEconomyManagerから引き落とし、成功したらDBのフラグを立てる。 */
     public PurchaseResult purchase(Player player) {
-        if (isUnlocked(player)) {
-            return PurchaseResult.ALREADY_UNLOCKED;
-        }
         int price = getPrice();
-        EconomyResponse response = plugin.getEconomyManager().withdrawPlayer(player, price);
-        if (!response.transactionSuccess()) {
-            return PurchaseResult.INSUFFICIENT_FUNDS;
+        int affected = DatabaseManager.execute(
+                "UPDATE players SET coins = coins - ?, kikori_unlocked = 1 " +
+                        "WHERE uuid = ? AND coins >= ? AND kikori_unlocked = 0",
+                price, player.getUniqueId().toString(), price);
+        if (affected == 1) {
+            plugin.getEconomyManager().invalidateBalance(player.getUniqueId());
+            return PurchaseResult.SUCCESS;
         }
-        DatabaseManager.updateAsync("players", Map.of("kikori_unlocked", 1), "uuid = ?", player.getUniqueId().toString());
-        return PurchaseResult.SUCCESS;
+        if (affected < 0) {
+            return PurchaseResult.DATABASE_ERROR;
+        }
+        return isUnlocked(player) ? PurchaseResult.ALREADY_UNLOCKED : PurchaseResult.INSUFFICIENT_FUNDS;
     }
 
     // ------------------------------------------------------------------

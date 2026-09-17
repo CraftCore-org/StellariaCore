@@ -49,6 +49,7 @@ public class LockCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (!player.hasPermission("stellaria.lock")) {
+            message(player, "lock.no_permission");
             return true;
         }
         if (command.getName().equalsIgnoreCase("lock") && args.length == 1 && args[0].equalsIgnoreCase("bypass")) { handleBypass(player); return true; }
@@ -133,7 +134,7 @@ public class LockCommand implements CommandExecutor, TabCompleter {
         }
         Player targetPlayer = Bukkit.getPlayerExact(playerName);
         if (targetPlayer == null) {
-            message(player, "lock.look_at_container");
+            message(player, "lock.player_not_found");
             return;
         }
 

@@ -63,11 +63,17 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
         EconomyManager economy = plugin.getEconomyManager();
         switch (subCommand) {
             case "give" -> {
-                economy.depositPlayer(target, amount);
+                if (!economy.depositPlayer(target, amount).transactionSuccess()) {
+                    sender.sendMessage(plugin.getConfigManager().getMessage("eco.database_error", null));
+                    return true;
+                }
                 notify(sender, target, "eco.give_sender", "eco.give_receiver", amount);
             }
             case "set" -> {
-                economy.setBalance(target, amount);
+                if (!economy.setBalance(target, amount)) {
+                    sender.sendMessage(plugin.getConfigManager().getMessage("eco.database_error", null));
+                    return true;
+                }
                 notify(sender, target, "eco.set_sender", "eco.set_receiver", amount);
             }
             case "take" -> {

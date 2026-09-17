@@ -29,6 +29,7 @@ public interface Feature {
     enum PurchaseResult {
         SUCCESS,
         ALREADY_UNLOCKED,
-        INSUFFICIENT_FUNDS
+        INSUFFICIENT_FUNDS,
+        DATABASE_ERROR
     }
 }

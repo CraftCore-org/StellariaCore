@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** Discord bot lifecycle, webhook relay, and guild-scoped Discord commands. */
 public class DiscordBotManager {
@@ -60,6 +61,8 @@ public class DiscordBotManager {
     private volatile JDA jda;
     private String token;
     private volatile ScheduledTask presenceTask;
+    /** 起動途中の古いJDAが、再起動後にwebhookやpresenceを再登録しないための世代番号。 */
+    private final AtomicLong lifecycleGeneration = new AtomicLong();
     /** stop()が非同期起動シーケンス（awaitReady後）と競合しないためのガード。 */
     private volatile boolean shuttingDown = false;
 
@@ -67,7 +70,15 @@ public class DiscordBotManager {
         this.plugin = plugin;
     }
 
-    public void startBot() {
+    public synchronized void startBot() {
+        if (!plugin.getConfigManager().getBoolean("discord.bot.enabled", true)) {
+            return;
+        }
+        if (jda != null) {
+            return;
+        }
+        shuttingDown = false;
+        long generation = lifecycleGeneration.incrementAndGet();
         token = plugin.getConfigManager().getString("discord.bot.token", "");
         if (token.isEmpty()) {
             plugin.getLogger().warning("botのtokenが指定されていません。");
@@ -84,38 +95,53 @@ public class DiscordBotManager {
             return;
         }
 
+        JDA startingJda = jda;
         Bukkit.getAsyncScheduler().runNow(plugin, task -> {
             try {
-                jda.awaitReady();
-                if (shuttingDown) {
+                startingJda.awaitReady();
+                synchronized (this) {
+                    if (shuttingDown || lifecycleGeneration.get() != generation || jda != startingJda) {
                     // awaitReady()の完了を待っている間にstop()が呼ばれた場合、
                     // 既に無効化されたプラグイン/シャットダウン済みのJDAに対して
                     // 起動シーケンスを続行しない。
-                    return;
+                        return;
+                    }
+                    initializeWebhooks();
+                    registerPublicCommands();
+                    startPresenceUpdates();
+                    sendStartupLog();
+                    plugin.getLogger().info("DiscordBotを起動しました。");
                 }
-                initializeWebhooks();
-                registerPublicCommands();
-                startPresenceUpdates();
-                sendStartupLog();
-                plugin.getLogger().info("DiscordBotを起動しました。");
             } catch (Exception e) {
                 plugin.getLogger().warning("DiscordBotの起動に失敗しました: " + e.getMessage());
-                if (presenceTask != null) {
-                    presenceTask.cancel();
-                    presenceTask = null;
-                }
-                if (jda != null) {
-                    jda.shutdown();
-                    jda = null;
+                synchronized (this) {
+                    if (lifecycleGeneration.get() == generation && jda == startingJda) {
+                        stopInternal(false);
+                    }
                 }
             }
         });
     }
 
-    public void stop() {
+    public synchronized void stop() {
+        stopInternal(true);
+    }
+
+    /** config.yml反映用。停止通知は送らず、enabledなら新設定で接続し直す。 */
+    public synchronized void restartAfterConfigReload() {
+        stopInternal(false);
+        if (plugin.getConfigManager().getBoolean("discord.bot.enabled", true)) {
+            startBot();
+        }
+    }
+
+    private void stopInternal(boolean announceShutdown) {
+        lifecycleGeneration.incrementAndGet();
         shuttingDown = true;
         try {
-            sendShutdownLog();
+            if (announceShutdown && jda != null) {
+                sendShutdownLog();
+            }
         } catch (Exception e) {
             plugin.getLogger().warning("Discordへの停止通知に失敗しました: " + e.getMessage());
         } finally {

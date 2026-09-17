@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * homesテーブル（uuid, name, world, x, y, z, yaw, pitch / 主キー(uuid, name)）へのCRUDと、
@@ -18,7 +19,7 @@ import java.util.UUID;
  */
 public class HomeManager {
 
-    public enum SetResult { SUCCESS, LIMIT_REACHED, NAME_TAKEN, INSUFFICIENT_FUNDS }
+    public enum SetResult { SUCCESS, LIMIT_REACHED, NAME_TAKEN, INSUFFICIENT_FUNDS, DATABASE_ERROR }
 
     private final StellariaCore plugin;
 
@@ -45,31 +46,43 @@ public class HomeManager {
      */
     public SetResult set(Player player, String name, Location location) {
         UUID owner = player.getUniqueId();
-        int max = plugin.getConfigManager().getInt("home.max-per-player", 5);
-        if (count(owner) >= max) {
-            return SetResult.LIMIT_REACHED;
-        }
-        if (exists(owner, name)) {
-            return SetResult.NAME_TAKEN;
-        }
+        int max = Math.max(0, plugin.getConfigManager().getInt("home.max-per-player", 5));
         double cost = plugin.getConfigManager().getDouble("home.cost", 0);
-        if (cost > 0) {
-            net.milkbowl.vault.economy.EconomyResponse response = plugin.getEconomyManager().withdrawPlayer(player, cost);
-            if (!response.transactionSuccess()) {
-                return SetResult.INSUFFICIENT_FUNDS;
-            }
+        if (cost < 0 || !Double.isFinite(cost) || cost > Long.MAX_VALUE || cost != Math.rint(cost)) {
+            plugin.getLogger().severe("home.cost は0以上の整数で指定してください: " + cost);
+            return SetResult.DATABASE_ERROR;
         }
-        DatabaseManager.insert("homes", Map.of(
-                "uuid", owner.toString(),
-                "name", name,
-                "world", location.getWorld().getName(),
-                "x", location.getX(),
-                "y", location.getY(),
-                "z", location.getZ(),
-                "yaw", location.getYaw(),
-                "pitch", location.getPitch()
-        ));
-        return SetResult.SUCCESS;
+        long costLong = (long) cost;
+        AtomicReference<SetResult> result = new AtomicReference<>(SetResult.DATABASE_ERROR);
+        boolean committed = DatabaseManager.transaction(connection -> {
+            if (count(owner) >= max) {
+                result.set(SetResult.LIMIT_REACHED);
+                return;
+            }
+            if (exists(owner, name)) {
+                result.set(SetResult.NAME_TAKEN);
+                return;
+            }
+            int debitAffected = costLong > 0 ? DatabaseManager.execute(
+                    "UPDATE players SET coins = coins - ? WHERE uuid = ? AND coins >= ?",
+                    costLong, owner.toString(), costLong) : 1;
+            if (debitAffected < 0) {
+                throw new IllegalStateException("homeの料金引き落としに失敗しました");
+            }
+            if (debitAffected == 0) {
+                result.set(SetResult.INSUFFICIENT_FUNDS);
+                return;
+            }
+            if (DatabaseManager.insert("homes", Map.of(
+                    "uuid", owner.toString(), "name", name, "world", location.getWorld().getName(),
+                    "x", location.getX(), "y", location.getY(), "z", location.getZ(),
+                    "yaw", location.getYaw(), "pitch", location.getPitch())) != 1) {
+                throw new IllegalStateException("homeの保存に失敗しました");
+            }
+            result.set(SetResult.SUCCESS);
+        });
+        plugin.getEconomyManager().invalidateBalance(owner);
+        return committed ? result.get() : SetResult.DATABASE_ERROR;
     }
 
     /** 削除に成功したらtrue、そもそも存在しなかったらfalse。 */

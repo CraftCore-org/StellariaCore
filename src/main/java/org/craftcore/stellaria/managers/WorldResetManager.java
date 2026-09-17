@@ -108,8 +108,14 @@ public class WorldResetManager {
         // evacuate()のteleportAsyncは即座には完了しないため、退避が終わる前にワールドを
         // アンロードすると失敗し（プレイヤーが残っている）、createWorld()が既存ワールドを
         // そのまま返してしまい再生成されない。退避完了を待ってからリセットする。
-        evacuate(List.of(worldName)).thenRun(() ->
-                Bukkit.getGlobalRegionScheduler().execute(plugin, () -> performReset(List.of(worldName))));
+        evacuate(List.of(worldName)).thenAccept(evacuated -> {
+            if (!evacuated) {
+                plugin.getLogger().warning("ワールド '" + worldName + "' の退避に失敗したため、再生成を中止しました。");
+                lockoutWorlds.remove(worldName);
+                return;
+            }
+            Bukkit.getGlobalRegionScheduler().execute(plugin, () -> performReset(List.of(worldName)));
+        });
         return true;
     }
 
@@ -158,8 +164,12 @@ public class WorldResetManager {
         Bukkit.broadcast(ColorUtil.component(message));
     }
 
-    private CompletableFuture<Void> evacuate(List<String> worldNames) {
-        Location destination = evacuationDestination();
+    private CompletableFuture<Boolean> evacuate(List<String> worldNames) {
+        Location destination = evacuationDestination(worldNames);
+        if (destination == null) {
+            plugin.getLogger().warning("退避先ワールドを決定できないため、ワールド再生成を中止します。");
+            return CompletableFuture.completedFuture(false);
+        }
         List<CompletableFuture<Boolean>> teleports = new ArrayList<>();
         for (Player player : Bukkit.getOnlinePlayers()) {
             if (worldNames.contains(player.getWorld().getName())) {
@@ -167,16 +177,22 @@ public class WorldResetManager {
                 player.sendMessage(plugin.getConfigManager().getMessage("world-reset.evacuated", player));
             }
         }
-        return CompletableFuture.allOf(teleports.toArray(CompletableFuture[]::new));
+        return CompletableFuture.allOf(teleports.toArray(CompletableFuture[]::new))
+                .handle((ignored, error) -> error == null && teleports.stream().allMatch(future -> future.getNow(false)));
     }
 
-    private Location evacuationDestination() {
+    private Location evacuationDestination(List<String> resetWorlds) {
         String worldName = plugin.getConfigManager().getString("world-reset.evacuate-to-world", "");
         World world = worldName.isEmpty() ? null : Bukkit.getWorld(worldName);
-        if (world == null) {
-            world = Bukkit.getWorlds().get(0);
+        if (world != null && resetWorlds.contains(world.getName())) {
+            world = null;
         }
-        return world.getSpawnLocation();
+        if (world == null) {
+            world = Bukkit.getWorlds().stream()
+                    .filter(candidate -> !resetWorlds.contains(candidate.getName()))
+                    .findFirst().orElse(null);
+        }
+        return world == null ? null : world.getSpawnLocation();
     }
 
     /**
@@ -185,9 +201,12 @@ public class WorldResetManager {
      * 意図的操作なのでシンプルさを優先し、GlobalRegionScheduler上でそのまま実行する。
      */
     private void performReset(List<String> worldNames) {
+        List<String> resetCompleted = new ArrayList<>();
         for (String worldName : worldNames) {
-            DatabaseManager.execute("DELETE FROM homes WHERE world = ?", worldName);
-            DatabaseManager.execute("DELETE FROM warps WHERE world = ?", worldName);
+            if (Bukkit.getOnlinePlayers().stream().anyMatch(player -> player.getWorld().getName().equals(worldName))) {
+                plugin.getLogger().warning("ワールド '" + worldName + "' にプレイヤーが残っているため、再生成を中止しました。");
+                continue;
+            }
 
             World world = Bukkit.getWorld(worldName);
             World.Environment environment = world != null ? world.getEnvironment() : World.Environment.NORMAL;
@@ -202,15 +221,23 @@ public class WorldResetManager {
             }
             deleteWorldFolder(worldFolder);
 
-            new WorldCreator(worldName)
+            World recreated = new WorldCreator(worldName)
                     .environment(environment)
                     .type(worldType)
                     .seed(ThreadLocalRandom.current().nextLong())
                     .createWorld();
 
+            if (recreated == null) {
+                plugin.getLogger().severe("ワールド '" + worldName + "' の再生成に失敗したため、home/warpデータは保持しました。");
+                continue;
+            }
+            DatabaseManager.execute("DELETE FROM homes WHERE world = ?", worldName);
+            DatabaseManager.execute("DELETE FROM warps WHERE world = ?", worldName);
+
             plugin.getLogger().info("ワールド '" + worldName + "' を自動リセットしました。");
+            resetCompleted.add(worldName);
         }
-        lockoutWorlds.removeAll(worldNames);
+        lockoutWorlds.removeAll(resetCompleted);
     }
 
     private void deleteWorldFolder(File folder) {

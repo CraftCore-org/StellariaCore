@@ -83,6 +83,8 @@ public class WarpCommand implements CommandExecutor, TabCompleter {
                     plugin.getConfigManager().getMessage("warp.name_taken", player), "%name%", name));
             case INSUFFICIENT_FUNDS -> player.sendMessage(
                     plugin.getConfigManager().getMessage("warp.insufficient_funds", player));
+            case DATABASE_ERROR -> player.sendMessage(
+                    plugin.getConfigManager().getMessage("warp.save_failed", player));
         }
     }
 
@@ -113,6 +115,8 @@ public class WarpCommand implements CommandExecutor, TabCompleter {
             playTeleportEffect(destination);
         } else if (result == TeleportSafetyUtil.Result.WARNED) {
             player.sendMessage(plugin.getConfigManager().getMessage("warp.unsafe_warning", player));
+        } else {
+            player.sendMessage(plugin.getConfigManager().getMessage("warp.teleport_failed", player));
         }
     }
 
@@ -128,7 +132,9 @@ public class WarpCommand implements CommandExecutor, TabCompleter {
         int points = plugin.getConfigManager().getInt("warp.teleport-effect.points", 30);
 
         if (particle == Particle.DUST) {
-            Color color = ParticleUtil.parseColor(plugin.getConfigManager().getString("warp.teleport-effect.color", "#55FF55"));
+            Color color = ParticleUtil.parseColorOrFallback(
+                    plugin.getConfigManager().getString("warp.teleport-effect.color", "#55FF55"), Color.fromRGB(0x55FF55),
+                    plugin.getLogger()::warning);
             float size = (float) plugin.getConfigManager().getDouble("warp.teleport-effect.size", 1.0);
             ParticleUtil.spawnCircle(location, radius, points, color, size);
         } else {

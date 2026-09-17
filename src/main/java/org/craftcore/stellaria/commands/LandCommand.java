@@ -437,6 +437,7 @@ public class LandCommand implements CommandExecutor, TabCompleter {
             case NOT_CLAIMED -> player.sendMessage(plugin.getConfigManager().getMessage("land.info_unclaimed", player));
             case NOT_OWNER -> player.sendMessage(plugin.getConfigManager().getMessage("land.not_owner_trust", player));
             case SELF_TARGET -> player.sendMessage(plugin.getConfigManager().getMessage("land.trust_self", player));
+            case DATABASE_ERROR -> player.sendMessage(plugin.getConfigManager().getMessage("land.database_error", player));
         }
     }
 
@@ -472,6 +473,7 @@ public class LandCommand implements CommandExecutor, TabCompleter {
             case NOT_CLAIMED -> player.sendMessage(plugin.getConfigManager().getMessage("land.info_unclaimed", player));
             case NOT_OWNER -> player.sendMessage(plugin.getConfigManager().getMessage("land.not_owner_trust", player));
             case SELF_TARGET -> { }
+            case DATABASE_ERROR -> player.sendMessage(plugin.getConfigManager().getMessage("land.database_error", player));
         }
     }
 
@@ -521,6 +523,7 @@ public class LandCommand implements CommandExecutor, TabCompleter {
             case NOT_CLAIMED -> player.sendMessage(plugin.getConfigManager().getMessage("land.info_unclaimed", player));
             case NOT_OWNER -> player.sendMessage(plugin.getConfigManager().getMessage("land.not_owner_trust", player));
             case SELF_TARGET -> { }
+            case DATABASE_ERROR -> player.sendMessage(plugin.getConfigManager().getMessage("land.database_error", player));
         }
     }
 
@@ -605,10 +608,12 @@ public class LandCommand implements CommandExecutor, TabCompleter {
     /** 設定ファイルの境界パーティクル色を解決する。不正な値ならデフォルト色にフォールバックし、警告をログへ出す。 */
     private Color resolveBorderColor() {
         try {
-            return ParticleUtil.parseColor(plugin.getConfigManager().getString("land.border-particle.color", "#55FF55"));
+            return ParticleUtil.parseColorOrFallback(
+                    plugin.getConfigManager().getString("land.border-particle.color", "#55FF55"), Color.fromRGB(0x55FF55),
+                    plugin.getLogger()::warning);
         } catch (IllegalArgumentException e) {
             plugin.getLogger().warning("land.border-particle.color の値が不正なため、デフォルト色にフォールバックします: " + e.getMessage());
-            return ParticleUtil.parseColor("#55FF55");
+            return Color.fromRGB(0x55FF55);
         }
     }
 

@@ -130,6 +130,12 @@ public class MenuGui extends Gui {
                 plugin.getLogger().warning("menu.items に無効なslot指定があります: " + itemConfig);
                 continue;
             }
+            int slot = slotNumber.intValue();
+            int maxSlot = inventorySize(plugin) - 1;
+            if (slot < 0 || slot > maxSlot) {
+                plugin.getLogger().warning("menu.items に範囲外のslot指定があります (0-" + maxSlot + "): " + itemConfig);
+                continue;
+            }
             Material material = materialValue instanceof String materialName ? Material.matchMaterial(materialName) : null;
             if (material == null) {
                 plugin.getLogger().warning("menu.items に無効なmaterial指定があります: " + itemConfig);
@@ -139,7 +145,9 @@ public class MenuGui extends Gui {
             String action = actionValue instanceof String ? (String) actionValue : "";
             String customHeadId = customHeadValue instanceof String id && !id.isBlank() ? id.trim() : null;
 
-            entries.put(slotNumber.intValue(), new MenuEntry(material, name, action, customHeadId));
+            if (entries.putIfAbsent(slot, new MenuEntry(material, name, action, customHeadId)) != null) {
+                plugin.getLogger().warning("menu.items に重複したslot指定があります: " + slot);
+            }
         }
         return entries;
     }

@@ -27,6 +27,7 @@ import java.util.OptionalInt;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * headshop_pool（運営が登録した頭の一覧）と headshop_rotation（日替わりで選ばれた5件の履歴）を
@@ -179,13 +180,23 @@ public class HeadshopManager {
     }
 
     public @Nullable PoolHead addToPool(String displayName, String texture, UUID addedBy) {
-        OptionalInt id = DatabaseManager.insertAndGetId("headshop_pool", Map.of(
-                "display_name", displayName,
-                "texture", texture,
-                "added_by", addedBy.toString(),
-                "added_at", System.currentTimeMillis()
-        ));
-        return id.isPresent() ? new PoolHead(id.getAsInt(), displayName, texture) : null;
+        AtomicReference<PoolHead> added = new AtomicReference<>();
+        boolean committed = DatabaseManager.transaction(connection -> {
+            if (textureExists(texture)) {
+                return;
+            }
+            OptionalInt id = DatabaseManager.insertAndGetId("headshop_pool", Map.of(
+                    "display_name", displayName,
+                    "texture", texture,
+                    "added_by", addedBy.toString(),
+                    "added_at", System.currentTimeMillis()
+            ));
+            if (id.isEmpty()) {
+                throw new IllegalStateException("headshop_poolへの登録に失敗しました");
+            }
+            added.set(new PoolHead(id.getAsInt(), displayName, texture));
+        });
+        return committed ? added.get() : null;
     }
 
     /** プールから削除する。参照が残らないよう、このheadを含む過去のheadshop_rotation行も一緒に削除する。 */

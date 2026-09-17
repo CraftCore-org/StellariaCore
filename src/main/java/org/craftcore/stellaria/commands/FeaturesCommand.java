@@ -54,6 +54,7 @@ public class FeaturesCommand implements CommandExecutor, TabCompleter {
             case ALREADY_UNLOCKED -> player.sendMessage(plugin.getConfigManager().getMessage("features.already_unlocked", player));
             case INSUFFICIENT_FUNDS -> player.sendMessage(plugin.getConfigManager().getMessage("features.buy_insufficient_funds", player)
                     .replace("%price%", plugin.getEconomyManager().format(feature.price())));
+            case DATABASE_ERROR -> player.sendMessage(plugin.getConfigManager().getMessage("features.buy_failed", player));
         }
     }
 

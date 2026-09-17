@@ -63,6 +63,7 @@ public class KikoriCommand implements CommandExecutor, TabCompleter {
             case ALREADY_UNLOCKED -> player.sendMessage(plugin.getConfigManager().getMessage("kikori.already_unlocked", player));
             case INSUFFICIENT_FUNDS -> player.sendMessage(plugin.getConfigManager().getMessage("kikori.buy_insufficient_funds", player)
                     .replace("%price%", currentPriceText()));
+            case DATABASE_ERROR -> player.sendMessage(plugin.getConfigManager().getMessage("kikori.buy_failed", player));
         }
     }
 

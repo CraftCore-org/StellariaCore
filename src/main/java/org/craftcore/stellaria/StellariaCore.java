@@ -642,6 +642,7 @@ public class StellariaCore extends JavaPlugin {
         headshopManager.start();
         rankManager.reload();
         restartConfigScheduledTasks();
+        discordBotManager.restartAfterConfigReload();
     }
 
     private void restartConfigScheduledTasks() {

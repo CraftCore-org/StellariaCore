@@ -222,7 +222,7 @@ public final class DatabaseManager {
     }
 
     /** INSERTを実行し、SQLiteが採番した主キーを返す。失敗時または主キー無しなら空を返す。 */
-    public static OptionalInt insertAndGetId(String table, Map<String, Object> values) {
+    public static synchronized OptionalInt insertAndGetId(String table, Map<String, Object> values) {
         String columns = String.join(", ", values.keySet());
         String placeholders = String.join(", ", values.keySet().stream().map(key -> "?").toArray(String[]::new));
         String sql = "INSERT INTO " + table + " (" + columns + ") VALUES (" + placeholders + ")";

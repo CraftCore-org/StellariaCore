@@ -91,7 +91,7 @@ public class LandManager {
 
     public enum ClaimResult { SUCCESS, ALREADY_CLAIMED, UNCLAIMABLE, LIMIT_REACHED, INSUFFICIENT_FUNDS, WORLD_DISABLED, DATABASE_ERROR }
 
-    public enum ActionResult { SUCCESS, NOT_CLAIMED, NOT_OWNER, SELF_TARGET }
+    public enum ActionResult { SUCCESS, NOT_CLAIMED, NOT_OWNER, SELF_TARGET, DATABASE_ERROR }
 
     public enum UnclaimableChunkResult { SUCCESS, ALREADY_CLAIMED, ALREADY_UNCLAIMABLE, NOT_UNCLAIMABLE }
 
@@ -668,7 +668,7 @@ public class LandManager {
                 "territory_id = ?", claim.areaId());
         if (affected <= 0) {
             plugin.getLogger().severe("land_territories の更新に失敗したためキャッシュは変更していません: " + claim.areaId());
-            return ActionResult.SUCCESS;
+            return ActionResult.DATABASE_ERROR;
         }
         switch (flag) {
             case PVP -> area.pvpEnabled = enabled;
@@ -707,7 +707,7 @@ public class LandManager {
                 "world = ? AND chunk_x = ? AND chunk_z = ?", key.world(), key.chunkX(), key.chunkZ());
         if (affected <= 0) {
             plugin.getLogger().severe("land_claims の個別設定更新に失敗したためキャッシュは変更していません: " + key);
-            return ActionResult.SUCCESS;
+            return ActionResult.DATABASE_ERROR;
         }
         claimsByChunk.put(key, claim.withOverride(flag, value));
         return ActionResult.SUCCESS;

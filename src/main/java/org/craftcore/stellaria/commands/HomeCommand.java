@@ -83,6 +83,8 @@ public class HomeCommand implements CommandExecutor, TabCompleter {
                     plugin.getConfigManager().getMessage("home.name_taken", player), "%name%", name));
             case INSUFFICIENT_FUNDS -> player.sendMessage(
                     plugin.getConfigManager().getMessage("home.insufficient_funds", player));
+            case DATABASE_ERROR -> player.sendMessage(
+                    plugin.getConfigManager().getMessage("home.save_failed", player));
         }
     }
 
@@ -113,6 +115,8 @@ public class HomeCommand implements CommandExecutor, TabCompleter {
             playTeleportEffect(destination);
         } else if (result == TeleportSafetyUtil.Result.WARNED) {
             player.sendMessage(plugin.getConfigManager().getMessage("home.unsafe_warning", player));
+        } else {
+            player.sendMessage(plugin.getConfigManager().getMessage("home.teleport_failed", player));
         }
     }
 
@@ -128,7 +132,9 @@ public class HomeCommand implements CommandExecutor, TabCompleter {
         int points = plugin.getConfigManager().getInt("home.teleport-effect.points", 30);
 
         if (particle == Particle.DUST) {
-            Color color = ParticleUtil.parseColor(plugin.getConfigManager().getString("home.teleport-effect.color", "#FFAA00"));
+            Color color = ParticleUtil.parseColorOrFallback(
+                    plugin.getConfigManager().getString("home.teleport-effect.color", "#FFAA00"), Color.fromRGB(0xFFAA00),
+                    plugin.getLogger()::warning);
             float size = (float) plugin.getConfigManager().getDouble("home.teleport-effect.size", 1.0);
             ParticleUtil.spawnCircle(location, radius, points, color, size);
         } else {
