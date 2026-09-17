@@ -188,6 +188,10 @@ world:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   not_found: "&%c指定されたワールドは見つかりません。"
 
+lobby:
+  must-be-player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  world-not-found: "&%cロビーワールドが見つかりません: &%e%world%"
+
 profile:
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   no_permission_others: "&%c他人のプロフィールを確認する権限がありません。"

@@ -423,6 +423,7 @@ public class StellariaCore extends JavaPlugin {
         WorldCommand worldCommand = new WorldCommand(this);
         getCommand("world").setExecutor(worldCommand);
         getCommand("world").setTabCompleter(worldCommand);
+        getCommand("lobby").setExecutor(new LobbyCommand(this));
 
         ProfileCommand profileCommand = new ProfileCommand(this);
         getCommand("profile").setExecutor(profileCommand);
