@@ -4,14 +4,14 @@ import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.WorldCreator;
-import org.bukkit.WorldType;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
+import org.mvplugins.multiverse.core.MultiverseCoreApi;
+import org.mvplugins.multiverse.core.world.LoadedMultiverseWorld;
+import org.mvplugins.multiverse.core.world.options.RegenWorldOptions;
 
-import java.io.File;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.Instant;
@@ -29,11 +29,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * config.yml の world-reset.* に設定されたワールドを、一定周期（毎週/隔週/毎月）で
- * 完全削除→ランダムシード再生成する。AutoBroadcastManagerと同じ
+ * Multiverse-Core経由でランダムシード再生成する。AutoBroadcastManagerと同じ
  * Bukkit.getGlobalRegionScheduler().runAtFixedRate パターンで1秒毎にスケジュールをチェックし、
  * 60/30/10/5分前の告知、30分前の強制退避、リセット実行までを一本のtickで進行させる。
  *
@@ -105,9 +104,8 @@ public class WorldResetManager {
             return false;
         }
         lockoutWorlds.add(worldName);
-        // evacuate()のteleportAsyncは即座には完了しないため、退避が終わる前にワールドを
-        // アンロードすると失敗し（プレイヤーが残っている）、createWorld()が既存ワールドを
-        // そのまま返してしまい再生成されない。退避完了を待ってからリセットする。
+        // evacuate()のteleportAsyncは即座には完了しないため、プレイヤーが残った状態で
+        // Multiverseの再生成を始めないよう、退避完了を待ってからリセットする。
         evacuate(List.of(worldName)).thenAccept(evacuated -> {
             if (!evacuated) {
                 plugin.getLogger().warning("ワールド '" + worldName + "' の退避に失敗したため、再生成を中止しました。");
@@ -195,11 +193,7 @@ public class WorldResetManager {
         return world == null ? null : world.getSpawnLocation();
     }
 
-    /**
-     * 対象ワールドのhomes/warpsをDBから削除し、ワールドフォルダを削除してランダムシードで
-     * 再生成する。フォルダ削除・ワールド生成はブロッキングI/Oだが、リセット自体が低頻度の
-     * 意図的操作なのでシンプルさを優先し、GlobalRegionScheduler上でそのまま実行する。
-     */
+    /** Multiverseで再生成と新しいスポーンの保存が成功したワールドだけ、DB整理とロック解除を行う。 */
     private void performReset(List<String> worldNames) {
         List<String> resetCompleted = new ArrayList<>();
         for (String worldName : worldNames) {
@@ -208,29 +202,10 @@ public class WorldResetManager {
                 continue;
             }
 
-            World world = Bukkit.getWorld(worldName);
-            World.Environment environment = world != null ? world.getEnvironment() : World.Environment.NORMAL;
-            WorldType worldType = world != null ? world.getWorldType() : WorldType.NORMAL;
-            File worldFolder = world != null ? world.getWorldFolder() : new File(Bukkit.getWorldContainer(), worldName);
-
-            if (world != null && !Bukkit.unloadWorld(world, false)) {
-                // アンロード失敗（例: プレイヤーが残っている）時にフォルダ削除→createWorld()まで
-                // 進めると、Bukkitが既存のロード済みワールドをそのまま返してしまい再生成されない。
-                plugin.getLogger().warning("ワールド '" + worldName + "' のアンロードに失敗したため、再生成をスキップしました。");
+            if (!regenerateWorld(worldName)) {
                 continue;
             }
-            deleteWorldFolder(worldFolder);
 
-            World recreated = new WorldCreator(worldName)
-                    .environment(environment)
-                    .type(worldType)
-                    .seed(ThreadLocalRandom.current().nextLong())
-                    .createWorld();
-
-            if (recreated == null) {
-                plugin.getLogger().severe("ワールド '" + worldName + "' の再生成に失敗したため、home/warpデータは保持しました。");
-                continue;
-            }
             DatabaseManager.execute("DELETE FROM homes WHERE world = ?", worldName);
             DatabaseManager.execute("DELETE FROM warps WHERE world = ?", worldName);
 
@@ -240,18 +215,49 @@ public class WorldResetManager {
         lockoutWorlds.removeAll(resetCompleted);
     }
 
-    private void deleteWorldFolder(File folder) {
-        File[] children = folder.listFiles();
-        if (children != null) {
-            for (File child : children) {
-                if (child.isDirectory()) {
-                    deleteWorldFolder(child);
-                } else {
-                    child.delete();
-                }
-            }
+    private boolean regenerateWorld(String worldName) {
+        if (!Bukkit.getPluginManager().isPluginEnabled("Multiverse-Core")) {
+            plugin.getLogger().warning("Multiverse-Coreが有効でないため、ワールド '" + worldName + "' の再生成をスキップしました。");
+            return false;
         }
-        folder.delete();
+
+        MultiverseCoreApi api;
+        try {
+            api = MultiverseCoreApi.get();
+        } catch (IllegalStateException e) {
+            plugin.getLogger().warning("Multiverse-Core APIを取得できないため、ワールド '" + worldName + "' の再生成をスキップしました。");
+            return false;
+        }
+
+        LoadedMultiverseWorld loadedWorld = api.getWorldManager().getLoadedWorld(worldName).getOrNull();
+        if (loadedWorld == null) {
+            plugin.getLogger().warning("ワールド '" + worldName + "' がMultiverse-Coreのロード済みワールドに見つからないため、再生成をスキップしました。");
+            return false;
+        }
+
+        RegenWorldOptions options = RegenWorldOptions.world(loadedWorld)
+                .randomSeed(true)
+                .keepWorldConfig(true)
+                .keepGameRule(true)
+                .keepWorldBorder(true);
+        var attempt = api.getWorldManager().regenWorld(options);
+        if (attempt.isFailure()) {
+            plugin.getLogger().severe("ワールド '" + worldName + "' のMultiverse-Coreによる再生成に失敗したため、home/warpデータは保持しました。");
+            return false;
+        }
+
+        LoadedMultiverseWorld recreated = attempt.get();
+        World recreatedBukkitWorld = recreated.getBukkitWorld().getOrNull();
+        if (recreatedBukkitWorld == null) {
+            plugin.getLogger().severe("ワールド '" + worldName + "' の再生成後のBukkitワールドを取得できないため、home/warpデータは保持しました。");
+            return false;
+        }
+        var spawnResult = recreated.setSpawnLocation(recreatedBukkitWorld.getSpawnLocation());
+        if (spawnResult.isFailure()) {
+            plugin.getLogger().severe("ワールド '" + worldName + "' の新しいスポーン保存に失敗したため、home/warpデータは保持しました。");
+            return false;
+        }
+        return true;
     }
 
     private Instant nextResetInstant() {
