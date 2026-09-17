@@ -10,6 +10,7 @@ import org.craftcore.stellaria.commands.WarpCommand;
 import org.craftcore.stellaria.commands.KikoriCommand;
 import org.craftcore.stellaria.commands.MineCommand;
 import org.craftcore.stellaria.commands.LandCommand;
+import org.craftcore.stellaria.listeners.*;
 import org.craftcore.stellaria.managers.*;
 import org.craftcore.stellaria.gui.GuiListener;
 import org.craftcore.stellaria.features.Feature;
@@ -80,6 +81,7 @@ public class StellariaCore extends JavaPlugin {
     private ContainerLockManager containerLockManager;
     private DiscordBotManager discordBotManager;
     private LandBorderParticleManager landBorderParticleManager;
+    private LobbyManager lobbyManager;
     private WorldResetManager worldResetManager;
     private List<Feature> features;
 
@@ -204,6 +206,7 @@ public class StellariaCore extends JavaPlugin {
         this.vanishManager = new VanishManager(this);
         this.kikoriManager = new KikoriManager(this);
         this.mineManager = new MineManager(this);
+        this.lobbyManager = new LobbyManager(this);
         this.features = List.of(new KikoriFeature(kikoriManager), new MineFeature(mineManager));
 
         this.discordBotManager = new DiscordBotManager(this);
@@ -280,6 +283,7 @@ public class StellariaCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ContainerLockListener(this), this);
         getServer().getPluginManager().registerEvents(new LandAreaStatusListener(this), this);
         getServer().getPluginManager().registerEvents(new VanishListener(this), this);
+        getServer().getPluginManager().registerEvents(new LobbyProtectListener(this),this);
         getServer().getPluginManager().registerEvents(new WorldResetListener(this), this);
 
         // 6. Scoreboard/Tablist/Belowname のインスタンス化とtick開始
@@ -630,6 +634,10 @@ public class StellariaCore extends JavaPlugin {
         return this.landBorderParticleManager;
     }
 
+    public LobbyManager getLobbyManager(){
+        return this.lobbyManager;
+    }
+  
     public WorldResetManager getWorldResetManager() {
         return this.worldResetManager;
     }
