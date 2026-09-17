@@ -294,28 +294,36 @@ public class LandManager {
     /** mergedIdの全claim・信頼リストをcanonicalIdへ付け替え、mergedId側のエリアは削除する。 */
     private void mergeAreas(String mergedId, String canonicalId) {
         Area canonical = areas.get(canonicalId);
-        Area merged = areas.remove(mergedId);
+        Area merged = areas.get(mergedId);
+
+        boolean success = DatabaseManager.transaction(conn -> {
+            DatabaseManager.execute("UPDATE land_claims SET territory_id = ? WHERE territory_id = ?", canonicalId, mergedId);
+            if (merged != null) {
+                for (UUID trustedUuid : merged.trusted) {
+                    DatabaseManager.execute(
+                            "INSERT OR IGNORE INTO land_trusts (territory_id, trusted_uuid) VALUES (?, ?)",
+                            canonicalId, trustedUuid.toString());
+                }
+            }
+            DatabaseManager.execute("DELETE FROM land_trusts WHERE territory_id = ?", mergedId);
+            DatabaseManager.execute("DELETE FROM land_territories WHERE territory_id = ?", mergedId);
+        });
+
+        if (!success) {
+            plugin.getLogger().severe("エリアのマージに失敗しました（DBはロールバック済み、キャッシュは変更していません）: " + mergedId + " -> " + canonicalId);
+            return;
+        }
+
+        areas.remove(mergedId);
         if (merged != null) {
             canonical.trusted.addAll(merged.trusted);
         }
-
         for (Map.Entry<ChunkKey, Claim> entry : claimsByChunk.entrySet()) {
             Claim claim = entry.getValue();
             if (claim.areaId().equals(mergedId)) {
                 entry.setValue(claim.withAreaId(canonicalId));
             }
         }
-
-        DatabaseManager.execute("UPDATE land_claims SET territory_id = ? WHERE territory_id = ?", canonicalId, mergedId);
-        if (merged != null) {
-            for (UUID trustedUuid : merged.trusted) {
-                DatabaseManager.execute(
-                        "INSERT OR IGNORE INTO land_trusts (territory_id, trusted_uuid) VALUES (?, ?)",
-                        canonicalId, trustedUuid.toString());
-            }
-        }
-        DatabaseManager.execute("DELETE FROM land_trusts WHERE territory_id = ?", mergedId);
-        DatabaseManager.execute("DELETE FROM land_territories WHERE territory_id = ?", mergedId);
     }
 
     /**
@@ -333,10 +341,14 @@ public class LandManager {
             return ActionResult.NOT_OWNER;
         }
 
+        int affected = DatabaseManager.execute("DELETE FROM land_claims WHERE world = ? AND chunk_x = ? AND chunk_z = ?",
+                key.world(), key.chunkX(), key.chunkZ());
+        if (affected <= 0) {
+            return ActionResult.NOT_CLAIMED;
+        }
+
         claimsByChunk.remove(key);
         claimsVersion++;
-        DatabaseManager.execute("DELETE FROM land_claims WHERE world = ? AND chunk_x = ? AND chunk_z = ?",
-                key.world(), key.chunkX(), key.chunkZ());
 
         if (plugin.getConfigManager().getBoolean("land.refund-on-unclaim", true)) {
             double cost = plugin.getConfigManager().getDouble("land.cost-per-chunk", 500);
@@ -573,11 +585,14 @@ public class LandManager {
         if (area == null) {
             return ActionResult.NOT_CLAIMED;
         }
-        if (area.trusted.add(target)) {
-            DatabaseManager.insert("land_trusts", Map.of(
+        if (!area.trusted.contains(target)) {
+            int inserted = DatabaseManager.insert("land_trusts", Map.of(
                     "territory_id", claim.areaId(),
                     "trusted_uuid", target.toString()
             ));
+            if (inserted > 0) {
+                area.trusted.add(target);
+            }
         }
         return ActionResult.SUCCESS;
     }
@@ -593,9 +608,12 @@ public class LandManager {
         if (area == null) {
             return ActionResult.NOT_CLAIMED;
         }
-        if (area.trusted.remove(target)) {
-            DatabaseManager.execute("DELETE FROM land_trusts WHERE territory_id = ? AND trusted_uuid = ?",
+        if (area.trusted.contains(target)) {
+            int deleted = DatabaseManager.execute("DELETE FROM land_trusts WHERE territory_id = ? AND trusted_uuid = ?",
                     claim.areaId(), target.toString());
+            if (deleted > 0) {
+                area.trusted.remove(target);
+            }
         }
         return ActionResult.SUCCESS;
     }
