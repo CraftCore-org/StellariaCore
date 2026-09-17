@@ -374,6 +374,7 @@ kikori:
   timeout_disabled: "&%7一定時間操作が無かったため、木こり機能を自動でOFFにしました。"
   artificial_detected: "&%c人工物を検知しました。木こり機能を自動でOFFにします。"
   pass_granted: "&%e次回、人工物を検知しても1回だけ無視して伐採を続行します。"
+  actionbar_enabled: "&%a現在木こり機能が有効です。"
 
 mine:
   world_disabled: "&%cこのワールドでは鉱石一括破壊機能を利用できません。"
@@ -390,6 +391,7 @@ mine:
   timeout_disabled: "&%7一定時間操作が無かったため、鉱石一括破壊機能を自動でOFFにしました。"
   artificial_detected: "&%c人工物を検知しました。鉱石一括破壊機能を自動でOFFにします。"
   pass_granted: "&%e次回、人工物を検知しても1回だけ無視して採掘を続行します。"
+  actionbar_enabled: "&%a現在鉱石一括破壊が有効です。"
 
 features:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"

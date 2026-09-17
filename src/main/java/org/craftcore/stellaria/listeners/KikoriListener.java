@@ -1,5 +1,6 @@
 package org.craftcore.stellaria.listeners;
 
+import org.bukkit.Material;
 import org.bukkit.Tag;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
@@ -8,6 +9,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerItemDamageEvent;
+import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.inventory.ItemStack;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.ColorUtil;
@@ -74,5 +76,16 @@ public class KikoriListener implements Listener {
     private boolean isHoldingAxe(Player player) {
         ItemStack item = player.getInventory().getItemInMainHand();
         return Tag.ITEMS_AXES.isTagged(item.getType());
+    }
+
+    @EventHandler
+    public void onItemHeld(PlayerItemHeldEvent event){
+        int newSlot = event.getNewSlot();
+        ItemStack item = event.getPlayer().getInventory().getItem(newSlot);
+        if (item == null) { return; }
+        if (!Tag.ITEMS_AXES.isTagged(item.getType())){ return; }
+        if (!plugin.getKikoriManager().isEnabled(event.getPlayer().getUniqueId())) { return; }
+        String warning = plugin.getConfigManager().getMessage("kikori.actionbar_enabled", event.getPlayer());
+        plugin.getActionBarManager().flash(event.getPlayer(),"kikori_actionbar",ColorUtil.component(warning),60L);
     }
 }
