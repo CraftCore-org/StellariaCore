@@ -8,15 +8,16 @@
 
 ## テレポートと退出時状態
 
-- `TeleportSafetyUtil` は、危険地点の警告、テレポート成功、テレポート失敗を区別して返す。`Player#teleport` が `false` の場合は、成功演出を行わず確認状態も消費しない。
+- `TeleportSafetyUtil` は、危険地点の警告、テレポート成功、テレポート失敗を区別して返す。`Player#teleport` が `false` の場合は、成功演出を行わず確認状態も消費しない。TPA とエレベーターも戻り値が `true` の時だけ成功演出・成功メッセージを送る。
 - `HomeCommand` と `WarpCommand` は UUID を受け取って自身の確認待ち状態を削除できるようにする。
 - `PlayerListener` の退出処理から、ホーム／ワープの確認待ち、PMの返信先、メニューアイテムのクールダウンを削除する。
 
 ## 設定と定期タスク
 
 - `ConfigFile` は設定オブジェクトを `volatile` 参照として安全に公開し、reload 時に完全に構築済みの設定だけを原子的に差し替える。
+- `ConfigManager` の messages.yml 向け getter は、欠落警告にも実際のファイル名 `messages.yml` を使う。
 - 文字列のパーティクル名は共通の安全な解決処理を通す。不正な値は警告を1回出して `DUST` へフォールバックする。join、home、warp、TPA の演出に適用する。
-- 設定由来のスケジューラ期間は、ゼロ・負値を最小の 1 tick に丸める。分→tick の換算は `long` で安全に行い、過大値はスケジューラが受け取れる最大値に制限する。
+- 設定由来のスケジューラ期間は、ゼロ・負値を最小の 1 tick に丸める。分→tick の換算は最初から `long` で行い、整数演算のオーバーフローを防ぐ。
 - `StellariaCore` は設定をキャッシュする HUD/ActionBar/BossBar と、設定により開始・停止・周期が変わる定期タスクを再設定できるようにする。リロードで auto broadcast、world reset、head shop、land border、HUD 更新タスク、ActionBar/BossBar の設定を反映する。イベント登録や外部接続の再初期化はしない。
 - reload 成功／権限不足のメッセージは `messages.yml` に移す。
 
