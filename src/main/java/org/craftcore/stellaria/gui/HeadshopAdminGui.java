@@ -15,6 +15,8 @@ import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,6 +35,7 @@ public final class HeadshopAdminGui extends Gui {
     private final List<HeadshopManager.PoolHead> pool;
     private final int page;
     private final int maxPage;
+    private final Map<Integer, Integer> originalIdsBySlot = new HashMap<>();
 
     @Override
     public boolean allowBottomShiftClick() {
@@ -69,6 +72,7 @@ public final class HeadshopAdminGui extends Gui {
             HeadshopManager.PoolHead head = pool.get(first + slot);
             if (head != null) {
                 getInventory().setItem(slot, poolEntryItem(head));
+                originalIdsBySlot.put(slot, head.id());
             }
         }
 
@@ -83,11 +87,8 @@ public final class HeadshopAdminGui extends Gui {
     }
 
     private ItemStack poolEntryItem(HeadshopManager.PoolHead head) {
-        ItemStack item = plugin.getHeadshopManager().createHeadItem(head);
-        ItemMeta meta = item.getItemMeta();
-        meta.lore(List.of(org.craftcore.stellaria.utils.GuiItemUtil.text(plugin.getConfigManager().getMessage("headshop.admin.remove-hint", null))));
-        item.setItemMeta(meta);
-        return item;
+        return plugin.getHeadshopManager()
+                .createHeadItem(head);
     }
 
     private ItemStack pageIndicator() {
@@ -192,147 +193,188 @@ public final class HeadshopAdminGui extends Gui {
     }
 
     private void syncCurrentPage(Player player) {
-        int first = page * CONTENT_SLOTS;
-
-        /*
-         * このページを開いた時点で登録されていたヘッド。
-         * textureを基準に比較する。
-         */
-        List<HeadshopManager.PoolHead> originalHeads = new ArrayList<>();
-
         for (int slot = 0; slot < CONTENT_SLOTS; slot++) {
-            int index = first + slot;
 
-            if (index >= pool.size()) {
-                continue;
-            }
+            ItemStack currentItem = getInventory().getItem(slot);
+            Integer originalId = originalIdsBySlot.get(slot);
 
-            HeadshopManager.PoolHead head = pool.get(index);
+            // ---------------------------
+            // 元々商品があったスロット
+            // ---------------------------
+            if (originalId != null) {
 
-            if (head != null) {
-                originalHeads.add(head);
-            }
-        }
+                // 今は空になっている
+                // = GUIから取り出された
+                if (currentItem == null || currentItem.getType().isAir()) {
 
-        /*
-         * 現在GUIに残っているPLAYER_HEADのtexture一覧。
-         */
-        List<String> currentTextures = new ArrayList<>();
+                    HeadshopManager.PoolHead original = pool.stream()
+                            .filter(head -> head.id() == originalId)
+                            .findFirst()
+                            .orElse(null);
 
-        for (int slot = 0; slot < CONTENT_SLOTS; slot++) {
-            ItemStack item = getInventory().getItem(slot);
+                    plugin.getHeadshopManager()
+                            .removeFromPool(originalId);
 
-            if (item == null || item.getType().isAir()) {
-                continue;
-            }
+                    originalIdsBySlot.remove(slot);
 
-            /*
-             * PLAYER_HEAD以外は管理GUIに置けない。
-             * プレイヤーへ返してスロットを空にする。
-             */
-            if (item.getType() != Material.PLAYER_HEAD
-                    || !(item.getItemMeta() instanceof SkullMeta skullMeta)) {
-
-                getInventory().setItem(slot, null);
-
-                var leftovers = player.getInventory().addItem(item);
-
-                leftovers.values().forEach(leftover ->
-                        player.getWorld().dropItemNaturally(
-                                player.getLocation(),
-                                leftover
-                        )
-                );
-
-                player.sendMessage(
-                        plugin.getConfigManager()
-                                .getMessage("headshop.admin.invalid_head", player)
-                );
-
-                continue;
-            }
-
-            String texture = HeadshopManager.extractTexture(skullMeta);
-
-            if (texture == null) {
-                getInventory().setItem(slot, null);
-
-                var leftovers = player.getInventory().addItem(item);
-
-                leftovers.values().forEach(leftover ->
-                        player.getWorld().dropItemNaturally(
-                                player.getLocation(),
-                                leftover
-                        )
-                );
-
-                player.sendMessage(
-                        plugin.getConfigManager()
-                                .getMessage("headshop.admin.invalid_head", player)
-                );
-
-                continue;
-            }
-
-            currentTextures.add(texture);
-
-            /*
-             * DBに存在しない新しいヘッドなら登録。
-             */
-            if (!plugin.getHeadshopManager().textureExists(texture)) {
-                String displayName = skullMeta.hasDisplayName()
-                        ? PlainTextComponentSerializer.plainText()
-                        .serialize(skullMeta.displayName())
-                        : plugin.getConfigManager()
-                        .getMessage("headshop.admin.unnamed-head", player);
-
-                HeadshopManager.PoolHead added =
-                        plugin.getHeadshopManager().addToPool(
-                                displayName,
-                                texture,
-                                player.getUniqueId()
+                    if (original != null) {
+                        player.sendMessage(
+                                FormatUtil.replace(
+                                        plugin.getConfigManager()
+                                                .getMessage(
+                                                        "headshop.admin.removed",
+                                                        player
+                                                ),
+                                        "%item%",
+                                        original.displayName()
+                                )
                         );
-
-                if (added == null) {
-                    player.sendMessage(
-                            plugin.getConfigManager()
-                                    .getMessage("headshop.admin.save-failed", player)
-                    );
+                    }
 
                     continue;
                 }
 
                 /*
-                 * GUI側もショップ用の表示に差し替える。
+                 * 元の商品がまだ同じ場所にあるなら何もしない。
+                 *
+                 * itemDataから元ItemStackを復元して比較する。
                  */
-                getInventory().setItem(slot, poolEntryItem(added));
+                HeadshopManager.PoolHead original = pool.stream()
+                        .filter(head -> head.id() == originalId)
+                        .findFirst()
+                        .orElse(null);
+
+                if (original != null) {
+                    ItemStack originalItem =
+                            plugin.getHeadshopManager()
+                                    .createHeadItem(original);
+
+                    if (currentItem.isSimilar(originalItem)) {
+                        continue;
+                    }
+                }
+
+                /*
+                 * 商品が別アイテムに置き換えられた。
+                 * 古い商品を消して、下で新商品として登録する。
+                 */
+                plugin.getHeadshopManager()
+                        .removeFromPool(originalId);
+
+                originalIdsBySlot.remove(slot);
+            }
+
+            // ---------------------------
+            // 空スロット
+            // ---------------------------
+
+            if (currentItem == null || currentItem.getType().isAir()) {
+                continue;
+            }
+
+            /*
+             * PLAYER_HEAD以外は登録不可。
+             */
+            if (currentItem.getType() != Material.PLAYER_HEAD
+                    || !(currentItem.getItemMeta() instanceof SkullMeta)) {
+
+                getInventory().setItem(slot, null);
+
+                var leftovers =
+                        player.getInventory().addItem(currentItem);
+
+                leftovers.values().forEach(leftover ->
+                        player.getWorld().dropItemNaturally(
+                                player.getLocation(),
+                                leftover
+                        )
+                );
 
                 player.sendMessage(
-                        FormatUtil.replace(
-                                plugin.getConfigManager()
-                                        .getMessage("headshop.admin.added", player),
-                                "%item%",
-                                displayName
+                        plugin.getConfigManager()
+                                .getMessage(
+                                        "headshop.admin.invalid_head",
+                                        player
+                                )
+                );
+
+                continue;
+            }
+
+            /*
+             * 同じtextureかどうかは見ない。
+             *
+             * このスロットに新しく置かれたheadは
+             * 毎回1つの独立した商品としてDB登録する。
+             */
+            ItemStack oneItem = currentItem.clone();
+            oneItem.setAmount(1);
+
+            HeadshopManager.PoolHead added =
+                    plugin.getHeadshopManager()
+                            .addToPool(
+                                    oneItem,
+                                    player.getUniqueId()
+                            );
+
+            if (added == null) {
+                player.sendMessage(
+                        plugin.getConfigManager()
+                                .getMessage(
+                                        "headshop.admin.save-failed",
+                                        player
+                                )
+                );
+
+                continue;
+            }
+
+            originalIdsBySlot.put(slot, added.id());
+
+            /*
+             * amountが2以上なら、
+             * 1個を商品登録して残りを元に戻す。
+             *
+             * これで1スタックが1商品扱いになるのを防ぐ。
+             */
+            if (currentItem.getAmount() > 1) {
+                ItemStack remaining = currentItem.clone();
+                remaining.setAmount(currentItem.getAmount() - 1);
+
+                var leftovers =
+                        player.getInventory().addItem(remaining);
+
+                leftovers.values().forEach(leftover ->
+                        player.getWorld().dropItemNaturally(
+                                player.getLocation(),
+                                leftover
                         )
                 );
             }
+
+            getInventory().setItem(
+                    slot,
+                    plugin.getHeadshopManager()
+                            .createHeadItem(added)
+            );
+
+            player.sendMessage(
+                    FormatUtil.replace(
+                            plugin.getConfigManager()
+                                    .getMessage(
+                                            "headshop.admin.added",
+                                            player
+                                    ),
+                            "%item%",
+                            added.displayName()
+                    )
+            );
         }
 
-        /*
-         * 元々このページにあったのに、
-         * 現在GUIから無くなったヘッドはDBから削除。
-         */
-        for (HeadshopManager.PoolHead original : originalHeads) {
-            if (!currentTextures.contains(original.texture())) {
-                plugin.getHeadshopManager().removeFromPool(original.id());
-            }
-        }
-
-        /*
-         * DBの最新状態でローカルpoolを更新。
-         */
         pool.clear();
-        pool.addAll(plugin.getHeadshopManager().listPool());
+        pool.addAll(
+                plugin.getHeadshopManager().listPool()
+        );
     }
 
     private ItemStack fillerItem() {

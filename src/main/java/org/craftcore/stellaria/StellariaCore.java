@@ -223,6 +223,11 @@ public class StellariaCore extends JavaPlugin {
             "added_at INTEGER NOT NULL"
         );
 
+        DatabaseManager.addColumnIfNotExists(
+                "headshop_pool",
+                "item_data TEXT"
+        );
+
         DatabaseManager.createTableIfNotExists("headshop_rotation",
             "date TEXT NOT NULL",
             "pool_id INTEGER NOT NULL",

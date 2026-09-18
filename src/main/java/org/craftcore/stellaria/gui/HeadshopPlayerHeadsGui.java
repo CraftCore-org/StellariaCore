@@ -151,7 +151,51 @@ public final class HeadshopPlayerHeadsGui extends Gui {
         if (index >= players.size()) {
             return;
         }
-        purchase(player, players.get(index));
+        openPurchaseConfirm(
+                player,
+                players.get(index)
+        );
+    }
+
+    private void openPurchaseConfirm(
+            Player player,
+            HeadshopManager.RecentPlayer recentPlayer
+    ) {
+        int price = plugin.getConfigManager()
+                .getInt(
+                        "headshop.normal-price",
+                        500
+                )
+                + plugin.getConfigManager()
+                .getInt(
+                        "headshop.player-head-markup",
+                        300
+                );
+
+        Component title =
+                ColorUtil.component(
+                        "&%9購入確認"
+                );
+
+        Component description =
+                ColorUtil.component(
+                        "&%f"
+                                + recentPlayer.name()
+                                + " の頭 &%7を &%e"
+                                + plugin.getEconomyManager()
+                                .format(price)
+                                + " &%7で購入しますか？"
+                );
+
+        new ConfirmGui(
+                title,
+                description,
+                () -> purchase(
+                        player,
+                        recentPlayer
+                ),
+                () -> this.open(player)
+        ).open(player);
     }
 
     private void purchase(Player player, HeadshopManager.RecentPlayer recentPlayer) {

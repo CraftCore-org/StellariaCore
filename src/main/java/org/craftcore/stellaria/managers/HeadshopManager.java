@@ -1,6 +1,7 @@
 package org.craftcore.stellaria.managers;
 
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -19,14 +20,7 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.OptionalInt;
-import java.util.Random;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -45,7 +39,12 @@ public class HeadshopManager {
     private static final int ROTATION_SIZE = 5;
     private static final long TICK_INTERVAL_TICKS = 1200L; // 1分
 
-    public record PoolHead(int id, String displayName, String texture) {
+    public record PoolHead(
+            int id,
+            String displayName,
+            String texture,
+            String itemData
+    ) {
     }
 
     public record RecentPlayer(UUID uuid, String name) {
@@ -159,9 +158,13 @@ public class HeadshopManager {
     /** 本日（shopDate）のローテーションに選ばれた頭の一覧（headshop_rotationとheadshop_poolのJOIN）。 */
     public List<PoolHead> getTodayHeads() {
         return DatabaseManager.query(
-                "SELECT headshop_pool.id AS id, headshop_pool.display_name AS display_name, headshop_pool.texture AS texture " +
-                        "FROM headshop_rotation JOIN headshop_pool ON headshop_pool.id = headshop_rotation.pool_id " +
-                        "WHERE headshop_rotation.date = ?",
+                "SELECT headshop_pool.id AS id, "
+                        + "headshop_pool.display_name AS display_name, "
+                        + "headshop_pool.texture AS texture, "
+                        + "headshop_pool.item_data AS item_data "
+                        + "FROM headshop_rotation "
+                        + "JOIN headshop_pool ON headshop_pool.id = headshop_rotation.pool_id "
+                        + "WHERE headshop_rotation.date = ?",
                 HeadshopManager::mapPoolHead,
                 shopDate().toString()
         );
@@ -170,7 +173,8 @@ public class HeadshopManager {
     /** 登録済みの全ヘッド（id昇順）。管理者GUIの一覧表示用。 */
     public List<PoolHead> listPool() {
         return DatabaseManager.query(
-                "SELECT id, display_name, texture FROM headshop_pool ORDER BY id",
+                "SELECT id, display_name, texture, item_data "
+                        + "FROM headshop_pool ORDER BY id",
                 HeadshopManager::mapPoolHead
         );
     }
@@ -182,9 +186,6 @@ public class HeadshopManager {
     public @Nullable PoolHead addToPool(String displayName, String texture, UUID addedBy) {
         AtomicReference<PoolHead> added = new AtomicReference<>();
         boolean committed = DatabaseManager.transaction(connection -> {
-            if (textureExists(texture)) {
-                return;
-            }
             OptionalInt id = DatabaseManager.insertAndGetId("headshop_pool", Map.of(
                     "display_name", displayName,
                     "texture", texture,
@@ -240,14 +241,40 @@ public class HeadshopManager {
      * プロフィールUUIDはtextureから決定的に導出する（毎回ランダムだと同じ頭を複数買ってもスタックしないため）。
      */
     public ItemStack createHeadItem(PoolHead head) {
+        if (head.itemData() != null && !head.itemData().isBlank()) {
+            try {
+                ItemStack item = deserializeItem(head.itemData());
+                item.setAmount(1);
+                return item;
+            } catch (Exception e) {
+                plugin.getLogger().warning(
+                        "headshop item_data の復元に失敗しました: id=" + head.id()
+                );
+            }
+        }
+
+        // 古いDBデータ用fallback
         ItemStack item = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta meta = (SkullMeta) item.getItemMeta();
-        UUID profileId = UUID.nameUUIDFromBytes(head.texture().getBytes(StandardCharsets.UTF_8));
+
+        UUID profileId = UUID.nameUUIDFromBytes(
+                head.texture().getBytes(StandardCharsets.UTF_8)
+        );
+
         PlayerProfile profile = Bukkit.createProfile(profileId);
-        profile.setProperty(new ProfileProperty("textures", head.texture()));
+        profile.setProperty(
+                new ProfileProperty("textures", head.texture())
+        );
+
         meta.setPlayerProfile(profile);
-        meta.displayName(org.craftcore.stellaria.utils.GuiItemUtil.text(head.displayName()));
+        meta.displayName(
+                org.craftcore.stellaria.utils.GuiItemUtil.text(
+                        head.displayName()
+                )
+        );
+
         item.setItemMeta(meta);
+
         return item;
     }
 
@@ -265,7 +292,23 @@ public class HeadshopManager {
         return null;
     }
 
+    private static String serializeItem(ItemStack item) {
+        return Base64.getEncoder()
+                .encodeToString(item.serializeAsBytes());
+    }
+
+    private static ItemStack deserializeItem(String data) {
+        return ItemStack.deserializeBytes(
+                Base64.getDecoder().decode(data)
+        );
+    }
+
     private static PoolHead mapPoolHead(ResultSet rs) throws SQLException {
-        return new PoolHead(rs.getInt("id"), rs.getString("display_name"), rs.getString("texture"));
+        return new PoolHead(
+                rs.getInt("id"),
+                rs.getString("display_name"),
+                rs.getString("texture"),
+                rs.getString("item_data")
+        );
     }
 }

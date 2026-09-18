@@ -64,7 +64,24 @@ public class HeadshopGui extends Gui {
     private ItemStack createDisplayItem(HeadshopManager.PoolHead head, int price) {
         ItemStack item = plugin.getHeadshopManager().createHeadItem(head);
         ItemMeta meta = item.getItemMeta();
-        meta.lore(List.of(org.craftcore.stellaria.utils.GuiItemUtil.text("&%7価格: &%e" + plugin.getEconomyManager().format(price))));
+        List<Component> lore =
+                meta.lore() == null
+                        ? new ArrayList<>()
+                        : new ArrayList<>(meta.lore());
+
+        if (!lore.isEmpty()) {
+            lore.add(Component.empty());
+        }
+
+        lore.add(
+                org.craftcore.stellaria.utils.GuiItemUtil.text(
+                        "&%7価格: &%e"
+                                + plugin.getEconomyManager()
+                                .format(price)
+                )
+        );
+
+        meta.lore(lore);
         item.setItemMeta(meta);
         return item;
     }
@@ -120,7 +137,7 @@ public class HeadshopGui extends Gui {
         if (head == null) {
             return;
         }
-        purchase(player, head);
+        openPurchaseConfirm(player, head);
     }
 
     private void purchase(Player player, HeadshopManager.PoolHead head) {
@@ -149,5 +166,31 @@ public class HeadshopGui extends Gui {
                 .replaceText(builder -> builder.matchLiteral("%item%")
                         .replacement(ColorUtil.component(head.displayName())));
         player.sendMessage(purchasedMessage);
+    }
+
+    private void openPurchaseConfirm(
+            Player player,
+            HeadshopManager.PoolHead head
+    ) {
+        int price = plugin.getConfigManager()
+                .getInt("headshop.normal-price", 500);
+
+        Component title = ColorUtil.component(
+                "&%9購入確認"
+        );
+
+        Component description = ColorUtil.component(
+                "&%f" + head.displayName()
+                        + " &%7を &%e"
+                        + plugin.getEconomyManager().format(price)
+                        + " &%7で購入しますか？"
+        );
+
+        new ConfirmGui(
+                title,
+                description,
+                () -> purchase(player, head),
+                () -> this.open(player)
+        ).open(player);
     }
 }

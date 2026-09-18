@@ -687,12 +687,12 @@ headshop:
   gui-next-page: "&%e次のページ"
   gui-page: "&%7ページ %page%/%max_page%"
   admin:
-    added: "&%aヘッドをプールに登録しました：&%e%item%"
+    added: "&%e%item% &%aをショップ登録しました"
     save-failed: "&%cヘッドの登録を保存できませんでした。コンソールを確認してください。"
     duplicate: "&%cこのヘッドは既に登録されています"
     invalid_head: "&%c頭アイテムをカーソルに乗せた状態でクリックしてください"
     unnamed-head: "名称未設定の頭"
-    removed: "&%aプールからヘッドを削除しました：&%e%item%"
+    removed: "&%e%item% &%7のショップ登録を解除しました。"
     remove-hint: "&%eクリックで取り出す"
     hint:
       - "&%9&l| &%bヘッド登録のヒント"
