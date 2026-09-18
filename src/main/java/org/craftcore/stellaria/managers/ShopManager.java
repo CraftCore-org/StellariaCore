@@ -121,39 +121,84 @@ public final class ShopManager {
 
     public TradeResult trade(Player player, Shop old, int quantity) {
         if (old == null) return TradeResult.FAILED;
-        if (quantity < 1 || quantity > old.item().getMaxStackSize() * 16) return TradeResult.FAILED;
+        if (quantity < 1 || quantity > old.item().getMaxStackSize() * 16) {
+            return TradeResult.FAILED;
+        }
+        if (old.mode() == Mode.BUY) {
+            // 要求数より在庫が少なければ、在庫分だけ買う
+            int tradeQuantity = Math.min(quantity, old.stock());
+            // 在庫が0なら購入できない
+            if (tradeQuantity < 1) {
+                return TradeResult.NOT_ENOUGH_STOCK;
+            }
+            long total;
+            try {
+                total = Math.multiplyExact(old.price(), tradeQuantity);
+            } catch (ArithmeticException e) {
+                return TradeResult.FAILED;
+            }
+            if (!plugin.getEconomyManager().has(player, total)) {
+                return TradeResult.NOT_ENOUGH_MONEY;
+            }
+            if (!canFit(player, old.item(), tradeQuantity)) {
+                return TradeResult.INVENTORY_FULL;
+            }
+            boolean done = DatabaseManager.transaction(c -> {
+                require(DatabaseManager.execute(
+                        "UPDATE shops SET stock = stock - ? WHERE id = ? AND stock >= ?",
+                        tradeQuantity, old.id(), tradeQuantity
+                ));
+                require(DatabaseManager.execute(
+                        "UPDATE players SET coins = coins - ? WHERE uuid = ? AND coins >= ?",
+                        total, player.getUniqueId().toString(), total
+                ));
+                require(DatabaseManager.execute(
+                        "UPDATE players SET coins = coins + ? WHERE uuid = ?",
+                        total, old.owner().toString()
+                ));
+            });
+            if (!done) return TradeResult.FAILED;
+            give(player, old.item(), tradeQuantity);
+            plugin.getEconomyManager().invalidateBalance(player.getUniqueId());
+            plugin.getEconomyManager().invalidateBalance(old.owner());
+            updateCached(
+                    old,
+                    old.stock() - tradeQuantity,
+                    old.funds()
+            );
+            return TradeResult.SUCCESS;
+        }
+        // SELL
         long total;
         try {
             total = Math.multiplyExact(old.price(), quantity);
         } catch (ArithmeticException e) {
             return TradeResult.FAILED;
         }
-        if (old.mode() == Mode.BUY) {
-            if (old.stock() < quantity) return TradeResult.NOT_ENOUGH_STOCK;
-            if (!plugin.getEconomyManager().has(player, total)) return TradeResult.NOT_ENOUGH_MONEY;
-            if (!canFit(player, old.item(), quantity)) return TradeResult.INVENTORY_FULL;
-            boolean done = DatabaseManager.transaction(c -> {
-                require(DatabaseManager.execute("UPDATE shops SET stock = stock - ? WHERE id = ? AND stock >= ?", quantity, old.id(), quantity));
-                require(DatabaseManager.execute("UPDATE players SET coins = coins - ? WHERE uuid = ? AND coins >= ?", total, player.getUniqueId().toString(), total));
-                require(DatabaseManager.execute("UPDATE players SET coins = coins + ? WHERE uuid = ?", total, old.owner().toString()));
-            });
-            if (!done) return TradeResult.FAILED;
-            give(player, old.item(), quantity);
-            plugin.getEconomyManager().invalidateBalance(player.getUniqueId());
-            plugin.getEconomyManager().invalidateBalance(old.owner());
-            updateCached(old, old.stock() - quantity, old.funds());
-            return TradeResult.SUCCESS;
+        if (old.funds() < total) {
+            return TradeResult.NOT_ENOUGH_FUNDS;
         }
-        if (old.funds() < total) return TradeResult.NOT_ENOUGH_FUNDS;
-        if (countSimilar(player, old.item()) < quantity) return TradeResult.NOT_ENOUGH_ITEMS;
+        if (countSimilar(player, old.item()) < quantity) {
+            return TradeResult.NOT_ENOUGH_ITEMS;
+        }
         boolean done = DatabaseManager.transaction(c -> {
-            require(DatabaseManager.execute("UPDATE shops SET stock = stock + ?, funds = funds - ? WHERE id = ? AND funds >= ?", quantity, total, old.id(), total));
-            require(DatabaseManager.execute("UPDATE players SET coins = coins + ? WHERE uuid = ?", total, player.getUniqueId().toString()));
+            require(DatabaseManager.execute(
+                    "UPDATE shops SET stock = stock + ?, funds = funds - ? WHERE id = ? AND funds >= ?",
+                    quantity, total, old.id(), total
+            ));
+            require(DatabaseManager.execute(
+                    "UPDATE players SET coins = coins + ? WHERE uuid = ?",
+                    total, player.getUniqueId().toString()
+            ));
         });
         if (!done) return TradeResult.FAILED;
         take(player, old.item(), quantity);
         plugin.getEconomyManager().invalidateBalance(player.getUniqueId());
-        updateCached(old, old.stock() + quantity, old.funds() - total);
+        updateCached(
+                old,
+                old.stock() + quantity,
+                old.funds() - total
+        );
         return TradeResult.SUCCESS;
     }
 
@@ -169,6 +214,7 @@ public final class ShopManager {
 
     public boolean remove(Shop shop, Player recipient) {
         if (DatabaseManager.execute("DELETE FROM shops WHERE id = ?", shop.id()) != 1) return false;
+        plugin.getShopListener().removePending(recipient);
         shops.remove(shop.key());
         removeDisplays(shop);
         plugin.getContainerLockManager().find(shop.key()).ifPresent(plugin.getContainerLockManager()::unlock);
@@ -183,7 +229,7 @@ public final class ShopManager {
         Location base = new Location(world, shop.key().x() + .5, shop.key().y() + plugin.getConfigManager().getDouble("shop.display.y-offset", 1.2), shop.key().z() + .5);
         ItemDisplay item = world.spawn(base, ItemDisplay.class, e -> {
             e.setItemStack(shop.item());
-            e.setBillboard(Display.Billboard.CENTER);
+            e.setBillboard(Display.Billboard.VERTICAL);
             e.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(), new Vector3f(.5f, .5f, .5f), new AxisAngle4f()));
             e.setViewRange((float) plugin.getConfigManager().getDouble("shop.display.view-range", 16));
         });

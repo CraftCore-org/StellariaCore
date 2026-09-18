@@ -136,6 +136,10 @@ public final class ShopListener implements Listener {
         UUID id = p.getUniqueId();
         if (awaitingChest.remove(id)) {
             e.setCancelled(true);
+            if (!plugin.getLandManager().canBuild(b.getLocation(),p)) {
+                msg(p,"shop.land_protected");
+                return;
+            }
             if (!valid(b, p)) return;
             drafts.put(id, new CreateDraft(b, ShopManager.Mode.BUY, 0, null));
             new ShopCreateGui(plugin, this).open(p);
@@ -185,6 +189,10 @@ public final class ShopListener implements Listener {
         e.getPlayer().getScheduler().run(plugin, t -> accept(e.getPlayer(), state, v), null);
     }
 
+    public void removePending(Player player){
+        pending.remove(player.getUniqueId());
+    }
+
     private void accept(Player p, Pending s, String v) {
         if (pending.get(p.getUniqueId()) != s) return;
         if (expired(s.expiresAt())) {
@@ -194,7 +202,7 @@ public final class ShopListener implements Listener {
         }
         if (v.equals("!")){
             pending.remove(p.getUniqueId());
-            msg(p,"shop.create_cancel");
+            msg(p,"shop.cancel");
             return;
         }
         long n;
@@ -211,6 +219,10 @@ public final class ShopListener implements Listener {
         pending.remove(p.getUniqueId());
         if (s.input() == Input.PRICE) {
             if (s.shop() != null) {
+                if (plugin.getConfigManager().getInt("shop.max-price",10000000) <= n){
+                    p.sendMessage(FormatUtil.replace(plugin.getConfigManager().getMessage("shop.high_price",p),"%price%",String.valueOf(plugin.getConfigManager().getInt("shop.max-price",10000000))));
+                    return;
+                }
                 if (plugin.getShopManager().updateSettings(s.shop(), s.shop().mode(), n))
                     msg(p, "shop.settings_updated");
                 else msg(p, "shop.settings_failed");
