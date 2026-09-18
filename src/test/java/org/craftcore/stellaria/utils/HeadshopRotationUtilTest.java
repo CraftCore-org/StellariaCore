@@ -15,7 +15,12 @@ class HeadshopRotationUtilTest {
     @Test
     void avoidsPreviousAndCurrentHeadsWhenEnoughAlternativesExist() {
         List<PoolHead> pool = java.util.stream.IntStream.rangeClosed(1, 15)
-                .mapToObj(id -> new PoolHead(id, "head-" + id, "texture-" + id))
+                .mapToObj(id -> new PoolHead(
+                        id,
+                        "head-" + id,
+                        "texture-" + id,
+                        "item-data-" + id
+                ))
                 .toList();
 
         List<PoolHead> selected = HeadshopRotationUtil.select(
@@ -28,7 +33,12 @@ class HeadshopRotationUtilTest {
     @Test
     void fallsBackToPoolWhenThereAreTooFewAlternatives() {
         List<PoolHead> pool = java.util.stream.IntStream.rangeClosed(1, 3)
-                .mapToObj(id -> new PoolHead(id, "head-" + id, "texture-" + id))
+                .mapToObj(id -> new PoolHead(
+                        id,
+                        "head-" + id,
+                        "texture-" + id,
+                        "item-data-" + id
+                ))
                 .toList();
 
         assertEquals(3, HeadshopRotationUtil.select(pool, Set.of(), Set.of(1, 2, 3), 5, new Random(0)).size());
