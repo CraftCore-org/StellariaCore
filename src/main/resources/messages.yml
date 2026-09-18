@@ -121,6 +121,7 @@ report:
   gui_title: "&%9&l報告カテゴリを選択"
   detail_prompt: "&%e報告の詳細をチャットに入力してください。"
   detail_required: "&%c詳細を空欄にはできません。もう一度入力してください。"
+  database_error: "&%c報告の保存に失敗しました。しばらくしてからもう一度お試しください。"
   submitted: "&%a報告を受け付けました。ご協力ありがとうございます。"
 
 userhistory:

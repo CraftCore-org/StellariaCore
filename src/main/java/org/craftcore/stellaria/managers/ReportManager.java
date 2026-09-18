@@ -23,42 +23,19 @@ public class ReportManager {
     public void beginReport(Player reporter, UUID targetUuid, String category) {
         Location location = reporter.getLocation();
         String world = location.getWorld() == null ? "" : location.getWorld().getName();
-
-        pendingReports.put(
-                reporter.getUniqueId(),
-                new PendingReportRegistry.PendingReport(
-                        targetUuid,
-                        category,
-                        world,
-                        location.getBlockX(),
-                        location.getBlockY(),
-                        location.getBlockZ(),
-                        UUID.randomUUID()
-                )
-        );
+        pendingReports.put(reporter.getUniqueId(), new PendingReportRegistry.PendingReport(
+            targetUuid, category, world, location.getBlockX(), location.getBlockY(), location.getBlockZ(), UUID.randomUUID()
+        ));
     }
 
     public PendingReportRegistry.PendingReport takePending(UUID reporterUuid) {
         return pendingReports.take(reporterUuid);
     }
 
-    public boolean restorePendingIfCurrent(
-            UUID reporterUuid,
-            PendingReportRegistry.PendingReport pending
-    ) {
+    public boolean restorePendingIfCurrent(UUID reporterUuid, PendingReportRegistry.PendingReport pending) {
         return pendingReports.restoreIfCurrent(reporterUuid, pending);
     }
 
-    /**
-     * 現在の報告セッションと一致する場合だけ完了権を取得する。
-     *
-     * true:
-     *   このpendingは現在のセッションなので、DBへ保存してよい。
-     *
-     * false:
-     *   切断済み、または新しい/reportが開始済みなので、
-     *   この古いpendingは保存してはいけない。
-     */
     public boolean claimCompletion(
             UUID reporterUuid,
             PendingReportRegistry.PendingReport pending
@@ -66,32 +43,45 @@ public class ReportManager {
         return pendingReports.removeIfCurrent(reporterUuid, pending);
     }
 
-    public void completeReport(
-            Player reporter,
-            PendingReportRegistry.PendingReport pending,
-            String reason
-    ) {
-        int changed = DatabaseManager.execute(
-                "INSERT INTO reports "
-                        + "(reporter_uuid, target_uuid, category, reason, world, x, y, z, created_at) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                reporter.getUniqueId().toString(),
-                pending.targetUuid().toString(),
-                pending.category(),
-                reason,
-                pending.world(),
-                pending.x(),
-                pending.y(),
-                pending.z(),
-                System.currentTimeMillis()
-        );
+    /** 完了した報告と同じsession tokenが有効な時だけ無効化し、新しい報告を消さない。 */
+    public void completePending(UUID reporterUuid, PendingReportRegistry.PendingReport pending) {
+        pendingReports.removeIfCurrent(reporterUuid, pending);
+    }
 
-        if (changed > 0) {
+    public void completeReportAsync(
+            UUID reporterUuid,
+            String reporterName,
+            PendingReportRegistry.PendingReport pending,
+            String targetName,
+            String reason,
+            java.util.function.Consumer<Boolean> callback
+    ) {
+        Bukkit.getAsyncScheduler().runNow(plugin, task -> {
+            int changed = DatabaseManager.execute(
+                    "INSERT INTO reports "
+                            + "(reporter_uuid, target_uuid, category, reason, world, x, y, z, created_at) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    reporterUuid.toString(),
+                    pending.targetUuid().toString(),
+                    pending.category(),
+                    reason,
+                    pending.world(),
+                    pending.x(),
+                    pending.y(),
+                    pending.z(),
+                    System.currentTimeMillis()
+            );
+
+            if (changed <= 0) {
+                callback.accept(false);
+                return;
+            }
+
             plugin.getDiscordBotManager().sendReportLog(
                     new EmbedBuilder()
                             .setTitle("REPORT")
-                            .addField("報告者", reporter.getName(), true)
-                            .addField("対象", playerName(pending.targetUuid()), true)
+                            .addField("報告者", reporterName, true)
+                            .addField("対象", targetName, true)
                             .addField("カテゴリ", pending.category(), true)
                             .addField("理由", reason, false)
                             .addField(
@@ -107,15 +97,12 @@ public class ReportManager {
                                     false
                             )
             );
-        }
+
+            callback.accept(true);
+        });
     }
 
     public void clearPending(UUID reporterUuid) {
         pendingReports.remove(reporterUuid);
-    }
-
-    private static String playerName(UUID uuid) {
-        OfflinePlayer player = Bukkit.getOfflinePlayer(uuid);
-        return player.getName() != null ? player.getName() : uuid.toString();
     }
 }

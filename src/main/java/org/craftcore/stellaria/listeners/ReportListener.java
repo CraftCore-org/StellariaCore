@@ -2,6 +2,7 @@ package org.craftcore.stellaria.listeners;
 
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -22,6 +23,7 @@ public final class ReportListener implements Listener {
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onChat(AsyncChatEvent event) {
         Player reporter = event.getPlayer();
+
         PendingReportRegistry.PendingReport pending =
                 plugin.getReportManager().takePending(reporter.getUniqueId());
 
@@ -35,7 +37,6 @@ public final class ReportListener implements Listener {
                 .serialize(event.message())
                 .trim();
 
-        // 空入力なら、同じ報告セッションがまだ有効な場合だけ復元する
         if (reason.isEmpty()) {
             reporter.getScheduler().run(plugin, task -> {
                 if (!reporter.isOnline()) {
@@ -44,6 +45,7 @@ public final class ReportListener implements Listener {
 
                 if (plugin.getReportManager()
                         .restorePendingIfCurrent(reporter.getUniqueId(), pending)) {
+
                     reporter.sendMessage(
                             plugin.getConfigManager()
                                     .getMessage("report.detail_required", reporter)
@@ -54,31 +56,43 @@ public final class ReportListener implements Listener {
             return;
         }
 
-        /*
-         * DBへ保存する前に、今処理しているpendingが
-         * 「現在の報告セッション」かを確認して無効化する。
-         *
-         * 新しい/reportが既に開始されていた場合、
-         * 古いpendingのsession tokenは一致しないためfalseになり、
-         * 古い報告は保存されない。
-         */
         if (!plugin.getReportManager()
                 .claimCompletion(reporter.getUniqueId(), pending)) {
             return;
         }
 
-        plugin.getReportManager().completeReport(reporter, pending, reason);
+        String reporterName = reporter.getName();
 
-        reporter.getScheduler().run(plugin, task -> {
-            if (!reporter.isOnline()) {
-                return;
-            }
+        String targetName = Bukkit.getOfflinePlayer(pending.targetUuid()).getName();
+        if (targetName == null) {
+            targetName = pending.targetUuid().toString();
+        }
 
-            reporter.sendMessage(
-                    plugin.getConfigManager()
-                            .getMessage("report.submitted", reporter)
-            );
-        }, null);
+        plugin.getReportManager().completeReportAsync(
+                reporter.getUniqueId(),
+                reporterName,
+                pending,
+                targetName,
+                reason,
+                saved -> reporter.getScheduler().run(plugin, task -> {
+                    if (!reporter.isOnline()) {
+                        return;
+                    }
+
+                    if (!saved) {
+                        reporter.sendMessage(
+                                plugin.getConfigManager()
+                                        .getMessage("report.database_error", reporter)
+                        );
+                        return;
+                    }
+
+                    reporter.sendMessage(
+                            plugin.getConfigManager()
+                                    .getMessage("report.submitted", reporter)
+                    );
+                }, null)
+        );
     }
 
     @EventHandler
