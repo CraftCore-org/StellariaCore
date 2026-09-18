@@ -8,6 +8,7 @@ import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
+import org.craftcore.stellaria.utils.WorldNameUtil;
 import org.mvplugins.multiverse.core.MultiverseCoreApi;
 import org.mvplugins.multiverse.core.world.LoadedMultiverseWorld;
 import org.mvplugins.multiverse.core.world.options.RegenWorldOptions;
@@ -156,8 +157,11 @@ public class WorldResetManager {
     }
 
     private void announce(List<String> worldNames, int minutes) {
+        String displayNames = worldNames.stream()
+                .map(worldName -> WorldNameUtil.displayName(plugin.getConfigManager(), worldName))
+                .collect(java.util.stream.Collectors.joining(", "));
         String message = plugin.getConfigManager().getMessage("world-reset.announce", null);
-        message = FormatUtil.replace(message, "%worlds%", String.join(", ", worldNames));
+        message = FormatUtil.replace(message, "%worlds%", displayNames);
         message = FormatUtil.replace(message, "%minutes%", String.valueOf(minutes));
         Bukkit.broadcast(ColorUtil.component(message));
     }
@@ -195,12 +199,10 @@ public class WorldResetManager {
 
     /** Multiverseで再生成と新しいスポーンの保存が成功したワールドだけ、DB整理とロック解除を行う。 */
     private void performReset(List<String> worldNames) {
+        Location destination = evacuationDestination(worldNames);
         List<String> resetCompleted = new ArrayList<>();
         for (String worldName : worldNames) {
-            if (Bukkit.getOnlinePlayers().stream().anyMatch(player -> player.getWorld().getName().equals(worldName))) {
-                plugin.getLogger().warning("ワールド '" + worldName + "' にプレイヤーが残っているため、再生成を中止しました。");
-                continue;
-            }
+            evacuateRemainingPlayers(worldName, destination);
 
             if (!regenerateWorld(worldName)) {
                 continue;
@@ -213,6 +215,32 @@ public class WorldResetManager {
             resetCompleted.add(worldName);
         }
         lockoutWorlds.removeAll(resetCompleted);
+    }
+
+    /**
+     * evacuate()のテレポート漏れやワールド間移動のタイミング差で退避しきれず残ったプレイヤーを、
+     * 再生成をブロックさせないよう world-reset.evacuate-to-world へ強制的にテレポートする。
+     * 退避先が決定できない場合はキックして再生成をブロックさせない。
+     */
+    private void evacuateRemainingPlayers(String worldName, Location destination) {
+        String displayName = WorldNameUtil.displayName(plugin.getConfigManager(), worldName);
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (!player.getWorld().getName().equals(worldName)) {
+                continue;
+            }
+            if (destination != null) {
+                player.teleportAsync(destination);
+                player.sendMessage(plugin.getConfigManager().getMessage("world-reset.evacuated", player));
+                plugin.getLogger().warning("ワールド '" + worldName + "' に残っていたプレイヤー '"
+                        + player.getName() + "' を再生成のため強制退避させました。");
+            } else {
+                String message = FormatUtil.replace(
+                        plugin.getConfigManager().getMessage("world-reset.kicked", player), "%world%", displayName);
+                player.kick(ColorUtil.component(message));
+                plugin.getLogger().warning("ワールド '" + worldName + "' に残っていたプレイヤー '"
+                        + player.getName() + "' の退避先が決定できないため強制退出させました。");
+            }
+        }
     }
 
     private boolean regenerateWorld(String worldName) {

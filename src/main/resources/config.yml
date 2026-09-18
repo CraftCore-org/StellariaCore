@@ -59,7 +59,7 @@ economy:
 
 world:
   gui-title: "&%9ワールドを選択"
-  gui-rows: 0 # 1〜6で固定行数。0または範囲外ならワールド数から自動計算（例: 6）
+  gui-rows: 3 # 1〜6で固定行数。0または範囲外ならワールド数から自動計算（例: 6）
   # GUIに表示するワールドのリスト。並び順がそのままGUIの配置順になります。
   # ワールド名(world)は必須。表示名(name)、カスタムヘッド(custom-head)、
   # 素材(material)、説明文(lore)、スロット(slot)は省略可能です。
@@ -67,15 +67,27 @@ world:
   worlds:
     - world: "world"
       name: "&%a生活ワールド"
+#      custom-head: "earth"
+      material: GRASS_BLOCK
+      slot: 11
+      lore:
+        - "&%7メインの生活ワールドです"
+
+    - world: "lobby"
+      name: "&%bロビー"
       custom-head: "earth"
-      # material: GRASS_BLOCK
-      # slot: 0
-      # lore:
-      #   - "&%7メインの生活ワールドです"
-    - world: "world_nether"
-      name: "&%cネザー"
-    - world: "world_the_end"
-      name: "&%dジ・エンド"
+      material: GRASS_BLOCK
+      slot: 13
+      lore:
+        - "&%7ロビーワールドです"
+
+    - world: "resource"
+      name: "&%e資源ワールド"
+#      custom-head: "earth"
+      material: HAY_BLOCK
+      slot: 15
+      lore:
+        - "&%7資源ワールドです"
   # Bukkit上のワールド名をGUIやプレースホルダーに表示する名前へ置き換える（未設定のワールドは元の名前を表示）
   # ※ 上記 worlds の各項目で name を指定した場合はそちらが優先されます
   display-names: {}
