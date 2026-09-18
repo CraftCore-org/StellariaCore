@@ -63,6 +63,10 @@ public abstract class Gui implements InventoryHolder {
         return inventory;
     }
 
+    public boolean allowBottomShiftClick() {
+        return false;
+    }
+
     /** この画面をプレイヤーに開く。 */
     public void open(Player player) {
         player.openInventory(inventory);

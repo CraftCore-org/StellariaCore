@@ -27,8 +27,17 @@ public class GuiListener implements Listener {
                 gui.onClick(event);
                 return;
             }
-            if (event.getClickedInventory() != null && shouldCancelBottomClick(event.isShiftClick(), event.getClick())) {
-                event.setCancelled(true);
+
+            if (event.getClickedInventory() != null
+                    && shouldCancelBottomClick(event.isShiftClick(), event.getClick())) {
+
+                if (!gui.allowBottomShiftClick()) {
+                    event.setCancelled(true);
+                    return;
+                }
+
+                // Shiftクリックを許可するGUIにはイベントも通知する
+                gui.onClick(event);
             }
         }
     }
