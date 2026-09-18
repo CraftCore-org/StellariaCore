@@ -4,12 +4,16 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
-import org.craftcore.stellaria.utils.UrlHighlighter;
+import org.craftcore.stellaria.utils.VoteMessageUtil;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
+
 /**
- * /vote コマンド。config.yml に設定した投票サイトへのリンクを案内する。
+ * /vote コマンド。
+ * config.yml に設定された投票サイトへのリンクを表示する。
  */
 public class VoteCommand implements CommandExecutor {
 
@@ -20,16 +24,33 @@ public class VoteCommand implements CommandExecutor {
     }
 
     @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String @NotNull [] args) {
-        String mineportal = plugin.getConfigManager().getString("vote.sites.mineportal", "");
-        String minecraftjp = plugin.getConfigManager().getString("vote.sites.minecraftjp", "");
-        String message = plugin.getConfigManager().getMessage("vote.message", null)
-            .replace("%mineportal%", mineportal)
-            .replace("%minecraftjp%", minecraftjp);
-        String urlHint = plugin.getConfigManager().getMessage("chat.url_hint", null);
+    public boolean onCommand(
+            @NotNull CommandSender sender,
+            @NotNull Command command,
+            @NotNull String label,
+            @NotNull String @NotNull [] args
+    ) {
 
-        Component component = UrlHighlighter.highlight(message, true, urlHint);
-        sender.sendMessage(component);
+        List<String> lines =
+                plugin.getConfigManager()
+                        .getStringList("vote.message");
+
+        Player player =
+                sender instanceof Player p
+                        ? p
+                        : null;
+
+        List<Component> components =
+                VoteMessageUtil.build(
+                        plugin,
+                        lines,
+                        player
+                );
+
+        for (Component component : components) {
+            sender.sendMessage(component);
+        }
+
         return true;
     }
 }

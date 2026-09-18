@@ -32,12 +32,49 @@ homepage:
 
 vote:
   enabled: true
+
   reward:
     money: 500
-  sites:
-    mineportal: "https://mineportal.jp/servers/cmu54wi1o0000ofujlywoxbwk"
-    minecraftjp: "https://minecraft.jp/servers/stellaria.craftcore.org" # NOTE: 対応してないかも
 
+  message:
+    - "&%8----------------------------------"
+    - ""
+    - "&%9&lサーバー投票"
+    - ""
+    - "&%7サーバーに投票すると"
+    - "&%7サーバー内通貨や限定ヘッドなど"
+    - "&%7様々なアイテムが貰えます。"
+    - ""
+    - "    %jms%     %mineportal%"
+    - ""
+    - "&%8----------------------------------"
+
+  broadcast:
+    enabled: true
+
+    message:
+      - "&%8----------------------------------"
+      - ""
+      - "  &%f%player% &%aさんが投票しました！"
+      - ""
+      - "  &%7サーバーに投票するとサーバー内通貨が貰えます。"
+      - ""
+      - "    %jms%     %mineportal%"
+      - ""
+      - "&%8----------------------------------"
+
+  sites:
+    jms:
+      enabled: true
+      name: "&%3&lJMS"
+      url: "https://minecraft.jp/servers/stellaria.craftcore.org"
+      tooltip: "&%7クリックして&%3JMS&%7の投票ページを開く"
+
+    mineportal:
+      enabled: true
+      name: "&%d&lMinePortal"
+      url: "https://mineportal.jp/servers/cmu54wi1o0000ofujlywoxbwk"
+      tooltip: "&%7クリックして&%dMinePortal&%7の投票ページを開く"
 rank:
   enabled: true
   default:
