@@ -5,6 +5,7 @@ import org.bukkit.Material;
 import org.bukkit.Tag;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.DoubleChest;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Hanging;
@@ -33,6 +34,7 @@ import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.InventoryHolder;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.ColorUtil;
 
@@ -81,9 +83,21 @@ public class LandProtectionListener implements Listener {
 
     @EventHandler
     public void onBlockPlace(BlockPlaceEvent event) {
-        if (!plugin.getLandManager().canBuild(event.getBlock().getLocation(), event.getPlayer())) {
+        Block block = event.getBlockPlaced();
+        Player player = event.getPlayer();
+
+        if (!plugin.getLandManager().canBuild(block.getLocation(), player)) {
             event.setCancelled(true);
-            sendNotice(event.getPlayer(), "land.protected_block");
+            sendNotice(player, "land.protected_block");
+            return;
+        }
+
+        if ((block.getType() == Material.CHEST
+                || block.getType() == Material.TRAPPED_CHEST)
+                && !canAccessContainer(block, player)) {
+
+            event.setCancelled(true);
+            sendNotice(player, "land.protected_block");
         }
     }
 
@@ -123,7 +137,11 @@ public class LandProtectionListener implements Listener {
         if (isDoor && plugin.getLandManager().doorsOpenToOthers(block.getLocation())) {
             return;
         }
-        if (isChest && plugin.getLandManager().chestsOpenToOthers(block.getLocation())) {
+        if (isChest) {
+            if (!canAccessContainer(block, event.getPlayer())) {
+                event.setCancelled(true);
+                sendNotice(event.getPlayer(), "land.protected_block");
+            }
             return;
         }
 
@@ -378,5 +396,40 @@ public class LandProtectionListener implements Listener {
         if (plugin.getLandManager().ownerOf(event.getBlock().getLocation()) != null) {
             event.setCancelled(true);
         }
+    }
+
+    private boolean canAccessContainer(Block block, Player player) {
+        if (!(block.getState() instanceof org.bukkit.block.Chest chest)) {
+            return canAccessContainerLocation(block.getLocation(), player);
+        }
+
+        InventoryHolder holder = chest.getInventory().getHolder();
+
+        // シングルチェスト
+        if (!(holder instanceof DoubleChest doubleChest)) {
+            return canAccessContainerLocation(block.getLocation(), player);
+        }
+
+        // ラージチェストは左右両方をチェック
+        if (doubleChest.getLeftSide() instanceof org.bukkit.block.Chest left
+                && !canAccessContainerLocation(left.getLocation(), player)) {
+            return false;
+        }
+
+        if (doubleChest.getRightSide() instanceof org.bukkit.block.Chest right
+                && !canAccessContainerLocation(right.getLocation(), player)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean canAccessContainerLocation(Location location, Player player) {
+        // その土地がチェスト公開設定ならアクセス可能
+        if (plugin.getLandManager().chestsOpenToOthers(location)) {
+            return true;
+        }
+
+        return plugin.getLandManager().canBuild(location, player);
     }
 }
