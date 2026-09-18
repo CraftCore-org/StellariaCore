@@ -96,6 +96,7 @@ commands:
   unlock:
   worldreset:
     permission: stellaria.worldreset
+  shop:
 
 permissions:
   stellaria.msg:
