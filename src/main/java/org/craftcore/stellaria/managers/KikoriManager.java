@@ -368,10 +368,15 @@ public class KikoriManager {
                 if (TreeUtil.isLog(block.getType()) || isLeaf) {
                     // breakBlockは「現在メインハンドにあるアイテム」にしか耐久ダメージを与えないため、
                     // 持ち替え済みでも斧に正しくダメージが入るよう、破壊の瞬間だけ斧をメインハンドへ戻す。
+                    // 元スロットとメインハンドの両方に斧が同時に存在する瞬間を絶対に作らないよう、
+                    // 必ず「元スロットを空にしてからメインハンドへ置く」「メインハンドを空にしてから元スロットへ戻す」
+                    // の順で処理する（同時に2箇所に存在すると、その瞬間にドロップされた場合に複製されてしまう）。
                     boolean heldAxe = current.getInventory().getHeldItemSlot() == axeSlot;
-                    ItemStack previousMainHand = heldAxe ? null : current.getInventory().getItemInMainHand();
+                    ItemStack previousMainHand = null;
 
                     if (!heldAxe) {
+                        previousMainHand = current.getInventory().getItemInMainHand();
+                        current.getInventory().setItem(axeSlot, null);
                         current.getInventory().setItemInMainHand(axeInSlot);
                     }
 
@@ -388,8 +393,9 @@ public class KikoriManager {
                     }
 
                     if (!heldAxe) {
-                        current.getInventory().setItem(axeSlot, current.getInventory().getItemInMainHand());
+                        ItemStack axeAfterBreak = current.getInventory().getItemInMainHand();
                         current.getInventory().setItemInMainHand(previousMainHand);
+                        current.getInventory().setItem(axeSlot, axeAfterBreak);
                     }
                 }
 

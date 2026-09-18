@@ -10,6 +10,7 @@ import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.gui.WorldSelectGui;
 import org.craftcore.stellaria.utils.TabCompleteUtil;
+import org.craftcore.stellaria.utils.WorldNameUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -39,7 +40,7 @@ public class WorldCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        World world = Bukkit.getWorld(args[0]);
+        World world = WorldNameUtil.resolveWorld(plugin.getConfigManager(), args[0]);
         if (world == null) {
             player.sendMessage(plugin.getConfigManager().getMessage("world.not_found", player));
             return true;
@@ -54,6 +55,8 @@ public class WorldCommand implements CommandExecutor, TabCompleter {
         if (args.length != 1) {
             return List.of();
         }
-        return TabCompleteUtil.filterStartsWith(Bukkit.getWorlds().stream().map(World::getName).toList(), args[0]);
+        return TabCompleteUtil.filterStartsWith(Bukkit.getWorlds().stream()
+                .map(w -> WorldNameUtil.plainDisplayName(plugin.getConfigManager(), w))
+                .toList(), args[0]);
     }
 }

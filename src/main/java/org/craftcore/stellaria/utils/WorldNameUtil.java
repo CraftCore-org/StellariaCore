@@ -1,5 +1,7 @@
 package org.craftcore.stellaria.utils;
 
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.craftcore.stellaria.managers.ConfigManager;
 
@@ -52,5 +54,32 @@ public final class WorldNameUtil {
         }
 
         return worldName;
+    }
+
+    /** displayName()の色コードを取り除いた、タブ補完や照合に使うプレーンな表示名を返す。 */
+    public static String plainDisplayName(ConfigManager config, World world) {
+        return plainDisplayName(config, world.getName());
+    }
+
+    /** displayName()の色コードを取り除いた、タブ補完や照合に使うプレーンな表示名を返す。 */
+    public static String plainDisplayName(ConfigManager config, String worldName) {
+        return PlainTextComponentSerializer.plainText().serialize(ColorUtil.component(displayName(config, worldName)));
+    }
+
+    /**
+     * ユーザー入力からワールドを解決する。まずBukkit上の実際のワールド名として探し、
+     * 見つからなければ表示名（色コード無視・大文字小文字区別なし）として一致するワールドを探す。
+     */
+    public static World resolveWorld(ConfigManager config, String input) {
+        World direct = Bukkit.getWorld(input);
+        if (direct != null) {
+            return direct;
+        }
+        for (World world : Bukkit.getWorlds()) {
+            if (plainDisplayName(config, world).equalsIgnoreCase(input)) {
+                return world;
+            }
+        }
+        return null;
     }
 }

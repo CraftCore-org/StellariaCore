@@ -167,9 +167,9 @@ scoreboard:
   hide-numbers: true
   lines:
     - ""
-    - " &%bワールド&%7: &%f%world%"
-    - " &%b座標&%7: &%f%x%&%7,&%f %y%&%7,&%f %z%"
-    - " &%b所持金&%7: &%f%money%"
+    - " &%bワールド&%7: &%f%world%  "
+    - " &%b座標&%7: &%f%x%&%7,&%f %y%&%7,&%f %z%  "
+    - " &%b所持金&%7: &%f%money%  "
     - ""
 
 

@@ -232,10 +232,9 @@ public class WorldSelectGui extends Gui {
             }
             meta.displayName(GuiItemUtil.text(name));
 
+            // loreが明示的に設定されたワールドのみ表示する（未設定時はNETHER等の環境名を出さずデフォルト非表示）
             if (entry.lore() != null && !entry.lore().isEmpty()) {
                 meta.lore(entry.lore().stream().map(GuiItemUtil::text).toList());
-            } else if (world != null) {
-                meta.lore(List.of(GuiItemUtil.text(world.getEnvironment().name())));
             }
 
             item.setItemMeta(meta);
