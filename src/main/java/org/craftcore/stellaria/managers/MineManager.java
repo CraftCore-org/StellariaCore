@@ -67,6 +67,7 @@ public class MineManager {
 
     /** タイムアウト監視。mine.enabled が true の間、10秒毎に呼ばれる想定（KikoriManagerと同方式）。 */
     public void tick() {
+        if (plugin.getConfigManager().getInt("mine.timeout-seconds", 300) == 0) { return; }
         long timeoutMillis = plugin.getConfigManager().getInt("mine.timeout-seconds", 300) * 1000L;
         long now = System.currentTimeMillis();
 

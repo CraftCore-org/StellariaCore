@@ -69,6 +69,7 @@ public class KikoriManager {
 
     /** タイムアウト監視。kikori.enabled が true の間、10秒毎に呼ばれる想定（AfkManagerと同方式）。 */
     public void tick() {
+        if (plugin.getConfigManager().getInt("kikori.timeout-seconds", 300) == 0) { return; }
         long timeoutMillis = plugin.getConfigManager().getInt("kikori.timeout-seconds", 300) * 1000L;
         long now = System.currentTimeMillis();
 
