@@ -287,6 +287,7 @@ public class StellariaCore extends JavaPlugin {
 
         // 6. Scoreboard/Tablist/Belowname のインスタンス化とtick開始
         this.scoreboardManager = new ScoreboardManager(
+            this,
             placeholderManager,
             configManager.getString("scoreboard.title", ""),
             configManager.getStringList("scoreboard.lines"),
