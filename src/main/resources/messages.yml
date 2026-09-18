@@ -1,6 +1,7 @@
 # StellariaCore メッセージファイル
 
 join: "&%a> &%f%player%&%7 さんがログインしました。"
+join-first: "&%e✳ &%f%player%&%7 さんが初めてサーバーにログインしました！"
 quit: "&%c< &%f%player%&%7 さんがログアウトしました。"
 
 # 初回ログイン時にだけ本人へ送るウェルカムメッセージ（config.ymlのwelcome.enabledで有効/無効を切替）

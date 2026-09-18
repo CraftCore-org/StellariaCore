@@ -32,8 +32,14 @@ public class PlayerJoinListener implements Listener {
 
         plugin.getVanishManager().syncVisibilityForJoiningPlayer(player);
 
-        // messages.yml からフォーマット済みのメッセージを取得
-        String joinMsg = plugin.getConfigManager().getMessage("join", player);
+        // messages.yml からフォーマット済みのメッセージを取得。
+        // 初回参加時は join-first を優先し、未設定（空文字）なら通常の join にフォールバックする。
+        String joinMsg = player.hasPlayedBefore()
+                ? plugin.getConfigManager().getMessage("join", player)
+                : plugin.getConfigManager().getMessage("join-first", player, true);
+        if (joinMsg.isEmpty() && !player.hasPlayedBefore()) {
+            joinMsg = plugin.getConfigManager().getMessage("join", player);
+        }
 
         if (!joinMsg.isEmpty()) {
             event.setJoinMessage(joinMsg);
