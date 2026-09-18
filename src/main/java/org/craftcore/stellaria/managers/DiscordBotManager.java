@@ -26,6 +26,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.listeners.DiscordListener;
 import org.craftcore.stellaria.utils.ColorUtil;
+import org.craftcore.stellaria.utils.DiscordTextUtil;
 import org.craftcore.stellaria.utils.DurationParser;
 import org.craftcore.stellaria.utils.YamlScalarPatcher;
 
@@ -345,7 +346,7 @@ public class DiscordBotManager {
                         .addField("ランク", rankName, true)
                         .addField("最終ログアウト", lastSeen, true)
                         .addField("プレイ時間", DurationParser.formatDuration(playtime), true)
-                        .addField("所持金", balance, true);
+                        .addField("所持金", DiscordTextUtil.plainMinecraftText(balance), true);
                 hook.editOriginalEmbeds(embed.build()).queue();
             });
         }));
