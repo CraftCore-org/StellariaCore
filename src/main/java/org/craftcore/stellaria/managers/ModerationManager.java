@@ -26,6 +26,12 @@ public class ModerationManager {
     public record Counts(int warns, int kicks, int bans, int reports) {
     }
 
+    private record LoadedBan(
+            ActiveBanRegistry.BanEntry entry,
+            Long revokedAt
+    ) {
+    }
+
     private final StellariaCore plugin;
     private final ActiveBanRegistry activeBans = new ActiveBanRegistry();
 
@@ -36,25 +42,52 @@ public class ModerationManager {
     /** 起動時にBAN履歴を読み込み、各対象者の最新BANだけを有効キャッシュの候補にする。 */
     public void loadAllBans() {
         activeBans.clear();
+
         Set<UUID> newestBanTargets = new HashSet<>();
         long now = System.currentTimeMillis();
-        for (ActiveBanRegistry.BanEntry entry : DatabaseManager.query(
-            "SELECT id, target_uuid, moderator_uuid, reason, banned_at, expires_at FROM bans "
-                + "ORDER BY target_uuid ASC, banned_at DESC, id DESC",
-            rs -> new ActiveBanRegistry.BanEntry(
-                rs.getInt("id"),
-                UUID.fromString(rs.getString("target_uuid")),
-                nullableUuid(rs.getString("moderator_uuid")),
-                rs.getString("reason"),
-                rs.getLong("banned_at"),
-                normalizeBanExpiry(rs.getObject("expires_at") == null ? null : rs.getLong("expires_at"))
-            )
+
+        for (LoadedBan loaded : DatabaseManager.query(
+                "SELECT id, target_uuid, moderator_uuid, reason, banned_at, expires_at, revoked_at "
+                        + "FROM bans "
+                        + "ORDER BY target_uuid ASC, banned_at DESC, id DESC",
+                rs -> new LoadedBan(
+                        new ActiveBanRegistry.BanEntry(
+                                rs.getInt("id"),
+                                UUID.fromString(rs.getString("target_uuid")),
+                                nullableUuid(rs.getString("moderator_uuid")),
+                                rs.getString("reason"),
+                                rs.getLong("banned_at"),
+                                normalizeBanExpiry(
+                                        rs.getObject("expires_at") == null
+                                                ? null
+                                                : rs.getLong("expires_at")
+                                )
+                        ),
+                        rs.getObject("revoked_at") == null
+                                ? null
+                                : rs.getLong("revoked_at")
+                )
         )) {
-            if (newestBanTargets.add(entry.targetUuid()) && !entry.isExpired(now)) {
+            ActiveBanRegistry.BanEntry entry = loaded.entry();
+
+            // 最新BANだけを見る。
+            // 最新BANが解除済みなら、過去のBANを復活させない。
+            if (!newestBanTargets.add(entry.targetUuid())) {
+                continue;
+            }
+
+            if (loaded.revokedAt() != null) {
+                continue;
+            }
+
+            if (!entry.isExpired(now)) {
                 activeBans.put(entry);
             }
         }
-        plugin.getLogger().info("BAN情報を読み込みました（" + newestBanTargets.size() + "件）");
+
+        plugin.getLogger().info(
+                "BAN情報を読み込みました（" + newestBanTargets.size() + "件）"
+        );
     }
 
     public boolean warn(UUID targetUuid, UUID moderatorUuid, String reason) {
@@ -114,11 +147,37 @@ public class ModerationManager {
      */
     public boolean unban(UUID targetUuid, UUID moderatorUuid, String reason) {
         ActiveBanRegistry.BanEntry active = getActiveBan(targetUuid);
+
         if (active == null) {
             return false;
         }
+
+        long revokedAt = System.currentTimeMillis();
+
+        int changed = DatabaseManager.execute(
+                "UPDATE bans "
+                        + "SET revoked_at = ?, revoked_by = ?, revoke_reason = ? "
+                        + "WHERE id = ? AND revoked_at IS NULL",
+                revokedAt,
+                nullableUuidString(moderatorUuid),
+                reason,
+                active.id()
+        );
+
+        if (changed <= 0) {
+            return false;
+        }
+
         activeBans.remove(targetUuid);
-        sendModerationLog("UNBAN", targetUuid, moderatorUuid, reason, null);
+
+        sendModerationLog(
+                "UNBAN",
+                targetUuid,
+                moderatorUuid,
+                reason,
+                null
+        );
+
         return true;
     }
 

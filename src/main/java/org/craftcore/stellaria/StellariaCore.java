@@ -136,6 +136,11 @@ public class StellariaCore extends JavaPlugin {
         DatabaseManager.createTableIfNotExists("bans",
             "id INTEGER PRIMARY KEY AUTOINCREMENT", "target_uuid TEXT", "moderator_uuid TEXT",
             "reason TEXT", "banned_at INTEGER", "expires_at INTEGER NULL");
+
+        DatabaseManager.addColumnIfNotExists("bans", "revoked_at INTEGER");
+        DatabaseManager.addColumnIfNotExists("bans", "revoked_by TEXT");
+        DatabaseManager.addColumnIfNotExists("bans", "revoke_reason TEXT");
+
         DatabaseManager.createTableIfNotExists("reports",
             "id INTEGER PRIMARY KEY AUTOINCREMENT", "reporter_uuid TEXT", "target_uuid TEXT",
             "category TEXT", "reason TEXT", "world TEXT", "x INTEGER", "y INTEGER", "z INTEGER", "created_at INTEGER");
