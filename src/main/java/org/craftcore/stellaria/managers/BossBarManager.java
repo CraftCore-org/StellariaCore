@@ -8,6 +8,7 @@ import org.craftcore.stellaria.StellariaCore;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -19,14 +20,18 @@ import java.util.UUID;
  */
 public class BossBarManager {
 
-    private record ChannelEntry(BossBar bar, long expiresAtMillis) {
+    record ChannelEntry(BossBar bar, long expiresAtMillis) {
         boolean isExpired(long now) {
             return expiresAtMillis >= 0 && now >= expiresAtMillis;
         }
     }
 
+    record ExpirySnapshot(List<BossBar> visibleBars, List<BossBar> expiredBars) {
+    }
+
     private final StellariaCore plugin;
     private final Map<UUID, LinkedHashMap<String, ChannelEntry>> channels = new HashMap<>();
+    private final Object channelLock = new Object();
 
     public BossBarManager(StellariaCore plugin) {
         this.plugin = plugin;
@@ -51,11 +56,17 @@ public class BossBarManager {
 
     /** チャンネルを即座に消す。 */
     public void clearChannel(Player player, String channelId) {
-        LinkedHashMap<String, ChannelEntry> playerChannels = channels.get(player.getUniqueId());
-        if (playerChannels == null) {
-            return;
+        ChannelEntry entry;
+        synchronized (channelLock) {
+            LinkedHashMap<String, ChannelEntry> playerChannels = channels.get(player.getUniqueId());
+            if (playerChannels == null) {
+                return;
+            }
+            entry = playerChannels.remove(channelId);
+            if (playerChannels.isEmpty()) {
+                channels.remove(player.getUniqueId());
+            }
         }
-        ChannelEntry entry = playerChannels.remove(channelId);
         if (entry != null) {
             player.hideBossBar(entry.bar());
         }
@@ -63,13 +74,17 @@ public class BossBarManager {
 
     /** プレイヤー退出時に呼ぶ。表示中のボスバーを全て隠してから情報を破棄する（メモリリーク防止）。 */
     public void removePlayer(UUID uuid) {
-        LinkedHashMap<String, ChannelEntry> playerChannels = channels.remove(uuid);
-        if (playerChannels == null) {
+        List<ChannelEntry> snapshot;
+        synchronized (channelLock) {
+            LinkedHashMap<String, ChannelEntry> playerChannels = channels.remove(uuid);
+            snapshot = playerChannels == null ? List.of() : List.copyOf(playerChannels.values());
+        }
+        if (snapshot.isEmpty()) {
             return;
         }
         Player player = Bukkit.getPlayer(uuid);
         if (player != null) {
-            for (ChannelEntry entry : playerChannels.values()) {
+            for (ChannelEntry entry : snapshot) {
                 player.hideBossBar(entry.bar());
             }
         }
@@ -79,37 +94,61 @@ public class BossBarManager {
     public void tick() {
         long now = System.currentTimeMillis();
         for (Player player : Bukkit.getOnlinePlayers()) {
-            LinkedHashMap<String, ChannelEntry> playerChannels = channels.get(player.getUniqueId());
-            if (playerChannels == null || playerChannels.isEmpty()) {
-                continue;
-            }
-            playerChannels.entrySet().removeIf(mapEntry -> {
-                ChannelEntry entry = mapEntry.getValue();
-                if (entry.isExpired(now)) {
-                    player.hideBossBar(entry.bar());
-                    return true;
+            ExpirySnapshot snapshot;
+            synchronized (channelLock) {
+                LinkedHashMap<String, ChannelEntry> playerChannels = channels.get(player.getUniqueId());
+                if (playerChannels == null || playerChannels.isEmpty()) {
+                    continue;
                 }
-                return false;
-            });
+                snapshot = expireAndSnapshot(playerChannels, now);
+                if (snapshot.visibleBars().isEmpty()) {
+                    channels.remove(player.getUniqueId());
+                }
+            }
+            snapshot.expiredBars().forEach(player::hideBossBar);
         }
+    }
+
+    /**
+     * Removes expired entries and returns immutable bar snapshots. Callers must hold {@link #channelLock}.
+     */
+    static ExpirySnapshot expireAndSnapshot(LinkedHashMap<String, ChannelEntry> playerChannels, long now) {
+        List<BossBar> expiredBars = new java.util.ArrayList<>();
+        playerChannels.entrySet().removeIf(entry -> {
+            if (!entry.getValue().isExpired(now)) {
+                return false;
+            }
+            expiredBars.add(entry.getValue().bar());
+            return true;
+        });
+        return new ExpirySnapshot(
+                List.copyOf(playerChannels.values().stream().map(ChannelEntry::bar).toList()),
+                List.copyOf(expiredBars)
+        );
     }
 
     private void upsert(Player player, String channelId, Component title, BossBar.Color color, BossBar.Overlay overlay, float progress, long expiresAtMillis) {
         float clampedProgress = Math.max(0f, Math.min(1f, progress));
-        LinkedHashMap<String, ChannelEntry> playerChannels = channelsFor(player);
-        ChannelEntry existing = playerChannels.get(channelId);
-        BossBar bar;
-        if (existing != null) {
-            bar = existing.bar();
-            bar.name(title);
-            bar.color(color);
-            bar.overlay(overlay);
-            bar.progress(clampedProgress);
-        } else {
-            bar = BossBar.bossBar(title, clampedProgress, color, overlay);
-            player.showBossBar(bar);
+        BossBar newBar = null;
+        synchronized (channelLock) {
+            LinkedHashMap<String, ChannelEntry> playerChannels = channelsFor(player);
+            ChannelEntry existing = playerChannels.get(channelId);
+            BossBar bar;
+            if (existing != null) {
+                bar = existing.bar();
+                bar.name(title);
+                bar.color(color);
+                bar.overlay(overlay);
+                bar.progress(clampedProgress);
+            } else {
+                bar = BossBar.bossBar(title, clampedProgress, color, overlay);
+                newBar = bar;
+            }
+            playerChannels.put(channelId, new ChannelEntry(bar, expiresAtMillis));
         }
-        playerChannels.put(channelId, new ChannelEntry(bar, expiresAtMillis));
+        if (newBar != null) {
+            player.showBossBar(newBar);
+        }
     }
 
     private LinkedHashMap<String, ChannelEntry> channelsFor(Player player) {

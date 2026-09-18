@@ -37,8 +37,12 @@ public class NametagManager {
 
     /** /stellariareload から呼ばれる想定。次のtickで反映される。 */
     public void updateSettings(boolean enabled, String dotSymbol) {
+        boolean wasEnabled = this.enabled;
         this.enabled = enabled;
         this.dotSymbol = dotSymbol;
+        if (wasEnabled && !enabled) {
+            removeRankTeams();
+        }
     }
 
     public void tick() {
@@ -76,5 +80,16 @@ public class NametagManager {
 
     private Component dot(String rankColor) {
         return ColorUtil.component(rankColor + dotSymbol + " ");
+    }
+
+    private void removeRankTeams() {
+        for (Player viewer : Bukkit.getOnlinePlayers()) {
+            Scoreboard board = viewer.getScoreboard();
+            for (Team team : board.getTeams()) {
+                if (team.getName().startsWith(TEAM_PREFIX)) {
+                    team.unregister();
+                }
+            }
+        }
     }
 }

@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
  */
 public final class UrlHighlighter {
 
-    private static final Pattern URL_PATTERN = Pattern.compile("https?://[^\\s、。」』】)\\]]+");
+    private static final Pattern URL_PATTERN = Pattern.compile("https?://\\S+");
 
     private UrlHighlighter() {
     }
@@ -37,7 +37,9 @@ public final class UrlHighlighter {
             if (matcher.start() > lastEnd) {
                 result = result.append(literal(text.substring(lastEnd, matcher.start()), colorize));
             }
-            String url = matcher.group();
+            String matchedUrl = matcher.group();
+            int urlEnd = trimTrailingPunctuation(matchedUrl);
+            String url = matchedUrl.substring(0, urlEnd);
             Component link = Component.text(url)
                     .color(NamedTextColor.BLUE)
                     .decorate(TextDecoration.UNDERLINED)
@@ -47,6 +49,9 @@ public final class UrlHighlighter {
                 link = link.hoverEvent(HoverEvent.showText(hover));
             }
             result = result.append(link);
+            if (urlEnd < matchedUrl.length()) {
+                result = result.append(literal(matchedUrl.substring(urlEnd), colorize));
+            }
             lastEnd = matcher.end();
         }
         if (lastEnd < text.length()) {
@@ -57,5 +62,42 @@ public final class UrlHighlighter {
 
     private static Component literal(String text, boolean colorize) {
         return colorize ? ColorUtil.component(text) : Component.text(text);
+    }
+
+    private static int trimTrailingPunctuation(String url) {
+        int end = url.length();
+        while (end > 0) {
+            char trailing = url.charAt(end - 1);
+            if ("、。.,;:!?」』".indexOf(trailing) >= 0) {
+                end--;
+            } else if (isUnmatchedTrailingBracket(url, end, trailing)) {
+                end--;
+            } else {
+                break;
+            }
+        }
+        return end;
+    }
+
+    private static boolean isUnmatchedTrailingBracket(String url, int end, char trailing) {
+        return switch (trailing) {
+            case ')' -> hasMoreClosingThanOpening(url, end, '(', ')');
+            case ']' -> hasMoreClosingThanOpening(url, end, '[', ']');
+            case '】' -> hasMoreClosingThanOpening(url, end, '【', '】');
+            default -> false;
+        };
+    }
+
+    private static boolean hasMoreClosingThanOpening(String value, int end, char opening, char closing) {
+        int balance = 0;
+        for (int index = 0; index < end; index++) {
+            char current = value.charAt(index);
+            if (current == opening) {
+                balance++;
+            } else if (current == closing) {
+                balance--;
+            }
+        }
+        return balance < 0;
     }
 }

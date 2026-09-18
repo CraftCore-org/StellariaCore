@@ -662,10 +662,18 @@ public class StellariaCore extends JavaPlugin {
         cancelTask(kikoriTask);
         cancelTask(mineTask);
 
-        if (configManager.getBoolean("action-bar.enabled", true)) {
+        boolean actionBarEnabled = configManager.getBoolean("action-bar.enabled", true);
+        boolean persistentActionBarEnabled = actionBarEnabled
+                && configManager.getBoolean("action-bar.persistent.enabled", false);
+        if (!persistentActionBarEnabled) {
+            for (org.bukkit.entity.Player online : Bukkit.getOnlinePlayers()) {
+                actionBarManager.clearChannel(online, "persistent");
+            }
+        }
+        if (actionBarEnabled) {
             long interval = SchedulerIntervalUtil.ticks(configManager.getInt("action-bar.update-interval-ticks", 5));
             actionBarTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> actionBarManager.tick(), interval, interval);
-            if (configManager.getBoolean("action-bar.persistent.enabled", false)) {
+            if (persistentActionBarEnabled) {
                 persistentActionBarTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> {
                     String template = configManager.getString("action-bar.persistent.template", "");
                     for (org.bukkit.entity.Player online : Bukkit.getOnlinePlayers()) {
