@@ -311,22 +311,22 @@ broadcast:
 income:
   mining:
     rewards:
-      COAL_ORE: 5
-      COPPER_ORE: 5
-      IRON_ORE: 10
-      GOLD_ORE: 20
+      COAL_ORE: 2
+      COPPER_ORE: 2
+      IRON_ORE: 5
+      GOLD_ORE: 15
       REDSTONE_ORE: 5
       LAPIS_ORE: 5
-      DIAMOND_ORE: 40
-      EMERALD_ORE: 60
-      NETHER_QUARTZ_ORE: 5
-      NETHER_GOLD_ORE: 10
-      ANCIENT_DEBRIS: 80
+      DIAMOND_ORE: 20
+      EMERALD_ORE: 30
+      NETHER_QUARTZ_ORE: 2
+      NETHER_GOLD_ORE: 5
+      ANCIENT_DEBRIS: 35
 
   fishing:
     rewards:
-      COD: 100
-      SALMON: 150
+      COD: 20
+      SALMON: 30
       PUFFERFISH: 500
       TROPICAL_FISH: 300
 
