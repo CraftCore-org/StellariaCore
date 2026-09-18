@@ -493,6 +493,7 @@ shop:
   max-per-player: 10
   creation-cost: 500
   input-timeout-seconds: 60
+  max-price: 10000000
   display:
     y-offset: 1.2
     text-offset: 0.45
