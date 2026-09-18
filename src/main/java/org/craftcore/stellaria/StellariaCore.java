@@ -67,6 +67,8 @@ public class StellariaCore extends JavaPlugin {
     private AfkManager afkManager;
     private AutoBroadcastManager autoBroadcastManager;
     private MuteManager muteManager;
+    private ModerationManager moderationManager;
+    private ReportManager reportManager;
     private PrivateMessageManager privateMessageManager;
     private ActionBarManager actionBarManager;
     private BossBarManager bossBarManager;
@@ -125,6 +127,18 @@ public class StellariaCore extends JavaPlugin {
             "muted_by TEXT",
             "muted_at INTEGER"
         );
+        DatabaseManager.createTableIfNotExists("warns",
+            "id INTEGER PRIMARY KEY AUTOINCREMENT", "target_uuid TEXT", "moderator_uuid TEXT",
+            "reason TEXT", "created_at INTEGER");
+        DatabaseManager.createTableIfNotExists("kicks",
+            "id INTEGER PRIMARY KEY AUTOINCREMENT", "target_uuid TEXT", "moderator_uuid TEXT",
+            "reason TEXT", "created_at INTEGER");
+        DatabaseManager.createTableIfNotExists("bans",
+            "id INTEGER PRIMARY KEY AUTOINCREMENT", "target_uuid TEXT", "moderator_uuid TEXT",
+            "reason TEXT", "banned_at INTEGER", "expires_at INTEGER NULL");
+        DatabaseManager.createTableIfNotExists("reports",
+            "id INTEGER PRIMARY KEY AUTOINCREMENT", "reporter_uuid TEXT", "target_uuid TEXT",
+            "category TEXT", "reason TEXT", "world TEXT", "x INTEGER", "y INTEGER", "z INTEGER", "created_at INTEGER");
         DatabaseManager.createTableIfNotExists("player_stats",
             "uuid TEXT PRIMARY KEY",
             "last_logout INTEGER DEFAULT 0",
@@ -237,6 +251,10 @@ public class StellariaCore extends JavaPlugin {
 
         this.muteManager = new MuteManager(this);
         muteManager.loadAll();
+        this.moderationManager = new ModerationManager(this);
+        moderationManager.loadAllBans();
+        getServer().getPluginManager().registerEvents(new BanLoginListener(this), this);
+        this.reportManager = new ReportManager(this);
         this.privateMessageManager = new PrivateMessageManager(this);
 
         this.placeholderManager = new PlaceholderManager(this);
@@ -335,6 +353,7 @@ public class StellariaCore extends JavaPlugin {
             getServer().getPluginManager().registerEvents(new ChatListener(this, mentionService), this);
             getServer().getPluginManager().registerEvents(new MentionTabCompleteListener(), this);
         }
+        getServer().getPluginManager().registerEvents(new ReportListener(this), this);
 
         TpaCore tpaCore = new TpaCore(this);
         getServer().getPluginManager().registerEvents(tpaCore, this);
@@ -364,6 +383,20 @@ public class StellariaCore extends JavaPlugin {
         getCommand("unmute").setExecutor(muteCommand);
         getCommand("mute").setTabCompleter(muteCommand);
         getCommand("unmute").setTabCompleter(muteCommand);
+
+        ModerationCommand moderationCommand = new ModerationCommand(this);
+        for (String name : new String[]{"warn", "kick", "ban"}) {
+            getCommand(name).setExecutor(moderationCommand);
+            getCommand(name).setTabCompleter(moderationCommand);
+        }
+        ReportCommand reportCommand = new ReportCommand(this);
+        getCommand("report").setExecutor(reportCommand);
+        getCommand("report").setTabCompleter(reportCommand);
+
+        UserHistoryCommand userHistoryCommand = new UserHistoryCommand(this);
+        getCommand("userhistory").setExecutor(userHistoryCommand);
+        getCommand("userhistory").setTabCompleter(userHistoryCommand);
+
         getServer().getPluginManager().registerEvents(new MuteCommandBlockListener(this), this);
         getServer().getPluginManager().registerEvents(new GuiListener(), this);
         getServer().getPluginManager().registerEvents(new MenuItemListener(this), this);
@@ -561,6 +594,14 @@ public class StellariaCore extends JavaPlugin {
 
     public MuteManager getMuteManager() {
         return this.muteManager;
+    }
+
+    public ModerationManager getModerationManager() {
+        return this.moderationManager;
+    }
+
+    public ReportManager getReportManager() {
+        return this.reportManager;
     }
 
     public PrivateMessageManager getPrivateMessageManager() {

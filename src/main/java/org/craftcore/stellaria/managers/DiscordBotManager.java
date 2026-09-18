@@ -444,6 +444,45 @@ public class DiscordBotManager {
         }
     }
 
+    public void sendModerationLog(EmbedBuilder embed) {
+        sendEmbedToChannels(embed, "discord.bot.modlog-channel-id", "モデレーションログ");
+    }
+
+    public void sendReportLog(EmbedBuilder embed) {
+        sendEmbedToChannels(embed, "discord.bot.report-channel-id", "報告ログ");
+    }
+
+    private void sendEmbedToChannels(EmbedBuilder embed, String configPath, String description) {
+        JDA currentJda = jda;
+        if (currentJda == null) {
+            plugin.getLogger().warning(description + "を送信できません: DiscordBotが利用できません。");
+            return;
+        }
+        if (!hasConfiguredGuild()) {
+            plugin.getLogger().warning(description + "を送信できません: Discord Guildが設定されていません。");
+            return;
+        }
+
+        for (String channelId : plugin.getConfigManager().getStringList(configPath)) {
+            if (channelId.isBlank()) continue;
+            try {
+                TextChannel channel = currentJda.getTextChannelById(channelId);
+                if (channel == null) {
+                    plugin.getLogger().warning(description + "チャンネルが見つかりません: " + channelId);
+                    continue;
+                }
+                channel.sendMessageEmbeds(embed.build()).queue(
+                    null,
+                    error -> plugin.getLogger().warning(description + "の送信に失敗しました: " + error.getMessage())
+                );
+            } catch (IllegalArgumentException e) {
+                plugin.getLogger().warning(description + "チャンネルIDが不正です: " + channelId);
+            } catch (Exception e) {
+                plugin.getLogger().warning(description + "の送信に失敗しました: " + e.getMessage());
+            }
+        }
+    }
+
     private boolean hasConfiguredGuild() {
         return !plugin.getConfigManager().getString("discord.bot.server-guild-id", "").isEmpty();
     }

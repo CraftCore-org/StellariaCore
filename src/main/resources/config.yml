@@ -11,6 +11,8 @@ discord:
     token: ""
     server-guild-id: "1547176637752152075"
     serverchat-channel-id: ["1550003204991746098"]
+    modlog-channel-id: []
+    report-channel-id: []
     serverstartlog-format: "✅ サーバーが起動しました。"
     serverstoplog-format: "❌ サーバーが停止しました。"
     serverchat-format: "%message%"
@@ -240,6 +242,9 @@ message:
 
 mute:
   level3-command-blacklist: ["msg","tell","w","reply","r","tpa","tphere"] # Lv3ミュート中に禁止するコマンド名（例: ["msg","tell","w","reply","r"]）
+
+report:
+  categories: ["暴言", "チート", "荒らし", "その他"]
 
 tpa:
   teleport-delay-seconds: 5 # 承認後、実際にテレポートするまでの詠唱時間。0以下で即時テレポート。ダメージを受けるとキャンセルされる
