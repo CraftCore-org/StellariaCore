@@ -86,7 +86,18 @@ public final class HeadshopPlayerHeadsGui extends Gui {
         SkullMeta meta = (SkullMeta) item.getItemMeta();
         meta.setOwningPlayer(Bukkit.getOfflinePlayer(recentPlayer.uuid()));
         meta.displayName(org.craftcore.stellaria.utils.GuiItemUtil.text(Component.text(recentPlayer.name(), NamedTextColor.WHITE)));
-        meta.lore(List.of(org.craftcore.stellaria.utils.GuiItemUtil.text("&%7価格: &%e" + plugin.getEconomyManager().format(price))));
+        String priceLore = plugin.getConfigManager()
+                .getMessage("headshop.price-lore", null);
+
+        priceLore = FormatUtil.replace(
+                priceLore,
+                "%price%",
+                plugin.getEconomyManager().format(price)
+        );
+
+        meta.lore(List.of(
+                org.craftcore.stellaria.utils.GuiItemUtil.text(priceLore)
+        ));
         item.setItemMeta(meta);
         return item;
     }
@@ -172,20 +183,30 @@ public final class HeadshopPlayerHeadsGui extends Gui {
                         300
                 );
 
-        Component title =
-                ColorUtil.component(
-                        "&%9購入確認"
+        Component title = ColorUtil.component(
+                plugin.getConfigManager()
+                        .getMessage("headshop.confirm-title", player)
+        );
+
+        String descriptionText = plugin.getConfigManager()
+                .getMessage(
+                        "headshop.confirm-player-head-description",
+                        player
                 );
 
-        Component description =
-                ColorUtil.component(
-                        "&%f"
-                                + recentPlayer.name()
-                                + " の頭 &%7を &%e"
-                                + plugin.getEconomyManager()
-                                .format(price)
-                                + " &%7で購入しますか？"
-                );
+        descriptionText = FormatUtil.replace(
+                descriptionText,
+                "%player%",
+                recentPlayer.name()
+        );
+
+        descriptionText = FormatUtil.replace(
+                descriptionText,
+                "%price%",
+                plugin.getEconomyManager().format(price)
+        );
+
+        Component description = ColorUtil.component(descriptionText);
 
         new ConfirmGui(
                 title,

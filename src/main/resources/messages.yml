@@ -659,6 +659,12 @@ menuitem:
   cooldown: "&%cメニューアイテムの再入手はあと%seconds%秒お待ちください。"
 
 headshop:
+  price-lore: "&%7価格: &%e%price%"
+  confirm-title: "&%9購入確認"
+  confirm-description: "&%f%item% &%7を &%e%price% &%7で購入しますか？"
+  confirm-player-head-description: "&%f%player% の頭 &%7を &%e%price% &%7で購入しますか？"
+  confirm-yes: "&%a確認"
+  confirm-no: "&%cキャンセル"
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   title: "&%9&lヘッドショップ"

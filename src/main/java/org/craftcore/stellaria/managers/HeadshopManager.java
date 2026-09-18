@@ -183,23 +183,6 @@ public class HeadshopManager {
         return DatabaseManager.exists("headshop_pool", "texture = ?", texture);
     }
 
-    public @Nullable PoolHead addToPool(String displayName, String texture, UUID addedBy) {
-        AtomicReference<PoolHead> added = new AtomicReference<>();
-        boolean committed = DatabaseManager.transaction(connection -> {
-            OptionalInt id = DatabaseManager.insertAndGetId("headshop_pool", Map.of(
-                    "display_name", displayName,
-                    "texture", texture,
-                    "added_by", addedBy.toString(),
-                    "added_at", System.currentTimeMillis()
-            ));
-            if (id.isEmpty()) {
-                throw new IllegalStateException("headshop_poolへの登録に失敗しました");
-            }
-            added.set(new PoolHead(id.getAsInt(), displayName, texture));
-        });
-        return committed ? added.get() : null;
-    }
-
     /** プールから削除する。参照が残らないよう、このheadを含む過去のheadshop_rotation行も一緒に削除する。 */
     public void removeFromPool(int id) {
         DatabaseManager.execute("DELETE FROM headshop_rotation WHERE pool_id = ?", id);

@@ -28,6 +28,35 @@ public class ConfirmGui extends Gui {
         getInventory().setItem(CANCEL_SLOT, item(Material.RED_DYE, Component.text("キャンセル", NamedTextColor.RED)));
     }
 
+    public ConfirmGui(
+            Component title,
+            Component description,
+            Component confirmText,
+            Component cancelText,
+            Runnable onConfirm,
+            @Nullable Runnable onCancel
+    ) {
+        super(27, title);
+
+        this.onConfirm = onConfirm;
+        this.onCancel = onCancel;
+
+        getInventory().setItem(
+                13,
+                item(Material.PAPER, description)
+        );
+
+        getInventory().setItem(
+                CONFIRM_SLOT,
+                item(Material.LIME_DYE, confirmText)
+        );
+
+        getInventory().setItem(
+                CANCEL_SLOT,
+                item(Material.RED_DYE, cancelText)
+        );
+    }
+
     @Override
     public void onClick(InventoryClickEvent event) {
         event.setCancelled(true);

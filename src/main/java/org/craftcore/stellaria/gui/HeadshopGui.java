@@ -73,12 +73,17 @@ public class HeadshopGui extends Gui {
             lore.add(Component.empty());
         }
 
+        String priceLore = plugin.getConfigManager()
+                .getMessage("headshop.price-lore", null);
+
+        priceLore = FormatUtil.replace(
+                priceLore,
+                "%price%",
+                plugin.getEconomyManager().format(price)
+        );
+
         lore.add(
-                org.craftcore.stellaria.utils.GuiItemUtil.text(
-                        "&%7価格: &%e"
-                                + plugin.getEconomyManager()
-                                .format(price)
-                )
+                org.craftcore.stellaria.utils.GuiItemUtil.text(priceLore)
         );
 
         meta.lore(lore);
@@ -176,19 +181,42 @@ public class HeadshopGui extends Gui {
                 .getInt("headshop.normal-price", 500);
 
         Component title = ColorUtil.component(
-                "&%9購入確認"
+                plugin.getConfigManager()
+                        .getMessage("headshop.confirm-title", player)
         );
 
-        Component description = ColorUtil.component(
-                "&%f" + head.displayName()
-                        + " &%7を &%e"
-                        + plugin.getEconomyManager().format(price)
-                        + " &%7で購入しますか？"
+        String descriptionText = plugin.getConfigManager()
+                .getMessage("headshop.confirm-description", player);
+
+        descriptionText = FormatUtil.replace(
+                descriptionText,
+                "%item%",
+                head.displayName()
+        );
+
+        descriptionText = FormatUtil.replace(
+                descriptionText,
+                "%price%",
+                plugin.getEconomyManager().format(price)
+        );
+
+        Component description = ColorUtil.component(descriptionText);
+
+        Component confirmText = ColorUtil.component(
+                plugin.getConfigManager()
+                        .getMessage("headshop.confirm-yes", player)
+        );
+
+        Component cancelText = ColorUtil.component(
+                plugin.getConfigManager()
+                        .getMessage("headshop.confirm-no", player)
         );
 
         new ConfirmGui(
                 title,
                 description,
+                confirmText,
+                cancelText,
                 () -> purchase(player, head),
                 () -> this.open(player)
         ).open(player);
