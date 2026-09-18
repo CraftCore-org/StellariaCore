@@ -197,13 +197,25 @@ public class WorldResetManager {
         return world == null ? null : world.getSpawnLocation();
     }
 
-    /** Multiverseで再生成と新しいスポーンの保存が成功したワールドだけ、DB整理とロック解除を行う。 */
+    /**
+     * 再生成対象ワールドに残っているプレイヤーを全員退避させてから、
+     * Multiverseで再生成と新しいスポーンの保存が成功したワールドだけDB整理とロック解除を行う。
+     * teleportAsync()は非同期のため、Multiverseのワールドアンロードがプレイヤー残留で
+     * 失敗しないよう、全ワールド分の退避が完了してからグローバルリージョンスレッドに戻って再生成する。
+     */
     private void performReset(List<String> worldNames) {
         Location destination = evacuationDestination(worldNames);
+        List<CompletableFuture<Void>> evacuations = worldNames.stream()
+                .map(worldName -> evacuateRemainingPlayers(worldName, destination))
+                .toList();
+        CompletableFuture.allOf(evacuations.toArray(CompletableFuture[]::new))
+                .whenComplete((ignored, error) ->
+                        Bukkit.getGlobalRegionScheduler().execute(plugin, () -> regenerateWorlds(worldNames)));
+    }
+
+    private void regenerateWorlds(List<String> worldNames) {
         List<String> resetCompleted = new ArrayList<>();
         for (String worldName : worldNames) {
-            evacuateRemainingPlayers(worldName, destination);
-
             if (!regenerateWorld(worldName)) {
                 continue;
             }
@@ -221,15 +233,17 @@ public class WorldResetManager {
      * evacuate()のテレポート漏れやワールド間移動のタイミング差で退避しきれず残ったプレイヤーを、
      * 再生成をブロックさせないよう world-reset.evacuate-to-world へ強制的にテレポートする。
      * 退避先が決定できない場合はキックして再生成をブロックさせない。
+     * 戻り値のFutureは、このワールドに残っていた全プレイヤーの退避処理が完了した時点で完了する。
      */
-    private void evacuateRemainingPlayers(String worldName, Location destination) {
+    private CompletableFuture<Void> evacuateRemainingPlayers(String worldName, Location destination) {
         String displayName = WorldNameUtil.displayName(plugin.getConfigManager(), worldName);
+        List<CompletableFuture<Boolean>> teleports = new ArrayList<>();
         for (Player player : Bukkit.getOnlinePlayers()) {
             if (!player.getWorld().getName().equals(worldName)) {
                 continue;
             }
             if (destination != null) {
-                player.teleportAsync(destination);
+                teleports.add(player.teleportAsync(destination));
                 player.sendMessage(plugin.getConfigManager().getMessage("world-reset.evacuated", player));
                 plugin.getLogger().warning("ワールド '" + worldName + "' に残っていたプレイヤー '"
                         + player.getName() + "' を再生成のため強制退避させました。");
@@ -241,6 +255,7 @@ public class WorldResetManager {
                         + player.getName() + "' の退避先が決定できないため強制退出させました。");
             }
         }
+        return CompletableFuture.allOf(teleports.toArray(CompletableFuture[]::new));
     }
 
     private boolean regenerateWorld(String worldName) {

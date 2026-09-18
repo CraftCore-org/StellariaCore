@@ -1,6 +1,5 @@
 package org.craftcore.stellaria.commands;
 
-import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -55,8 +54,8 @@ public class WorldCommand implements CommandExecutor, TabCompleter {
         if (args.length != 1) {
             return List.of();
         }
-        return TabCompleteUtil.filterStartsWith(Bukkit.getWorlds().stream()
-                .map(w -> WorldNameUtil.plainDisplayName(plugin.getConfigManager(), w))
+        return TabCompleteUtil.filterStartsWith(WorldSelectGui.loadEntries(plugin).stream()
+                .map(entry -> WorldNameUtil.plainDisplayName(plugin.getConfigManager(), entry.worldName()))
                 .toList(), args[0]);
     }
 }
