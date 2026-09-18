@@ -135,10 +135,10 @@ moderation:
   warned_sender: "&%a%player% &%7に警告しました。（理由: %reason%）"
   warned_target_actionbar: "&%c警告を受けました。（理由: %reason%）"
   kicked_sender: "&%a%player% &%7をキックしました。（理由: %reason%）"
-  kick_screen: "&%cサーバーからキックされました。\n&%7理由: &%f%reason%\n&%7Discord: &%b%discord_invite%"
+  kick_screen: "&%cサーバーからキックされました。\n&%7理由: &%f%reason%\n&%7異議申し立て: &%b%discord_invite%\n%7ホームページ: &%bhttps://craftcore.org/stellaria"
   banned_sender: "&%a%player% &%7をBANしました。（理由: %reason%、期限: %expires%）"
-  ban_screen: "&%cあなたはBANされています。\n&%7理由: &%f%reason%\n&%7期限: &%f%expires%\n&%7Discord: &%b%discord_invite%"
-  ban_login_screen: "&%cあなたはBANされています。\n&%7理由: &%f%reason%\n&%7期限: &%f%expires%\n&%7異議申し立て: &%b%discord_invite%"
+  ban_screen: "&%cあなたはBANされました。\n&%7理由: &%f%reason%\n&%7期限: &%f%expires%\n&%7異議申し立て: &%b%discord_invite%\n%7ホームページ: &%bhttps://craftcore.org/stellaria"
+  ban_login_screen: "&%cあなたはBANされています。\n&%7理由: &%f%reason%\n&%7期限: &%f%expires%\n&%7異議申し立て: &%b%discord_invite%\n%7ホームページ: &%bhttps://craftcore.org/stellaria"
 
 report:
   usage:
