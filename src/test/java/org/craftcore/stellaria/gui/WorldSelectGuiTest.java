@@ -17,4 +17,17 @@ class WorldSelectGuiTest {
         assertEquals(53, layout.backButtonSlot());
         assertNotEquals(layout.worldsPerPage() - 1, layout.backButtonSlot());
     }
+
+    @Test
+    void paginatedParentLayoutReservesFinalSlotForBackButton() {
+        // Sharing the final slot with Next makes Back unavailable on every paginated parent screen.
+        WorldSelectGui.Layout layout = WorldSelectGui.Layout.autoLayout(46, true);
+
+        assertEquals(54, layout.inventorySize());
+        assertEquals(45, layout.worldsPerPage());
+        assertEquals(45, layout.previousPageSlot());
+        assertEquals(52, layout.nextPageSlot());
+        assertEquals(53, layout.backButtonSlot());
+        assertNotEquals(layout.nextPageSlot(), layout.backButtonSlot());
+    }
 }

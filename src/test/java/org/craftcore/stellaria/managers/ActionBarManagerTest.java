@@ -7,6 +7,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ActionBarManagerTest {
 
@@ -25,5 +27,19 @@ class ActionBarManagerTest {
                 new ActionBarManager.ChannelEntry(Component.text("persistent"), -1),
                 new ActionBarManager.ChannelEntry(Component.text("countdown"), 1_001)
         ), snapshot);
+    }
+
+    @Test
+    void clearInvalidatesSnapshotCapturedBeforeConcurrentReloadCleanup() {
+        // Sending this old snapshot after persistent cleanup would resurrect the disabled action bar.
+        ActionBarManager.ChannelState state = new ActionBarManager.ChannelState();
+        state.put("persistent", new ActionBarManager.ChannelEntry(Component.text("persistent"), -1));
+
+        ActionBarManager.ChannelSnapshot snapshot = state.expireAndSnapshot(1_000);
+        assertTrue(state.isCurrent(snapshot));
+
+        state.remove("persistent");
+
+        assertFalse(state.isCurrent(snapshot));
     }
 }

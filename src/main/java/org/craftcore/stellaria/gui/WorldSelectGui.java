@@ -161,7 +161,8 @@ public class WorldSelectGui extends Gui {
             int inventorySize = autoInventorySize(worldCount + (hasParent ? 1 : 0));
             if (worldCount > DEFAULT_WORLDS_PER_PAGE) {
                 return new Layout(inventorySize, DEFAULT_WORLDS_PER_PAGE,
-                        DEFAULT_PREVIOUS_PAGE_SLOT, DEFAULT_NEXT_PAGE_SLOT, 48);
+                        DEFAULT_PREVIOUS_PAGE_SLOT, hasParent ? inventorySize - 2 : DEFAULT_NEXT_PAGE_SLOT,
+                        hasParent ? inventorySize - 1 : 48);
             }
             int worldsPerPage = inventorySize - (hasParent ? 1 : 0);
             return new Layout(inventorySize, worldsPerPage, -1, -1, inventorySize - 1);
@@ -175,11 +176,13 @@ public class WorldSelectGui extends Gui {
             }
 
             if (rows == 1) {
-                return new Layout(inventorySize, 3, 6, 8, 3);
+                return new Layout(inventorySize, 3, 6, hasParent ? 7 : 8, hasParent ? 8 : 3);
             }
 
             int footerStart = inventorySize - 9;
-            return new Layout(inventorySize, footerStart, footerStart, inventorySize - 1, footerStart + 3);
+            return new Layout(inventorySize, footerStart, footerStart,
+                    hasParent ? inventorySize - 2 : inventorySize - 1,
+                    hasParent ? inventorySize - 1 : footerStart + 3);
         }
     }
 }

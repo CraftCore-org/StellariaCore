@@ -29,6 +29,10 @@ public class BossBarManager {
     record ExpirySnapshot(List<BossBar> visibleBars, List<BossBar> expiredBars) {
     }
 
+    record BossBarUpdate(BossBar bar, Component title, BossBar.Color color, BossBar.Overlay overlay,
+                         float progress, boolean show) {
+    }
+
     private final StellariaCore plugin;
     private final Map<UUID, LinkedHashMap<String, ChannelEntry>> channels = new HashMap<>();
     private final Object channelLock = new Object();
@@ -129,26 +133,33 @@ public class BossBarManager {
 
     private void upsert(Player player, String channelId, Component title, BossBar.Color color, BossBar.Overlay overlay, float progress, long expiresAtMillis) {
         float clampedProgress = Math.max(0f, Math.min(1f, progress));
-        BossBar newBar = null;
+        BossBarUpdate update;
         synchronized (channelLock) {
             LinkedHashMap<String, ChannelEntry> playerChannels = channelsFor(player);
             ChannelEntry existing = playerChannels.get(channelId);
             BossBar bar;
+            boolean show;
             if (existing != null) {
                 bar = existing.bar();
-                bar.name(title);
-                bar.color(color);
-                bar.overlay(overlay);
-                bar.progress(clampedProgress);
+                show = false;
             } else {
                 bar = BossBar.bossBar(title, clampedProgress, color, overlay);
-                newBar = bar;
+                show = true;
             }
             playerChannels.put(channelId, new ChannelEntry(bar, expiresAtMillis));
+            update = new BossBarUpdate(bar, title, color, overlay, clampedProgress, show);
         }
-        if (newBar != null) {
-            player.showBossBar(newBar);
+        applyUpdate(update);
+        if (update.show()) {
+            player.showBossBar(update.bar());
         }
+    }
+
+    static void applyUpdate(BossBarUpdate update) {
+        update.bar().name(update.title());
+        update.bar().color(update.color());
+        update.bar().overlay(update.overlay());
+        update.bar().progress(update.progress());
     }
 
     private LinkedHashMap<String, ChannelEntry> channelsFor(Player player) {

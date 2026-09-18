@@ -26,8 +26,51 @@ public class ActionBarManager {
         }
     }
 
+    record ChannelSnapshot(long generation, List<ChannelEntry> entries, boolean clearsDisplay) {
+    }
+
+    static final class ChannelState {
+        private final LinkedHashMap<String, ChannelEntry> entries = new LinkedHashMap<>();
+        private long generation;
+
+        void put(String channelId, ChannelEntry entry) {
+            entries.put(channelId, entry);
+            generation++;
+        }
+
+        boolean remove(String channelId) {
+            if (entries.remove(channelId) == null) {
+                return false;
+            }
+            generation++;
+            return true;
+        }
+
+        boolean isEmpty() {
+            return entries.isEmpty();
+        }
+
+        ChannelSnapshot expireAndSnapshot(long now) {
+            int sizeBeforeExpiry = entries.size();
+            List<ChannelEntry> snapshot = ActionBarManager.expireAndSnapshot(entries, now);
+            boolean expiredEntries = snapshot.size() != sizeBeforeExpiry;
+            if (expiredEntries) {
+                generation++;
+            }
+            return new ChannelSnapshot(generation, snapshot, expiredEntries && snapshot.isEmpty());
+        }
+
+        ChannelSnapshot clearSnapshot() {
+            return new ChannelSnapshot(generation, List.of(), true);
+        }
+
+        boolean isCurrent(ChannelSnapshot snapshot) {
+            return generation == snapshot.generation();
+        }
+    }
+
     private final StellariaCore plugin;
-    private final Map<UUID, LinkedHashMap<String, ChannelEntry>> channels = new HashMap<>();
+    private final Map<UUID, ChannelState> channels = new HashMap<>();
     private final Object channelLock = new Object();
 
     public ActionBarManager(StellariaCore plugin) {
@@ -61,16 +104,17 @@ public class ActionBarManager {
      * — Minecraftのアクションバーは能動的に上書きしない限り一定時間表示され続けるため。
      */
     public void clearChannel(Player player, String channelId) {
-        boolean clearActionBar = false;
+        ChannelState state = null;
+        ChannelSnapshot snapshot = null;
         synchronized (channelLock) {
-            LinkedHashMap<String, ChannelEntry> playerChannels = channels.get(player.getUniqueId());
-            if (playerChannels != null && playerChannels.remove(channelId) != null && playerChannels.isEmpty()) {
-                channels.remove(player.getUniqueId());
-                clearActionBar = true;
+            ChannelState playerChannels = channels.get(player.getUniqueId());
+            if (playerChannels != null && playerChannels.remove(channelId) && playerChannels.isEmpty()) {
+                state = playerChannels;
+                snapshot = playerChannels.clearSnapshot();
             }
         }
-        if (clearActionBar) {
-            player.sendActionBar(Component.empty());
+        if (snapshot != null) {
+            sendIfCurrent(player, state, snapshot, Component.empty());
         }
     }
 
@@ -88,24 +132,19 @@ public class ActionBarManager {
         Component separator = ColorUtil.component(separatorTemplate);
 
         for (Player player : Bukkit.getOnlinePlayers()) {
-            List<ChannelEntry> snapshot;
-            boolean clearActionBar;
+            ChannelState state;
+            ChannelSnapshot snapshot;
             synchronized (channelLock) {
-                LinkedHashMap<String, ChannelEntry> playerChannels = channels.get(player.getUniqueId());
-                if (playerChannels == null || playerChannels.isEmpty()) {
+                state = channels.get(player.getUniqueId());
+                if (state == null || state.isEmpty()) {
                     continue;
                 }
-                int sizeBeforeExpiry = playerChannels.size();
-                snapshot = expireAndSnapshot(playerChannels, now);
-                clearActionBar = snapshot.isEmpty() && sizeBeforeExpiry > 0;
-                if (snapshot.isEmpty()) {
-                    channels.remove(player.getUniqueId());
-                }
+                snapshot = state.expireAndSnapshot(now);
             }
-            if (clearActionBar) {
-                player.sendActionBar(Component.empty());
-            } else if (!snapshot.isEmpty()) {
-                player.sendActionBar(join(snapshot, separator));
+            if (snapshot.clearsDisplay()) {
+                sendIfCurrent(player, state, snapshot, Component.empty());
+            } else if (!snapshot.entries().isEmpty()) {
+                sendIfCurrent(player, state, snapshot, join(snapshot.entries(), separator));
             }
         }
     }
@@ -119,8 +158,17 @@ public class ActionBarManager {
         return List.copyOf(playerChannels.values());
     }
 
-    private LinkedHashMap<String, ChannelEntry> channelsFor(Player player) {
-        return channels.computeIfAbsent(player.getUniqueId(), k -> new LinkedHashMap<>());
+    private ChannelState channelsFor(Player player) {
+        return channels.computeIfAbsent(player.getUniqueId(), k -> new ChannelState());
+    }
+
+    private void sendIfCurrent(Player player, ChannelState state, ChannelSnapshot snapshot, Component content) {
+        synchronized (channelLock) {
+            if (channels.get(player.getUniqueId()) != state || !state.isCurrent(snapshot)) {
+                return;
+            }
+        }
+        player.sendActionBar(content);
     }
 
     private Component join(Iterable<ChannelEntry> entries, Component separator) {

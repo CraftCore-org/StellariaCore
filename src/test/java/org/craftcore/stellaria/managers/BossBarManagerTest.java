@@ -26,4 +26,21 @@ class BossBarManagerTest {
         assertEquals(List.of(persistent), snapshot.visibleBars());
         assertEquals(List.of(expired), snapshot.expiredBars());
     }
+
+    @Test
+    void queuedUpdateDoesNotMutateBossBarUntilDispatchedOutsideChannelStateMutation() {
+        // Updating here rather than after the state mutation would run a Bukkit-visible bar update while locked.
+        BossBar bar = BossBar.bossBar(Component.text("old"), 1f, BossBar.Color.WHITE, BossBar.Overlay.PROGRESS);
+        BossBarManager.BossBarUpdate update = new BossBarManager.BossBarUpdate(
+                bar, Component.text("new"), BossBar.Color.RED, BossBar.Overlay.NOTCHED_10, 0.5f, false);
+
+        assertEquals(Component.text("old"), bar.name());
+
+        BossBarManager.applyUpdate(update);
+
+        assertEquals(Component.text("new"), bar.name());
+        assertEquals(BossBar.Color.RED, bar.color());
+        assertEquals(BossBar.Overlay.NOTCHED_10, bar.overlay());
+        assertEquals(0.5f, bar.progress());
+    }
 }
