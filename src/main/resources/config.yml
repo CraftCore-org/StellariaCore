@@ -324,7 +324,7 @@ mine:
   disabled-worlds: []
   enabled: true
   price: 3000
-  timeout-seconds: 300
+  timeout-seconds: 0
   max-ores: 128
 
 land:
