@@ -30,9 +30,13 @@ public final class ReportListener implements Listener {
         event.setCancelled(true);
         String reason = PlainTextComponentSerializer.plainText().serialize(event.message()).trim();
         if (reason.isEmpty()) {
-            plugin.getReportManager().restorePending(reporter.getUniqueId(), pending);
-            reporter.getScheduler().run(plugin, task -> reporter.sendMessage(
-                    plugin.getConfigManager().getMessage("report.detail_required", reporter)), null);
+            reporter.getScheduler().run(plugin, task -> {
+                if (!reporter.isOnline()) {
+                    return;
+                }
+                plugin.getReportManager().restorePending(reporter.getUniqueId(), pending);
+                reporter.sendMessage(plugin.getConfigManager().getMessage("report.detail_required", reporter));
+            }, null);
             return;
         }
 
