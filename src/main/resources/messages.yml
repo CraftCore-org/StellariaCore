@@ -4,6 +4,11 @@ join: "&%a> &%f%player%&%7 さんがログインしました。"
 join-first: "&%e✳ &%f%player%&%7 さんが初めてサーバーにログインしました！"
 quit: "&%c< &%f%player%&%7 さんがログアウトしました。"
 
+gui:
+  back: "&%7← 戻る" # TODO: 未参照。ハードコードしてる
+  confirm: "&%a確認"
+  cancel: "&%cキャンセル"
+
 # 初回ログイン時にだけ本人へ送るウェルカムメッセージ（config.ymlのwelcome.enabledで有効/無効を切替）
 welcome:
   lines:
@@ -663,8 +668,6 @@ headshop:
   confirm-title: "&%9購入確認"
   confirm-description: "&%f%item% &%7を &%e%price% &%7で購入しますか？"
   confirm-player-head-description: "&%f%player% の頭 &%7を &%e%price% &%7で購入しますか？"
-  confirm-yes: "&%a確認"
-  confirm-no: "&%cキャンセル"
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   title: "&%9&lヘッドショップ"

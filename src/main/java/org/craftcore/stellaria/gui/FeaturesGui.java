@@ -60,7 +60,26 @@ public class FeaturesGui extends Gui {
         Component title = messageComponent(plugin, "features.confirm_title", player);
         Component description = messageComponent(plugin, "features.confirm_description", player)
                 .replaceText(builder -> builder.matchLiteral("%price%").replacement(Component.text(priceText(feature))));
-        new ConfirmGui(title, description, () -> purchase(player, feature), null).open(player);
+        Component confirmText = messageComponent(
+                plugin,
+                "gui.confirm",
+                player
+        );
+
+        Component cancelText = messageComponent(
+                plugin,
+                "gui.cancel",
+                player
+        );
+
+        new ConfirmGui(
+                title,
+                description,
+                confirmText,
+                cancelText,
+                () -> purchase(player, feature),
+                null
+        ).open(player);
     }
 
     private void populate(Player player) {

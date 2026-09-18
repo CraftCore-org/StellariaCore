@@ -1,7 +1,6 @@
 package org.craftcore.stellaria.gui;
 
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -17,16 +16,6 @@ public class ConfirmGui extends Gui {
 
     private final Runnable onConfirm;
     private final @Nullable Runnable onCancel;
-
-    public ConfirmGui(Component title, Component description, Runnable onConfirm, @Nullable Runnable onCancel) {
-        super(27, title);
-        this.onConfirm = onConfirm;
-        this.onCancel = onCancel;
-
-        getInventory().setItem(13, item(Material.PAPER, description));
-        getInventory().setItem(CONFIRM_SLOT, item(Material.LIME_DYE, Component.text("確認", NamedTextColor.GREEN)));
-        getInventory().setItem(CANCEL_SLOT, item(Material.RED_DYE, Component.text("キャンセル", NamedTextColor.RED)));
-    }
 
     public ConfirmGui(
             Component title,

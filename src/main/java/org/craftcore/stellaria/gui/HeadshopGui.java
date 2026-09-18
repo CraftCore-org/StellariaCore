@@ -204,12 +204,12 @@ public class HeadshopGui extends Gui {
 
         Component confirmText = ColorUtil.component(
                 plugin.getConfigManager()
-                        .getMessage("headshop.confirm-yes", player)
+                        .getMessage("gui.confirm", player)
         );
 
         Component cancelText = ColorUtil.component(
                 plugin.getConfigManager()
-                        .getMessage("headshop.confirm-no", player)
+                        .getMessage("gui.cancel", player)
         );
 
         new ConfirmGui(

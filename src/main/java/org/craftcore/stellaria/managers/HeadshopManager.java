@@ -183,6 +183,55 @@ public class HeadshopManager {
         return DatabaseManager.exists("headshop_pool", "texture = ?", texture);
     }
 
+    public @Nullable PoolHead addToPool(
+            ItemStack sourceItem,
+            UUID addedBy
+    ) {
+        if (sourceItem == null
+                || sourceItem.getType() != Material.PLAYER_HEAD
+                || !(sourceItem.getItemMeta() instanceof SkullMeta skullMeta)) {
+            return null;
+        }
+
+        String texture = extractTexture(skullMeta);
+        if (texture == null) {
+            return null;
+        }
+
+        ItemStack storedItem = sourceItem.clone();
+        storedItem.setAmount(1);
+
+        String displayName = skullMeta.hasDisplayName()
+                ? PlainTextComponentSerializer.plainText()
+                .serialize(skullMeta.displayName())
+                : plugin.getConfigManager()
+                .getMessage("headshop.admin.unnamed-head", null);
+
+        String itemData = serializeItem(storedItem);
+
+        OptionalInt id = DatabaseManager.insertAndGetId(
+                "headshop_pool",
+                Map.of(
+                        "display_name", displayName,
+                        "texture", texture,
+                        "item_data", itemData,
+                        "added_by", addedBy.toString(),
+                        "added_at", System.currentTimeMillis()
+                )
+        );
+
+        if (id.isEmpty()) {
+            return null;
+        }
+
+        return new PoolHead(
+                id.getAsInt(),
+                displayName,
+                texture,
+                itemData
+        );
+    }
+
     /** プールから削除する。参照が残らないよう、このheadを含む過去のheadshop_rotation行も一緒に削除する。 */
     public void removeFromPool(int id) {
         DatabaseManager.execute("DELETE FROM headshop_rotation WHERE pool_id = ?", id);

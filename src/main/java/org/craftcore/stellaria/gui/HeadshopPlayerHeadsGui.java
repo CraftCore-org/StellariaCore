@@ -208,9 +208,21 @@ public final class HeadshopPlayerHeadsGui extends Gui {
 
         Component description = ColorUtil.component(descriptionText);
 
+        Component confirmText = ColorUtil.component(
+                plugin.getConfigManager()
+                        .getMessage("gui.confirm", player)
+        );
+
+        Component cancelText = ColorUtil.component(
+                plugin.getConfigManager()
+                        .getMessage("gui.cancel", player)
+        );
+
         new ConfirmGui(
                 title,
                 description,
+                confirmText,
+                cancelText,
                 () -> purchase(
                         player,
                         recentPlayer
