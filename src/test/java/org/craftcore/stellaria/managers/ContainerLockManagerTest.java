@@ -42,6 +42,7 @@ class ContainerLockManagerTest {
     @AfterEach
     void tearDownDatabase() throws Exception {
         databaseConnectionField().set(null, null);
+        databasePluginField().set(null, null);
         connection.close();
     }
 
@@ -135,9 +136,11 @@ class ContainerLockManagerTest {
         ContainerLock.BlockKey pendingKey = new ContainerLock.BlockKey(worldName, 0, 64, 0);
         ContainerLock lock = lock(pendingKey);
         insertRows(lock, pendingKey);
-        World pendingWorld = worldProxy(worldName, Material.BARREL);
+        Material[] material = {Material.DIRT};
+        World pendingWorld = worldProxy(worldName, material);
         Map<String, World> loadedWorlds = new HashMap<>();
         setBukkitServer(serverProxy(loadedWorlds));
+        databasePluginField().set(null, testLoggerPlugin());
         try {
             ContainerLockManager manager = new ContainerLockManager(null);
 
@@ -146,6 +149,20 @@ class ContainerLockManagerTest {
             assertEquals(1, count("SELECT COUNT(*) FROM container_lock_blocks"));
 
             loadedWorlds.put(worldName, pendingWorld);
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("CREATE TRIGGER fail_lock_cleanup BEFORE DELETE ON container_lock_blocks "
+                        + "BEGIN SELECT RAISE(ABORT, 'test cleanup failure'); END");
+            }
+            manager.reconcileWorld(pendingWorld);
+
+            assertTrue(manager.isWorldPending(worldName));
+            assertTrue(manager.findCached(pendingKey).isEmpty());
+            assertEquals(1, count("SELECT COUNT(*) FROM container_lock_blocks"));
+
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("DROP TRIGGER fail_lock_cleanup");
+            }
+            material[0] = Material.BARREL;
             manager.reconcileWorld(pendingWorld);
 
             assertFalse(manager.isWorldPending(worldName));
@@ -256,11 +273,15 @@ class ContainerLockManagerTest {
     }
 
     private static World worldProxy(String worldName, Material material) {
+        return worldProxy(worldName, new Material[]{material});
+    }
+
+    private static World worldProxy(String worldName, Material[] material) {
         Block block = (Block) Proxy.newProxyInstance(
                 ContainerLockManagerTest.class.getClassLoader(),
                 new Class<?>[]{Block.class},
                 (proxy, method, args) -> switch (method.getName()) {
-                    case "getType" -> material;
+                    case "getType" -> material[0];
                     case "getWorld" -> proxy;
                     case "getX", "getY", "getZ" -> 0;
                     default -> defaultValue(method);
@@ -310,6 +331,28 @@ class ContainerLockManagerTest {
         Field field = DatabaseManager.class.getDeclaredField("connection");
         field.setAccessible(true);
         return field;
+    }
+
+    private static Field databasePluginField() throws Exception {
+        Field field = DatabaseManager.class.getDeclaredField("plugin");
+        field.setAccessible(true);
+        return field;
+    }
+
+    private static Object testLoggerPlugin() throws Exception {
+        Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
+        Field unsafeField = unsafeClass.getDeclaredField("theUnsafe");
+        unsafeField.setAccessible(true);
+        Object unsafe = unsafeField.get(null);
+        Method allocateInstance = unsafeClass.getMethod("allocateInstance", Class.class);
+        return allocateInstance.invoke(unsafe, TestLoggerPlugin.class);
+    }
+
+    private static final class TestLoggerPlugin extends org.bukkit.plugin.java.JavaPlugin {
+        @Override
+        public java.util.logging.Logger getLogger() {
+            return java.util.logging.Logger.getLogger(TestLoggerPlugin.class.getName());
+        }
     }
 
 }

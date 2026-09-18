@@ -39,6 +39,7 @@ public class ContainerLockManager {
     private final Set<UUID> bypassEnabled = ConcurrentHashMap.newKeySet();
     private final Set<UUID> autoLockEnabled = ConcurrentHashMap.newKeySet();
     private final Set<String> pendingWorlds = ConcurrentHashMap.newKeySet();
+    private final Set<String> scheduledWorldRetries = ConcurrentHashMap.newKeySet();
     private final StellariaCore plugin;
     private final boolean databaseBacked;
 
@@ -78,14 +79,16 @@ public class ContainerLockManager {
 
         Set<BlockRow> discardedRows = new LinkedHashSet<>();
         Map<ContainerLock.BlockKey, UUID> loadedBlockOwners = new HashMap<>();
+        Set<String> loadedWorldNames = new HashSet<>();
         for (BlockRow row : blockRows) {
-            if (!owners.containsKey(row.lockId())) {
-                discardedRows.add(row);
-                continue;
-            }
             World world = Bukkit.getWorld(row.key().world());
             if (world == null) {
                 pendingWorlds.add(row.key().world());
+                continue;
+            }
+            loadedWorldNames.add(row.key().world());
+            if (!owners.containsKey(row.lockId())) {
+                discardedRows.add(row);
                 continue;
             }
             if (!isLockable(world, row.key())) {
@@ -129,9 +132,15 @@ public class ContainerLockManager {
         emptyLockIds.removeAll(reconciledBlocks.keySet());
         boolean reconciled = reconcileDatabase(discardedRows, emptyLockIds);
         Map<UUID, Set<ContainerLock.BlockKey>> blocksToCache = new HashMap<>();
-        for (BlockRow row : blockRows) {
-            if (discardedRows.contains(row) || Bukkit.getWorld(row.key().world()) == null) continue;
-            blocksToCache.computeIfAbsent(row.lockId(), ignored -> new LinkedHashSet<>()).add(row.key());
+        if (reconciled) {
+            for (BlockRow row : blockRows) {
+                if (discardedRows.contains(row) || Bukkit.getWorld(row.key().world()) == null) continue;
+                blocksToCache.computeIfAbsent(row.lockId(), ignored -> new LinkedHashSet<>()).add(row.key());
+            }
+            pendingWorlds.removeAll(loadedWorldNames);
+        } else {
+            pendingWorlds.addAll(loadedWorldNames);
+            for (String worldName : loadedWorldNames) scheduleWorldRetry(worldName);
         }
 
         for (Map.Entry<UUID, UUID> entry : owners.entrySet()) {
@@ -161,6 +170,15 @@ public class ContainerLockManager {
 
     boolean isWorldPending(String worldName) {
         return pendingWorlds.contains(worldName);
+    }
+
+    private void scheduleWorldRetry(String worldName) {
+        if (plugin == null || !scheduledWorldRetries.add(worldName)) return;
+        Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> {
+            scheduledWorldRetries.remove(worldName);
+            World world = Bukkit.getWorld(worldName);
+            if (world != null && pendingWorlds.contains(worldName)) reconcileWorld(world);
+        }, 20L);
     }
 
     private boolean isLockable(World world, ContainerLock.BlockKey key) {
