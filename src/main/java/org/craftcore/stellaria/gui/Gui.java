@@ -7,6 +7,7 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
@@ -89,5 +90,10 @@ public abstract class Gui implements InventoryHolder {
 
     /** この画面が閉じられた時に呼ばれる（{@link GuiListener} 経由）。デフォルトは何もしない。 */
     public void onClose(InventoryCloseEvent event) {
+    }
+
+    /** GUI上へドラッグされた時に呼ばれる。既定ではアイテム移動を禁止する。 */
+    public void onDrag(InventoryDragEvent event) {
+        event.setCancelled(true);
     }
 }

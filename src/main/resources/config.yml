@@ -465,3 +465,14 @@ world-reset:
     interval-weeks: 1        # 1=毎週、2=隔週
     # type: monthly のとき使用
     day-of-month: 1          # 1〜31。その月に存在しない日は月末日に丸める
+
+shop:
+  max-per-player: 10
+  creation-cost: 500
+  input-timeout-seconds: 60
+  display:
+    y-offset: 1.2
+    text-offset: 0.45
+    view-range: 16
+    buy-format: "&%a販売 &%f%price% &%e在庫 &%f%stock%"
+    sell-format: "&%c買取 &%f%price% &%e在庫&%f%stock%"
