@@ -219,7 +219,8 @@ public class DiscordBotManager {
     private void postWebhook(String webhookUrl, String username, String avatarUrl, String content) {
         String json = "{\"username\":" + jsonString(username)
                 + ",\"avatar_url\":" + jsonString(avatarUrl)
-                + ",\"content\":" + jsonString(content) + "}";
+                + ",\"content\":" + jsonString(content)
+                + ",\"allowed_mentions\":{\"parse\":[]}}";
         HttpRequest request = HttpRequest.newBuilder(URI.create(webhookUrl))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(json))
