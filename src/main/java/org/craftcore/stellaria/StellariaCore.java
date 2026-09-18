@@ -301,8 +301,9 @@ public class StellariaCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PlayerJoinListener(this), this);
         getServer().getPluginManager().registerEvents(new PlayerQuitListener(this), this);
         if (configManager.getBoolean("vote.enabled", true)) {
-            if (getServer().getPluginManager().getPlugin("NuVotifier") != null) {
+            if (getServer().getPluginManager().getPlugin("Votifier") != null) {
                 getServer().getPluginManager().registerEvents(new VoteListener(this), this);
+                getLogger().info("NuVotifier 投票リスナーを登録しました。");
             } else {
                 getLogger().warning("NuVotifier が見つかりませんでした。投票報酬機能は無効化されます。");
             }
