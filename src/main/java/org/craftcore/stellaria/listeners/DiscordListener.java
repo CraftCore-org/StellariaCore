@@ -5,6 +5,7 @@ import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEve
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.bukkit.Bukkit;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.utils.DiscordRoleColorUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
 import org.jspecify.annotations.NonNull;
 
@@ -23,9 +24,11 @@ public class DiscordListener extends ListenerAdapter {
         if (!channels.contains(event.getChannel().getId())) { return; }
         if (!event.getChannelType().isMessage()) { return; }
         String username = event.getMember() != null ? event.getMember().getEffectiveName() : event.getAuthor().getName();
+        String coloredUsername = DiscordRoleColorUtil.applyToDisplayName(username,
+                event.getMember() != null ? event.getMember().getColor() : null);
         String message = event.getMessage().getContentDisplay();
         Bukkit.getScheduler().runTask(plugin, () -> {
-            Bukkit.broadcastMessage(FormatUtil.color(plugin.getConfigManager().getString("discord.bot.discordchat-format","").replace("%username%",username).replace("%message%",message)));
+            Bukkit.broadcastMessage(FormatUtil.color(plugin.getConfigManager().getString("discord.bot.discordchat-format","").replace("%username%", coloredUsername).replace("%message%",message)));
         });
     }
 
