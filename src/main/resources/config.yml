@@ -9,10 +9,10 @@ discord:
   bot:
     enabled: true
     token: ""
-    server-guild-id: "1547176637752152075"
-    serverchat-channel-id: ["1550003204991746098"]
-    modlog-channel-id: []
-    report-channel-id: []
+    server-guild-id: "1547187819410358292"
+    serverchat-channel-id: ["1549566387435872387"]
+    modlog-channel-id: ["1550003261942005790"]
+    report-channel-id: ["1550003261942005790"]
     serverstartlog-format: "✅ サーバーが起動しました。"
     serverstoplog-format: "❌ サーバーが停止しました。"
     serverchat-format: "%message%"
