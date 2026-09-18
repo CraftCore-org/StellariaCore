@@ -87,7 +87,7 @@ lobby:
   world: "lobby"
 
 home:
-  disabled-worlds: []
+  disabled-worlds: ["lobby"]
   max-per-player: 5
   cost: 0 # /sethome 1回あたりの消費コイン数（0なら無料）
   teleport-effect:
@@ -99,7 +99,7 @@ home:
     points: 30
 
 warp:
-  disabled-worlds: []
+  disabled-worlds: ["lobby"]
   max-per-player: 5
   cost: 0 # /setwarp 1回あたりの消費コイン数（0なら無料）
   teleport-effect:
@@ -297,16 +297,19 @@ elevator:
   ignoreblocks: ["&CARPET","&_SIGN","&TORCH","&BANNER","&BUTTON","&LEVER","&_DOOR"]# エレベーターブロックの上2ブロックに置いてあっても移動ができるブロック
 
 weathervote:
-  disabled-worlds: []
+  disabled-worlds: ["lobby"]
   votetime: 15
   worldname: #ワールドの表示名 指定されていないワールドは投票不可能
     world: "生活ワールド"
+    resource: "資源ワールド"
 
 timevote:
-  disabled-worlds: []
+  disabled-worlds: ["lobby"]
   votetime: 15
   worldname: #ワールドの表示名 指定されていないワールドは投票不可能
     world: "生活ワールド"
+    resource: "資源ワールド"
+
 
 # world-time-sync.worlds に指定するワールドでは、時間投票を無効化するため
 # disabled-worlds にも同じワールド名を追加してください。
@@ -316,7 +319,7 @@ world-time-sync:
   # 対象ワールド内で /gamerule advance_time false を実行してください。
 
 kikori:
-  disabled-worlds: []
+  disabled-worlds: ["lobby"]
   enabled: true
   price: 2000
   timeout-seconds: 300
@@ -324,14 +327,14 @@ kikori:
   leaf-radius: 4
 
 mine:
-  disabled-worlds: []
+  disabled-worlds: ["lobby"]
   enabled: true
   price: 3000
   timeout-seconds: 0
   max-ores: 128
 
 land:
-  disabled-worlds: []
+  disabled-worlds: ["lobby"]
   cost-per-chunk: 500
   max-chunks-per-player: 20
   refund-on-unclaim: true
