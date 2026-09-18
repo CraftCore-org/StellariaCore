@@ -173,6 +173,43 @@ class ContainerLockManagerTest {
     }
 
     @Test
+    void pendingWorldRetryCanReconcileWithoutAnotherWorldLoadEvent() throws Exception {
+        String worldName = "retry-world";
+        ContainerLock.BlockKey pendingKey = new ContainerLock.BlockKey(worldName, 0, 64, 0);
+        ContainerLock lock = lock(pendingKey);
+        insertRows(lock, pendingKey);
+        Material[] material = {Material.DIRT};
+        World retryWorld = worldProxy(worldName, material);
+        Map<String, World> loadedWorlds = new HashMap<>();
+        setBukkitServer(serverProxy(loadedWorlds));
+        databasePluginField().set(null, testLoggerPlugin());
+        try {
+            ContainerLockManager manager = new ContainerLockManager(null);
+
+            loadedWorlds.put(worldName, retryWorld);
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("CREATE TRIGGER fail_retry_cleanup BEFORE DELETE ON container_lock_blocks "
+                        + "BEGIN SELECT RAISE(ABORT, 'test cleanup failure'); END");
+            }
+            manager.retryPendingWorlds();
+
+            assertTrue(manager.isWorldPending(worldName));
+            assertTrue(manager.findCached(pendingKey).isEmpty());
+
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("DROP TRIGGER fail_retry_cleanup");
+            }
+            material[0] = Material.BARREL;
+            manager.retryPendingWorlds();
+
+            assertFalse(manager.isWorldPending(worldName));
+            assertEquals(lock.lockId(), manager.findCached(pendingKey).orElseThrow().lockId());
+        } finally {
+            setBukkitServer(null);
+        }
+    }
+
+    @Test
     void bypassIsDisabledByDefaultAndTogglesPerPlayer() {
         ContainerLockManager manager = new ContainerLockManager();
         UUID admin = UUID.randomUUID();

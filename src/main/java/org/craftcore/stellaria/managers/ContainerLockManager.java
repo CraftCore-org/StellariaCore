@@ -172,12 +172,23 @@ public class ContainerLockManager {
         return pendingWorlds.contains(worldName);
     }
 
+    /** 保留中のワールドを再照合する。ワールドロードイベントが発生しない場合も呼び出せる。 */
+    void retryPendingWorlds() {
+        for (String worldName : new ArrayList<>(pendingWorlds)) {
+            World world = Bukkit.getWorld(worldName);
+            if (world == null) {
+                scheduleWorldRetry(worldName);
+                continue;
+            }
+            reconcileWorld(world);
+        }
+    }
+
     private void scheduleWorldRetry(String worldName) {
         if (plugin == null || !scheduledWorldRetries.add(worldName)) return;
         Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> {
             scheduledWorldRetries.remove(worldName);
-            World world = Bukkit.getWorld(worldName);
-            if (world != null && pendingWorlds.contains(worldName)) reconcileWorld(world);
+            if (pendingWorlds.contains(worldName)) retryPendingWorlds();
         }, 20L);
     }
 

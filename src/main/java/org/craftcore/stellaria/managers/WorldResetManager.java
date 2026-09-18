@@ -122,8 +122,11 @@ public class WorldResetManager {
     }
 
     private void tick() {
-        retryPendingLockCleanup();
-        if (!plugin.getConfigManager().getBoolean("world-reset.enabled", false)) {
+        boolean enabled = plugin.getConfigManager().getBoolean("world-reset.enabled", false);
+        if (shouldRetryPendingLockCleanup(enabled, !pendingLockCleanup.isEmpty())) {
+            retryPendingLockCleanup();
+        }
+        if (!enabled) {
             return;
         }
         List<String> worlds = plugin.getConfigManager().getStringList("world-reset.worlds");
@@ -273,6 +276,11 @@ public class WorldResetManager {
 
     static boolean shouldCompleteReset(boolean lockCleanupSucceeded) {
         return lockCleanupSucceeded;
+    }
+
+    /** 保留中のロック削除は、リセット機能を無効化しても完了するまで再試行する。 */
+    static boolean shouldRetryPendingLockCleanup(boolean worldResetEnabled, boolean hasPendingCleanup) {
+        return hasPendingCleanup;
     }
 
     private void deleteWorldFolder(File folder) {

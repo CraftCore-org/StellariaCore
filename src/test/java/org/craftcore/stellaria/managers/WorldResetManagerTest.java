@@ -12,4 +12,10 @@ class WorldResetManagerTest {
         assertFalse(WorldResetManager.shouldCompleteReset(false));
         assertTrue(WorldResetManager.shouldCompleteReset(true));
     }
+
+    @Test
+    void pendingLockCleanupIsRetriedEvenWhenWorldResetIsDisabled() {
+        assertTrue(WorldResetManager.shouldRetryPendingLockCleanup(false, true));
+        assertFalse(WorldResetManager.shouldRetryPendingLockCleanup(false, false));
+    }
 }
