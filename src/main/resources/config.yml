@@ -119,6 +119,9 @@ profile:
     - "&%7プレイ時間: &%f%playtime%"
     - "&%7所持金: &%e%money%"
 
+welcome:
+  enabled: true # 初回ログイン時にウェルカムメッセージ（messages.yml の welcome.lines）を送るかどうか
+
 first-join-kit:
   enabled: true
   items: # "素材名:個数" 形式（個数省略で1個）

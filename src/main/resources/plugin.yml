@@ -52,6 +52,7 @@ commands:
   adminshop:
   discord:
     aliases: [dc]
+  rules:
   map:
   homepage:
   enderchest:
