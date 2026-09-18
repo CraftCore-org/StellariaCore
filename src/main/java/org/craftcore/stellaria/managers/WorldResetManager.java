@@ -242,7 +242,10 @@ public class WorldResetManager {
                 .keepWorldBorder(true);
         var attempt = api.getWorldManager().regenWorld(options);
         if (attempt.isFailure()) {
-            plugin.getLogger().severe("ワールド '" + worldName + "' のMultiverse-Coreによる再生成に失敗したため、home/warpデータは保持しました。");
+            plugin.getLogger().severe("ワールド '" + worldName
+                    + "' のMultiverse-Coreによる再生成に失敗したため、home/warpデータは保持しました。"
+                    + " 理由: " + attempt.getFailureReason()
+                    + ", 詳細: " + attempt.getFailureMessage().formatted());
             return false;
         }
 

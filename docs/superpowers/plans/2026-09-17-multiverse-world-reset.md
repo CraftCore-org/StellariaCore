@@ -166,4 +166,3 @@
   git add src/main/java/org/craftcore/stellaria/managers/WorldResetManager.java
   git commit -m "fix: handle Multiverse reset runtime result"
   ```
-
