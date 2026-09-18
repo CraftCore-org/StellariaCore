@@ -85,6 +85,7 @@ public class StellariaCore extends JavaPlugin {
     private LandBorderParticleManager landBorderParticleManager;
     private LobbyManager lobbyManager;
     private WorldResetManager worldResetManager;
+    private JapanTimeSyncManager japanTimeSyncManager;
     private List<Feature> features;
     private ScheduledTask actionBarTask;
     private ScheduledTask persistentActionBarTask;
@@ -215,6 +216,7 @@ public class StellariaCore extends JavaPlugin {
         this.homeManager = new HomeManager(this);
         this.warpManager = new WarpManager(this);
         this.worldResetManager = new WorldResetManager(this);
+        this.japanTimeSyncManager = new JapanTimeSyncManager(this);
         this.headshopManager = new HeadshopManager(this);
         this.vanishManager = new VanishManager(this);
         this.kikoriManager = new KikoriManager(this);
@@ -490,12 +492,14 @@ public class StellariaCore extends JavaPlugin {
 
         headshopManager.start();
         worldResetManager.start();
+        japanTimeSyncManager.start();
 
         ConsoleUtil.printLogo(getPluginMeta().getVersion());
     }
 
     @Override
     public void onDisable() {
+        japanTimeSyncManager.stop();
         if (configManager.getBoolean("discord.bot.enabled",true)){
             discordBotManager.stop();
         }
@@ -643,6 +647,7 @@ public class StellariaCore extends JavaPlugin {
         );
         autoBroadcastManager.restart();
         worldResetManager.restart();
+        japanTimeSyncManager.restart();
         headshopManager.start();
         rankManager.reload();
         restartConfigScheduledTasks();

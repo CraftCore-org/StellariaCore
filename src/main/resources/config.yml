@@ -305,6 +305,13 @@ timevote:
   worldname: #ワールドの表示名 指定されていないワールドは投票不可能
     world: "生活ワールド"
 
+# world-time-sync.worlds に指定するワールドでは、時間投票を無効化するため
+# disabled-worlds にも同じワールド名を追加してください。
+world-time-sync:
+  enabled: false
+  worlds: []
+  # 対象ワールド内で /gamerule advance_time false を実行してください。
+
 kikori:
   disabled-worlds: []
   enabled: true
