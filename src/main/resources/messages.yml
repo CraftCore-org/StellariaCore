@@ -817,3 +817,6 @@ shop:
   list_header: "&%b所有ショップ一覧"
   list_entry: "&%7#%id% &%f%world% (%x%, %y%, %z%) &%e%mode% %price%"
   info: "&%b#%id% &%f%mode% 単価:%price% 在庫:%stock% 資金:%funds%"
+  land_protected: "&%cこの土地は他の人に保護されています。"
+  high_price: "&%c価格が高すぎます。アイテムの価格は&%e%price%&%c円以下である必要があります。"
+  cancel: "&%c操作がキャンセルされました。"

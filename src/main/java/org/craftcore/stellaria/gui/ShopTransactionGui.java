@@ -1,6 +1,7 @@
 package org.craftcore.stellaria.gui;
 
 import net.kyori.adventure.text.Component;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.enchantments.Enchantment;
@@ -21,7 +22,7 @@ public final class ShopTransactionGui extends Gui {
     private final ShopManager.Shop shop;
     private int quantity=1;
     public ShopTransactionGui(StellariaCore plugin, ShopManager.Shop shop) {
-        super(27, Component.text("ショップ取引"));
+        super(27, Component.text(Bukkit.getOfflinePlayer(shop.owner()).getName() + "のショップ"));
         this.plugin=plugin;
         this.shop=shop;
         render();

@@ -27,7 +27,7 @@ public final class ShopManageGui extends Gui {
     private void render(){
         getInventory().clear();
         getInventory().setItem(13,display());
-        getInventory().setItem(11,button(Material.CHEST,"手持ちカーソルの同種アイテムを在庫に追加"));
+        getInventory().setItem(11,button(Material.CHEST,"ここにアイテムを入れて在庫を補充"));
         getInventory().setItem(15,button(Material.HOPPER,"在庫から1スタック引き出す"));
         if (shop.mode()==ShopManager.Mode.BUY) getInventory().setItem(18,button(Material.GREEN_DYE,"種別: 販売（切替）"));
         if (shop.mode()==ShopManager.Mode.SELL) getInventory().setItem(18,button(Material.RED_DYE,"種別: 買取（切替）"));
@@ -39,9 +39,9 @@ public final class ShopManageGui extends Gui {
         getInventory().setItem(22,button(Material.TNT,"ショップを削除"));
     }
     private ItemStack display(){
-        if (shop.stock() <= 0) return button(Material.CHEST,"在庫: 0個");
+
         ItemStack i=shop.item().clone();
-        i.setAmount(Math.min(shop.stock(),i.getMaxStackSize()));
+        i.setAmount(Math.min(1,i.getMaxStackSize()));
         ItemMeta m=i.getItemMeta();
         m.displayName(GuiItemUtil.text("&%f在庫: &%e"+shop.stock()+"個"));
         m.lore(GuiItemUtil.loreFromStrings(java.util.List.of("&%f単価: &%e"+plugin.getEconomyManager().formatExact(shop.price()),"&%f資金プール: &%e"+plugin.getEconomyManager().formatExact(shop.funds()))));
@@ -79,18 +79,19 @@ public final class ShopManageGui extends Gui {
                 p.playSound(p, Sound.UI_BUTTON_CLICK,1,1);
             }
             case 20->{
-                listener.requestFunds(p,shop,true);
-                p.playSound(p, Sound.UI_BUTTON_CLICK,1,1);
+                if (shop.mode() == ShopManager.Mode.SELL) {
+                    listener.requestFunds(p, shop, true);
+                    p.playSound(p, Sound.UI_BUTTON_CLICK, 1, 1);
+                }
             }
             case 24->{
-                listener.requestFunds(p,shop,false);
-                p.playSound(p, Sound.UI_BUTTON_CLICK,1,1);
+                if (shop.mode() == ShopManager.Mode.SELL) {
+                    listener.requestFunds(p, shop, false);
+                    p.playSound(p, Sound.UI_BUTTON_CLICK, 1, 1);
+                }
             }
             case 22->{
                 new ShopRemoveGui(plugin, listener, shop).open(p);
-//                plugin.getShopManager().remove(shop,p);
-//                p.closeInventory();
-//                message(p,"shop.removed");
             }default->{} }shop=plugin.getShopManager().find(shop.key());
         if(shop!=null)render();
     }
@@ -111,17 +112,27 @@ public final class ShopManageGui extends Gui {
     }
     private void withdrawStock(Player p){
         int amount=Math.min(shop.stock(),shop.item().getMaxStackSize());
-        if(amount<1){message(p,"shop.trade_not_enough_stock");
+        if(amount<1){
+            message(p,"shop.trade_not_enough_stock");
             return;
         }
         ItemStack out=shop.item().clone();
-        out.setAmount(amount);
-        if(!p.getInventory().addItem(out).isEmpty()){message(p,"shop.trade_inventory_full");
-            return;
-        }plugin.getShopManager().addStock(shop,-amount);
+        give(p, out, amount);
+        plugin.getShopManager().addStock(shop,-amount);
         shop=plugin.getShopManager().find(shop.key());
+
         message(p,"shop.stock_withdrawn");
     }
+    private static void give(Player p, ItemStack sample, int amount) {
+        while (amount > 0) {
+            ItemStack i = sample.clone();
+            int n = Math.min(amount, i.getMaxStackSize());
+            i.setAmount(n);
+            p.getInventory().addItem(i).values().forEach(left -> p.getWorld().dropItemNaturally(p.getLocation(), left));
+            amount -= n;
+        }
+    }
+
     private void message(Player p,String key){
         p.sendMessage(org.craftcore.stellaria.utils.ColorUtil.component(plugin.getConfigManager().getMessage(key,p)));
     }
