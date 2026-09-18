@@ -308,6 +308,28 @@ broadcast:
       "&%b&l| &r&%bバグや不具合を見つけたらDiscordで報告できます！",
     ] # 空だと定期放送は開始されない（例: ["&%eルールを守って楽しく遊ぼう！"]）
 
+income:
+  mining:
+    rewards:
+      COAL_ORE: 5
+      COPPER_ORE: 5
+      IRON_ORE: 10
+      GOLD_ORE: 20
+      REDSTONE_ORE: 5
+      LAPIS_ORE: 5
+      DIAMOND_ORE: 40
+      EMERALD_ORE: 60
+      NETHER_QUARTZ_ORE: 5
+      NETHER_GOLD_ORE: 10
+      ANCIENT_DEBRIS: 80
+
+  fishing:
+    rewards:
+      COD: 100
+      SALMON: 150
+      PUFFERFISH: 500
+      TROPICAL_FISH: 300
+
 elevator:
   blocks:
     IRON_BLOCK:

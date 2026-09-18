@@ -440,6 +440,9 @@ timevote:
   err_notvoting: "&%c現在投票が行われていません。"
   err_world: "&%cこのワールドは時間を変更できません。"
 
+income:
+  earned: "&%a+ %amount%"
+
 kikori:
   world_disabled: "&%cこのワールドでは木こり機能を利用できません。"
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"

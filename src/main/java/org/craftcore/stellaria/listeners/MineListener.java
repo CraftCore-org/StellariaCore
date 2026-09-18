@@ -13,6 +13,7 @@ import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.OreUtil;
 import org.craftcore.stellaria.utils.WorldBlacklistUtil;
+import org.bukkit.enchantments.Enchantment;
 
 /**
  * 鉱石一括破壊機能（/mine）用のブロックイベント処理。
@@ -41,32 +42,86 @@ public class MineListener implements Listener {
             return;
         }
 
+        Player player = event.getPlayer();
+
         boolean wasArtificial = plugin.getMineManager().isArtificialOre(block);
         plugin.getMineManager().unmarkArtificialOre(block);
 
-        Player player = event.getPlayer();
-        if (WorldBlacklistUtil.isBlacklisted(plugin.getConfigManager().getStringList("mine.disabled-worlds", true), block.getWorld().getName())) {
-            if (plugin.getMineManager().isEnabled(player.getUniqueId()) && isHoldingPickaxe(player)) {
-                String warning = plugin.getConfigManager().getMessage("mine.world_disabled", player);
-                plugin.getActionBarManager().flash(player, "mine_warning", ColorUtil.component(warning), 60L);
+        // 天然鉱石 + ツルハシ + シルクタッチ無しなら報酬
+        if (!wasArtificial
+                && isHoldingPickaxe(player)
+                && !hasSilkTouch(player)) {
+
+            int reward = getOreReward(block.getType());
+
+            if (reward > 0) {
+                plugin.getIncomeManager().reward(player, reward);
             }
+        }
+
+        if (WorldBlacklistUtil.isBlacklisted(
+                plugin.getConfigManager().getStringList("mine.disabled-worlds", true),
+                block.getWorld().getName())) {
+
+            if (plugin.getMineManager().isEnabled(player.getUniqueId())
+                    && isHoldingPickaxe(player)) {
+
+                String warning = plugin.getConfigManager()
+                        .getMessage("mine.world_disabled", player);
+
+                plugin.getActionBarManager().flash(
+                        player,
+                        "mine_warning",
+                        ColorUtil.component(warning),
+                        60L
+                );
+            }
+
             return;
         }
+
         if (!plugin.getMineManager().isEnabled(player.getUniqueId())) {
             return;
         }
+
         if (!isHoldingPickaxe(player)) {
             return;
         }
+
         if (wasArtificial) {
-            return; // 自分で置いた1個を素直に壊すのは想定内の操作なので採掘は発動しない
+            return;
         }
+
         plugin.getMineManager().tryStartMining(player, block);
     }
 
     private boolean isHoldingPickaxe(Player player) {
         ItemStack item = player.getInventory().getItemInMainHand();
         return Tag.ITEMS_PICKAXES.isTagged(item.getType());
+    }
+
+    private boolean hasSilkTouch(Player player) {
+        ItemStack item = player.getInventory().getItemInMainHand();
+
+        return item.getEnchantmentLevel(Enchantment.SILK_TOUCH) > 0;
+    }
+
+    private int getOreReward(org.bukkit.Material material) {
+        String materialName = material.name();
+
+        // 深層岩鉱石は通常鉱石と同じ価格にする
+        if (materialName.startsWith("DEEPSLATE_")) {
+            materialName = materialName.substring("DEEPSLATE_".length());
+        }
+
+        return Math.max(
+                0,
+                plugin.getConfigManager().getInt(
+                        "income.mining.rewards." + materialName,
+                        0,
+                        true
+                )
+        );
     }
 
     @EventHandler

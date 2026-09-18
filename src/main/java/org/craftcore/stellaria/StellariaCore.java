@@ -56,6 +56,7 @@ import java.util.List;
 
 public class StellariaCore extends JavaPlugin {
 
+    private IncomeManager incomeManager;
     private EconomyManager economyManager;
     private ConfigManager configManager;
     private PlaceholderManager placeholderManager;
@@ -270,6 +271,7 @@ public class StellariaCore extends JavaPlugin {
 
         // 2. EconomyManager のインスタンス化
         this.economyManager = new EconomyManager(this);
+        this.incomeManager = new IncomeManager(this);
         // LandManagerはEconomyManagerに依存しないが、将来の拡張に備えて構築後に置く
         this.landManager = new LandManager(this);
         this.containerLockManager = new ContainerLockManager(this);
@@ -311,6 +313,10 @@ public class StellariaCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PlayerListener(this, elevatorManager), this);
         getServer().getPluginManager().registerEvents(new KikoriListener(this), this);
         getServer().getPluginManager().registerEvents(new MineListener(this), this);
+        getServer().getPluginManager().registerEvents(
+                new FishingIncomeListener(this),
+                this
+        );
         getServer().getPluginManager().registerEvents(new LandProtectionListener(this), this);
         getServer().getPluginManager().registerEvents(new ContainerLockListener(this), this);
         this.shopListener = new ShopListener(this);
@@ -563,6 +569,10 @@ public class StellariaCore extends JavaPlugin {
         // プラグイン停止時は Vault から自動解除されるため、DB切断だけでOK
         DatabaseManager.disconnect();
         ConsoleUtil.printDisabledMessage();
+    }
+
+    public IncomeManager getIncomeManager() {
+        return this.incomeManager;
     }
     
     public EconomyManager getEconomyManager() {
