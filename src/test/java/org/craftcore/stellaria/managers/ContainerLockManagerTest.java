@@ -1,7 +1,20 @@
 package org.craftcore.stellaria.managers;
 
+import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.junit.jupiter.api.Test;
-
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -11,6 +24,27 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ContainerLockManagerTest {
+
+    private Connection connection;
+
+    @BeforeEach
+    void setUpDatabase() throws Exception {
+        connection = DriverManager.getConnection("jdbc:sqlite::memory:");
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("CREATE TABLE container_locks (lock_id TEXT PRIMARY KEY, owner_uuid TEXT NOT NULL, created_at INTEGER NOT NULL)");
+            statement.execute("CREATE TABLE container_lock_blocks (world TEXT NOT NULL, x INTEGER NOT NULL, y INTEGER NOT NULL, z INTEGER NOT NULL, lock_id TEXT NOT NULL, PRIMARY KEY (world, x, y, z))");
+            statement.execute("CREATE TABLE container_lock_members (lock_id TEXT NOT NULL, member_uuid TEXT NOT NULL, PRIMARY KEY (lock_id, member_uuid))");
+            statement.execute("CREATE TABLE container_lock_auto_players (player_uuid TEXT PRIMARY KEY)");
+        }
+        databaseConnectionField().set(null, connection);
+    }
+
+    @AfterEach
+    void tearDownDatabase() throws Exception {
+        databaseConnectionField().set(null, null);
+        databasePluginField().set(null, null);
+        connection.close();
+    }
 
     @Test
     void doubleChestKeysResolveToTheSameCachedLock() {
@@ -49,6 +83,133 @@ class ContainerLockManagerTest {
     }
 
     @Test
+    void removingWorldFromCacheRemovesOnlyKeysInThatWorld() {
+        ContainerLockManager manager = new ContainerLockManager();
+        ContainerLock.BlockKey resetWorldKey = key(0);
+        ContainerLock.BlockKey preservedWorldKey = new ContainerLock.BlockKey("other-world", 0, 64, 0);
+        ContainerLock resetWorldLock = lock(resetWorldKey);
+        ContainerLock preservedWorldLock = lock(preservedWorldKey);
+        manager.registerLoadedLock(resetWorldLock);
+        manager.registerLoadedLock(preservedWorldLock);
+
+        manager.removeWorldFromCache("world");
+
+        assertTrue(manager.findCached(resetWorldKey).isEmpty());
+        assertTrue(manager.findCached(resetWorldLock.lockId()).isEmpty());
+        assertSame(preservedWorldLock, manager.findCached(preservedWorldKey).orElseThrow());
+        assertSame(preservedWorldLock, manager.findCached(preservedWorldLock.lockId()).orElseThrow());
+    }
+
+    @Test
+    void removingWorldDeletesOnlyItsBlocksAndEmptyLocksTransactionally() throws Exception {
+        ContainerLockManager manager = new ContainerLockManager();
+        ContainerLock.BlockKey resetKey = key(0);
+        ContainerLock.BlockKey preservedKey = new ContainerLock.BlockKey("other-world", 0, 64, 0);
+        ContainerLock preservedLock = lock(resetKey, preservedKey);
+        ContainerLock emptyLock = lock(new ContainerLock.BlockKey("world", 1, 64, 0));
+        manager.registerLoadedLock(preservedLock);
+        manager.registerLoadedLock(emptyLock);
+        insertRows(preservedLock, resetKey, preservedKey);
+        insertRows(emptyLock, emptyLock.blocks().iterator().next());
+        UUID member = UUID.randomUUID();
+        try (var statement = connection.prepareStatement(
+                "INSERT INTO container_lock_members (lock_id, member_uuid) VALUES (?, ?)")) {
+            statement.setString(1, emptyLock.lockId().toString());
+            statement.setString(2, member.toString());
+            statement.executeUpdate();
+        }
+
+        assertTrue(manager.removeWorld("world"));
+
+        assertTrue(manager.findCached(resetKey).isEmpty());
+        assertSame(preservedLock, manager.findCached(preservedKey).orElseThrow());
+        assertTrue(manager.findCached(emptyLock.lockId()).isEmpty());
+        assertEquals(1, count("SELECT COUNT(*) FROM container_lock_blocks WHERE world = 'other-world'"));
+        assertEquals(0, count("SELECT COUNT(*) FROM container_lock_blocks WHERE world = 'world'"));
+        assertEquals(1, count("SELECT COUNT(*) FROM container_locks"));
+        assertEquals(0, count("SELECT COUNT(*) FROM container_lock_members"));
+    }
+
+    @Test
+    void unloadedWorldStaysPendingUntilWorldLoadReconciliation() throws Exception {
+        String worldName = "pending-world";
+        ContainerLock.BlockKey pendingKey = new ContainerLock.BlockKey(worldName, 0, 64, 0);
+        ContainerLock lock = lock(pendingKey);
+        insertRows(lock, pendingKey);
+        Material[] material = {Material.DIRT};
+        World pendingWorld = worldProxy(worldName, material);
+        Map<String, World> loadedWorlds = new HashMap<>();
+        setBukkitServer(serverProxy(loadedWorlds));
+        databasePluginField().set(null, testLoggerPlugin());
+        try {
+            ContainerLockManager manager = new ContainerLockManager(null);
+
+            assertTrue(manager.isWorldPending(worldName));
+            assertTrue(manager.findCached(pendingKey).isEmpty());
+            assertEquals(1, count("SELECT COUNT(*) FROM container_lock_blocks"));
+
+            loadedWorlds.put(worldName, pendingWorld);
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("CREATE TRIGGER fail_lock_cleanup BEFORE DELETE ON container_lock_blocks "
+                        + "BEGIN SELECT RAISE(ABORT, 'test cleanup failure'); END");
+            }
+            manager.reconcileWorld(pendingWorld);
+
+            assertTrue(manager.isWorldPending(worldName));
+            assertTrue(manager.findCached(pendingKey).isEmpty());
+            assertEquals(1, count("SELECT COUNT(*) FROM container_lock_blocks"));
+
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("DROP TRIGGER fail_lock_cleanup");
+            }
+            material[0] = Material.BARREL;
+            manager.reconcileWorld(pendingWorld);
+
+            assertFalse(manager.isWorldPending(worldName));
+            assertEquals(lock.lockId(), manager.findCached(pendingKey).orElseThrow().lockId());
+        } finally {
+            setBukkitServer(null);
+        }
+    }
+
+    @Test
+    void pendingWorldRetryCanReconcileWithoutAnotherWorldLoadEvent() throws Exception {
+        String worldName = "retry-world";
+        ContainerLock.BlockKey pendingKey = new ContainerLock.BlockKey(worldName, 0, 64, 0);
+        ContainerLock lock = lock(pendingKey);
+        insertRows(lock, pendingKey);
+        Material[] material = {Material.DIRT};
+        World retryWorld = worldProxy(worldName, material);
+        Map<String, World> loadedWorlds = new HashMap<>();
+        setBukkitServer(serverProxy(loadedWorlds));
+        databasePluginField().set(null, testLoggerPlugin());
+        try {
+            ContainerLockManager manager = new ContainerLockManager(null);
+
+            loadedWorlds.put(worldName, retryWorld);
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("CREATE TRIGGER fail_retry_cleanup BEFORE DELETE ON container_lock_blocks "
+                        + "BEGIN SELECT RAISE(ABORT, 'test cleanup failure'); END");
+            }
+            manager.retryPendingWorlds();
+
+            assertTrue(manager.isWorldPending(worldName));
+            assertTrue(manager.findCached(pendingKey).isEmpty());
+
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("DROP TRIGGER fail_retry_cleanup");
+            }
+            material[0] = Material.BARREL;
+            manager.retryPendingWorlds();
+
+            assertFalse(manager.isWorldPending(worldName));
+            assertEquals(lock.lockId(), manager.findCached(pendingKey).orElseThrow().lockId());
+        } finally {
+            setBukkitServer(null);
+        }
+    }
+
+    @Test
     void bypassIsDisabledByDefaultAndTogglesPerPlayer() {
         ContainerLockManager manager = new ContainerLockManager();
         UUID admin = UUID.randomUUID();
@@ -58,6 +219,17 @@ class ContainerLockManagerTest {
         assertTrue(manager.hasBypassEnabled(admin));
         assertTrue(!manager.toggleBypass(admin));
         assertTrue(!manager.hasBypassEnabled(admin));
+    }
+
+    @Test
+    void removingBypassStateDisablesAnEnabledBypass() {
+        ContainerLockManager manager = new ContainerLockManager();
+        UUID admin = UUID.randomUUID();
+        manager.toggleBypass(admin);
+
+        manager.removeBypassState(admin);
+
+        assertFalse(manager.hasBypassEnabled(admin));
     }
 
     @Test
@@ -72,6 +244,19 @@ class ContainerLockManagerTest {
         assertFalse(manager.hasAutoLockEnabled(player));
     }
 
+    @Test
+    void removingTheLastMemberlessLockBlockSucceedsAndClearsBothIndexes() throws Exception {
+        ContainerLockManager manager = new ContainerLockManager();
+        ContainerLock.BlockKey only = key(0);
+        ContainerLock lock = lock(only);
+        manager.registerLoadedLock(lock);
+        insert(lock, only);
+
+        assertEquals(ContainerLockManager.RemoveResult.SUCCESS, manager.removeDestroyedBlock(only));
+        assertTrue(manager.findCached(only).isEmpty());
+        assertTrue(manager.findCached(lock.lockId()).isEmpty());
+    }
+
     private static ContainerLock lock(ContainerLock.BlockKey... blocks) {
         return new ContainerLock(UUID.randomUUID(), UUID.randomUUID(), Set.of(blocks), Set.of());
     }
@@ -79,4 +264,132 @@ class ContainerLockManagerTest {
     private static ContainerLock.BlockKey key(int x) {
         return new ContainerLock.BlockKey("world", x, 64, 0);
     }
+
+    private void insert(ContainerLock lock, ContainerLock.BlockKey key) throws Exception {
+        try (var lockStatement = connection.prepareStatement("INSERT INTO container_locks (lock_id, owner_uuid, created_at) VALUES (?, ?, ?)");
+             var blockStatement = connection.prepareStatement("INSERT INTO container_lock_blocks (world, x, y, z, lock_id) VALUES (?, ?, ?, ?, ?)")) {
+            lockStatement.setString(1, lock.lockId().toString());
+            lockStatement.setString(2, lock.owner().toString());
+            lockStatement.setLong(3, 0L);
+            lockStatement.executeUpdate();
+            blockStatement.setString(1, key.world());
+            blockStatement.setInt(2, key.x());
+            blockStatement.setInt(3, key.y());
+            blockStatement.setInt(4, key.z());
+            blockStatement.setString(5, lock.lockId().toString());
+            blockStatement.executeUpdate();
+        }
+    }
+
+    private void insertRows(ContainerLock lock, ContainerLock.BlockKey... keys) throws Exception {
+        try (var lockStatement = connection.prepareStatement(
+                "INSERT INTO container_locks (lock_id, owner_uuid, created_at) VALUES (?, ?, ?)");
+             var blockStatement = connection.prepareStatement(
+                     "INSERT INTO container_lock_blocks (world, x, y, z, lock_id) VALUES (?, ?, ?, ?, ?)")) {
+            lockStatement.setString(1, lock.lockId().toString());
+            lockStatement.setString(2, lock.owner().toString());
+            lockStatement.setLong(3, 0L);
+            lockStatement.executeUpdate();
+            for (ContainerLock.BlockKey key : keys) {
+                blockStatement.setString(1, key.world());
+                blockStatement.setInt(2, key.x());
+                blockStatement.setInt(3, key.y());
+                blockStatement.setInt(4, key.z());
+                blockStatement.setString(5, lock.lockId().toString());
+                blockStatement.executeUpdate();
+            }
+        }
+    }
+
+    private int count(String sql) throws Exception {
+        try (Statement statement = connection.createStatement();
+             var resultSet = statement.executeQuery(sql)) {
+            resultSet.next();
+            return resultSet.getInt(1);
+        }
+    }
+
+    private static World worldProxy(String worldName, Material material) {
+        return worldProxy(worldName, new Material[]{material});
+    }
+
+    private static World worldProxy(String worldName, Material[] material) {
+        Block block = (Block) Proxy.newProxyInstance(
+                ContainerLockManagerTest.class.getClassLoader(),
+                new Class<?>[]{Block.class},
+                (proxy, method, args) -> switch (method.getName()) {
+                    case "getType" -> material[0];
+                    case "getWorld" -> proxy;
+                    case "getX", "getY", "getZ" -> 0;
+                    default -> defaultValue(method);
+                });
+        return (World) Proxy.newProxyInstance(
+                ContainerLockManagerTest.class.getClassLoader(),
+                new Class<?>[]{World.class},
+                (proxy, method, args) -> switch (method.getName()) {
+                    case "getName" -> worldName;
+                    case "getBlockAt" -> block;
+                    default -> defaultValue(method);
+                });
+    }
+
+    private static org.bukkit.Server serverProxy(Map<String, World> worlds) {
+        return (org.bukkit.Server) Proxy.newProxyInstance(
+                ContainerLockManagerTest.class.getClassLoader(),
+                new Class<?>[]{org.bukkit.Server.class},
+                (proxy, method, args) -> switch (method.getName()) {
+                    case "getWorld" -> worlds.get(args[0]);
+                    case "getWorlds" -> worlds.values().stream().toList();
+                    case "getLogger" -> java.util.logging.Logger.getLogger("ContainerLockManagerTest");
+                    default -> defaultValue(method);
+                });
+    }
+
+    private static Object defaultValue(Method method) {
+        if (!method.getReturnType().isPrimitive()) return null;
+        if (method.getReturnType() == boolean.class) return false;
+        if (method.getReturnType() == char.class) return (char) 0;
+        if (method.getReturnType() == byte.class) return (byte) 0;
+        if (method.getReturnType() == short.class) return (short) 0;
+        if (method.getReturnType() == int.class) return 0;
+        if (method.getReturnType() == long.class) return 0L;
+        if (method.getReturnType() == float.class) return 0F;
+        if (method.getReturnType() == double.class) return 0D;
+        return null;
+    }
+
+    private static void setBukkitServer(org.bukkit.Server server) throws Exception {
+        Field field = Bukkit.class.getDeclaredField("server");
+        field.setAccessible(true);
+        field.set(null, server);
+    }
+
+    private static Field databaseConnectionField() throws Exception {
+        Field field = DatabaseManager.class.getDeclaredField("connection");
+        field.setAccessible(true);
+        return field;
+    }
+
+    private static Field databasePluginField() throws Exception {
+        Field field = DatabaseManager.class.getDeclaredField("plugin");
+        field.setAccessible(true);
+        return field;
+    }
+
+    private static Object testLoggerPlugin() throws Exception {
+        Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
+        Field unsafeField = unsafeClass.getDeclaredField("theUnsafe");
+        unsafeField.setAccessible(true);
+        Object unsafe = unsafeField.get(null);
+        Method allocateInstance = unsafeClass.getMethod("allocateInstance", Class.class);
+        return allocateInstance.invoke(unsafe, TestLoggerPlugin.class);
+    }
+
+    private static final class TestLoggerPlugin extends org.bukkit.plugin.java.JavaPlugin {
+        @Override
+        public java.util.logging.Logger getLogger() {
+            return java.util.logging.Logger.getLogger(TestLoggerPlugin.class.getName());
+        }
+    }
+
 }

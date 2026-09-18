@@ -24,11 +24,12 @@ class ContainerLockListenerTest {
     @Test
     void permitsOnlyTheOwnerOrBypassingAdminToDestroyALockedContainer() {
         UUID owner = UUID.randomUUID();
+        UUID member = UUID.randomUUID();
         ContainerLock lock = new ContainerLock(UUID.randomUUID(), owner,
-                Set.of(new ContainerLock.BlockKey("world", 0, 64, 0)), Set.of(UUID.randomUUID()));
+                Set.of(new ContainerLock.BlockKey("world", 0, 64, 0)), Set.of(member));
 
         assertTrue(ContainerLockListener.canDestroy(lock, owner, false));
-        assertFalse(ContainerLockListener.canDestroy(lock, UUID.randomUUID(), false));
+        assertFalse(ContainerLockListener.canDestroy(lock, member, false));
         assertTrue(ContainerLockListener.canDestroy(lock, UUID.randomUUID(), true));
     }
 

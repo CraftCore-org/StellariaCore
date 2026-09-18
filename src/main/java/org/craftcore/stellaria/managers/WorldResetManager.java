@@ -55,6 +55,8 @@ public class WorldResetManager {
     private final Set<Integer> announcedMinutes = new HashSet<>();
     private Instant currentCycleResetAt;
     private final Set<String> lockoutWorlds = new HashSet<>();
+    private final Set<String> pendingLockCleanup = new HashSet<>();
+    private final Set<String> scheduledLockCleanupRetries = new HashSet<>();
 
     public WorldResetManager(StellariaCore plugin) {
         this.plugin = plugin;
@@ -119,7 +121,11 @@ public class WorldResetManager {
     }
 
     private void tick() {
-        if (!plugin.getConfigManager().getBoolean("world-reset.enabled", false)) {
+        boolean enabled = plugin.getConfigManager().getBoolean("world-reset.enabled", false);
+        if (shouldRetryPendingLockCleanup(enabled, !pendingLockCleanup.isEmpty())) {
+            retryPendingLockCleanup();
+        }
+        if (!enabled) {
             return;
         }
         List<String> worlds = plugin.getConfigManager().getStringList("world-reset.worlds");
@@ -214,19 +220,60 @@ public class WorldResetManager {
     }
 
     private void regenerateWorlds(List<String> worldNames) {
-        List<String> resetCompleted = new ArrayList<>();
         for (String worldName : worldNames) {
             if (!regenerateWorld(worldName)) {
                 continue;
             }
 
-            DatabaseManager.execute("DELETE FROM homes WHERE world = ?", worldName);
-            DatabaseManager.execute("DELETE FROM warps WHERE world = ?", worldName);
-
-            plugin.getLogger().info("ワールド '" + worldName + "' を自動リセットしました。");
-            resetCompleted.add(worldName);
+            boolean lockCleanupSucceeded = plugin.getContainerLockManager().removeWorld(worldName);
+            if (!shouldCompleteReset(lockCleanupSucceeded)) {
+                plugin.getLogger().warning("ワールド '" + worldName + "' のコンテナロックを削除できませんでした。");
+                pendingLockCleanup.add(worldName);
+                scheduleLockCleanupRetry(worldName);
+                continue;
+            }
+            completeReset(worldName);
         }
-        lockoutWorlds.removeAll(resetCompleted);
+    }
+
+    private void retryPendingLockCleanup() {
+        for (String worldName : new ArrayList<>(pendingLockCleanup)) {
+            if (!plugin.getContainerLockManager().removeWorld(worldName)) {
+                scheduleLockCleanupRetry(worldName);
+                continue;
+            }
+            completeReset(worldName);
+        }
+    }
+
+    private void scheduleLockCleanupRetry(String worldName) {
+        if (!scheduledLockCleanupRetries.add(worldName)) {
+            return;
+        }
+        Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> {
+            scheduledLockCleanupRetries.remove(worldName);
+            if (pendingLockCleanup.contains(worldName)) {
+                retryPendingLockCleanup();
+            }
+        }, TICK_INTERVAL_TICKS);
+    }
+
+    private void completeReset(String worldName) {
+        DatabaseManager.execute("DELETE FROM homes WHERE world = ?", worldName);
+        DatabaseManager.execute("DELETE FROM warps WHERE world = ?", worldName);
+        pendingLockCleanup.remove(worldName);
+        scheduledLockCleanupRetries.remove(worldName);
+        lockoutWorlds.remove(worldName);
+        plugin.getLogger().info("ワールド '" + worldName + "' を自動リセットしました。");
+    }
+
+    static boolean shouldCompleteReset(boolean lockCleanupSucceeded) {
+        return lockCleanupSucceeded;
+    }
+
+    /** 保留中のロック削除は、リセット機能を無効化しても完了するまで再試行する。 */
+    static boolean shouldRetryPendingLockCleanup(boolean worldResetEnabled, boolean hasPendingCleanup) {
+        return hasPendingCleanup;
     }
 
     /**

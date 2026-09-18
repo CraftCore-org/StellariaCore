@@ -34,4 +34,10 @@ class LockCommandTest {
         assertEquals("lock.already_locked_self", LockCommand.alreadyLockedMessageKey(lock, owner));
         assertEquals("lock.already_locked", LockCommand.alreadyLockedMessageKey(lock, UUID.randomUUID()));
     }
+
+    @Test
+    void unlockRejectsExtraArguments() {
+        assertTrue(LockCommand.acceptsUnlockArguments(new String[0]));
+        assertFalse(LockCommand.acceptsUnlockArguments(new String[]{"extra"}));
+    }
 }

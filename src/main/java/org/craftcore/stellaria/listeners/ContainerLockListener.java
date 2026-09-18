@@ -17,13 +17,13 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.world.WorldLoadEvent;
 import org.bukkit.event.block.Action;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.InventoryHolder;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.managers.ContainerLock;
 import org.craftcore.stellaria.managers.ContainerLockManager;
-import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.ContainerLockMessages;
 
 import java.util.LinkedHashSet;
@@ -31,9 +31,13 @@ import java.util.Set;
 
 /** ロック済みコンテナへのプレイヤー操作、搬送、環境破壊を止める。 */
 public class ContainerLockListener implements Listener {
-    private static final String CHANNEL = "container_lock";
     private final StellariaCore plugin;
     public ContainerLockListener(StellariaCore plugin) { this.plugin = plugin; }
+
+    @EventHandler
+    public void worldLoad(WorldLoadEvent event) {
+        plugin.getContainerLockManager().reconcileWorld(event.getWorld());
+    }
 
     @EventHandler(ignoreCancelled = true)
     public void interact(PlayerInteractEvent event) {
@@ -67,7 +71,7 @@ public class ContainerLockListener implements Listener {
             scheduleAttachedBlockVerification(event.getBlockPlaced(), placedKey, lock.lockId());
         }
     }
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void removeBroken(BlockBreakEvent event) {
         plugin.getContainerLockManager().find(event.getBlock()).ifPresent(lock -> {
             if (canDestroy(lock, event.getPlayer().getUniqueId(), plugin.getContainerLockManager().isBypassing(event.getPlayer()))) {
@@ -87,12 +91,10 @@ public class ContainerLockListener implements Listener {
         ContainerLockManager.CreateResult result = manager.create(event.getPlayer(), targetKeys(placed));
         if (result != ContainerLockManager.CreateResult.SUCCESS) {
             event.setCancelled(true);
-            plugin.getActionBarManager().flash(event.getPlayer(), CHANNEL,
-                    ColorUtil.component(ContainerLockMessages.message(plugin.getConfigManager(), "lock.auto_failed", event.getPlayer())), 40L);
+            event.getPlayer().sendMessage(ContainerLockMessages.message(plugin.getConfigManager(), "lock.auto_failed", event.getPlayer()));
             return;
         }
-        plugin.getActionBarManager().flash(event.getPlayer(), CHANNEL,
-                ColorUtil.component(ContainerLockMessages.message(plugin.getConfigManager(), "lock.auto_locked", event.getPlayer())), 40L);
+        event.getPlayer().sendMessage(ContainerLockMessages.message(plugin.getConfigManager(), "lock.auto_locked", event.getPlayer()));
         ContainerLock lock = manager.find(placed).orElseThrow();
         scheduleAutoLockVerification(placed, lock.lockId());
     }
@@ -130,7 +132,6 @@ public class ContainerLockListener implements Listener {
         plugin.getServer().getScheduler().runTask(plugin, () -> cleanupDestroyedBlock(player, block, key));
     }
     private void cleanupDestroyedBlock(Player player, Block block, ContainerLock.BlockKey key) {
-        if (isPlacementConfirmed(block.getType())) return;
         ContainerLockManager.RemoveResult result = plugin.getContainerLockManager().removeDestroyedBlock(key);
         if (result == ContainerLockManager.RemoveResult.DATABASE_ERROR) {
             plugin.getLogger().warning("破壊済みコンテナのロック削除に失敗したため再試行します: " + key);
@@ -138,8 +139,7 @@ public class ContainerLockListener implements Listener {
             return;
         }
         if (result == ContainerLockManager.RemoveResult.SUCCESS) {
-            plugin.getActionBarManager().flash(player, CHANNEL,
-                    ColorUtil.component(ContainerLockMessages.message(plugin.getConfigManager(), "lock.auto_unlocked", player)), 40L);
+            player.sendMessage(ContainerLockMessages.message(plugin.getConfigManager(), "lock.auto_unlocked", player));
         }
     }
     private void scheduleAttachedBlockVerification(Block block, ContainerLock.BlockKey key, java.util.UUID lockId) {
@@ -177,5 +177,8 @@ public class ContainerLockListener implements Listener {
     static boolean isPlacementConfirmed(Material material) {
         return ContainerLockManager.isLockable(material);
     }
-    private void deny(Player player, org.bukkit.event.Cancellable event, Block block) { event.setCancelled(true); plugin.getActionBarManager().flash(player, CHANNEL, ColorUtil.component(ContainerLockMessages.message(plugin.getConfigManager(), protectedMessageKey(block.getType()), player)), 40L); }
+    private void deny(Player player, org.bukkit.event.Cancellable event, Block block) {
+        event.setCancelled(true);
+        player.sendMessage(ContainerLockMessages.message(plugin.getConfigManager(), protectedMessageKey(block.getType()), player));
+    }
 }

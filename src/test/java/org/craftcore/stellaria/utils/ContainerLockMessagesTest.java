@@ -12,5 +12,6 @@ class ContainerLockMessagesTest {
         assertEquals("&%cこのシュルカーボックスは保護されています。", ContainerLockMessages.defaultRawMessage("lock.protected_shulker_box"));
         assertEquals("&%cこの樽は保護されています。", ContainerLockMessages.defaultRawMessage("lock.protected_barrel"));
         assertEquals("&%cこのコンテナはすでに保護済みです。", ContainerLockMessages.defaultRawMessage("lock.already_locked_self"));
+        assertEquals("&%c使用方法: /unlock", ContainerLockMessages.defaultRawMessage("lock.unlock_usage"));
     }
 }

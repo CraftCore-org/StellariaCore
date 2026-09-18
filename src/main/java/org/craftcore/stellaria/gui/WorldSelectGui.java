@@ -54,7 +54,8 @@ public class WorldSelectGui extends Gui {
     }
 
     private WorldSelectGui(StellariaCore plugin, @Nullable Gui parent, int page, List<WorldEntry> entries) {
-        this(plugin, parent, page, entries, Layout.create(plugin, entries.size(), maxExplicitSlot(entries)));
+        this(plugin, parent, page, entries,
+                Layout.create(plugin, entries.size(), maxExplicitSlot(entries), parent != null));
     }
 
     private WorldSelectGui(StellariaCore plugin, @Nullable Gui parent, int page, List<WorldEntry> entries, Layout layout) {
@@ -304,20 +305,29 @@ public class WorldSelectGui extends Gui {
     ) {
     }
 
-    private record Layout(int inventorySize, int worldsPerPage, int previousPageSlot, int nextPageSlot, int backButtonSlot) {
+    static record Layout(int inventorySize, int worldsPerPage, int previousPageSlot, int nextPageSlot, int backButtonSlot) {
 
-        private static Layout create(StellariaCore plugin, int worldCount, int maxExplicitSlot) {
+        private static Layout create(StellariaCore plugin, int worldCount, int maxExplicitSlot, boolean hasParent) {
             int configuredRows = plugin.getConfigManager().getInt("world.gui-rows", 0, true);
             if (configuredRows >= 1 && configuredRows <= 6) {
-                return configuredLayout(configuredRows, worldCount);
+                return configuredLayout(configuredRows, worldCount, hasParent);
             }
+            return autoLayout(worldCount, maxExplicitSlot, hasParent);
+        }
 
-            int inventorySize = autoInventorySize(worldCount, maxExplicitSlot);
+        static Layout autoLayout(int worldCount, boolean hasParent) {
+            return autoLayout(worldCount, -1, hasParent);
+        }
+
+        static Layout autoLayout(int worldCount, int maxExplicitSlot, boolean hasParent) {
+            int inventorySize = autoInventorySize(worldCount + (hasParent ? 1 : 0), maxExplicitSlot);
             if (worldCount > DEFAULT_WORLDS_PER_PAGE) {
                 return new Layout(inventorySize, DEFAULT_WORLDS_PER_PAGE,
-                        DEFAULT_PREVIOUS_PAGE_SLOT, DEFAULT_NEXT_PAGE_SLOT, 48);
+                        DEFAULT_PREVIOUS_PAGE_SLOT, hasParent ? inventorySize - 2 : DEFAULT_NEXT_PAGE_SLOT,
+                        hasParent ? inventorySize - 1 : 48);
             }
-            return new Layout(inventorySize, DEFAULT_WORLDS_PER_PAGE, -1, -1, inventorySize - 1);
+            int worldsPerPage = inventorySize - (hasParent ? 1 : 0);
+            return new Layout(inventorySize, worldsPerPage, -1, -1, inventorySize - 1);
         }
 
         private static int autoInventorySize(int worldCount, int maxExplicitSlot) {
@@ -334,18 +344,21 @@ public class WorldSelectGui extends Gui {
             return size;
         }
 
-        private static Layout configuredLayout(int rows, int worldCount) {
+        private static Layout configuredLayout(int rows, int worldCount, boolean hasParent) {
             int inventorySize = rows * 9;
-            if (worldCount <= inventorySize) {
-                return new Layout(inventorySize, inventorySize, -1, -1, inventorySize - 1);
+            int worldsWithoutNavigation = inventorySize - (hasParent ? 1 : 0);
+            if (worldCount <= worldsWithoutNavigation) {
+                return new Layout(inventorySize, worldsWithoutNavigation, -1, -1, inventorySize - 1);
             }
 
             if (rows == 1) {
-                return new Layout(inventorySize, 3, 6, 8, 3);
+                return new Layout(inventorySize, 3, 6, hasParent ? 7 : 8, hasParent ? 8 : 3);
             }
 
             int footerStart = inventorySize - 9;
-            return new Layout(inventorySize, footerStart, footerStart, inventorySize - 1, footerStart + 3);
+            return new Layout(inventorySize, footerStart, footerStart,
+                    hasParent ? inventorySize - 2 : inventorySize - 1,
+                    hasParent ? inventorySize - 1 : footerStart + 3);
         }
     }
 }
