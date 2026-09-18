@@ -193,15 +193,21 @@ DatabaseManager.createTableIfNotExists("reports",
 ```java
 public void loadAllBans() {
     activeBans.clear();
+    Set<UUID> newestBanTargets = new HashSet<>();
     for (ActiveBanRegistry.BanEntry entry : DatabaseManager.query(
-            "SELECT id, target_uuid, moderator_uuid, reason, banned_at, expires_at FROM bans ORDER BY banned_at ASC",
+            "SELECT id, target_uuid, moderator_uuid, reason, banned_at, expires_at FROM bans "
+                    + "ORDER BY target_uuid ASC, banned_at DESC, id DESC",
             rs -> new ActiveBanRegistry.BanEntry(rs.getInt("id"), UUID.fromString(rs.getString("target_uuid")),
                     nullableUuid(rs.getString("moderator_uuid")), rs.getString("reason"), rs.getLong("banned_at"),
                     rs.getObject("expires_at") == null ? null : rs.getLong("expires_at")))) {
-        if (!entry.isExpired(System.currentTimeMillis())) activeBans.put(entry);
+        if (newestBanTargets.add(entry.targetUuid()) && !entry.isExpired(System.currentTimeMillis())) {
+            activeBans.put(entry);
+        }
     }
 }
 ```
+
+Only the most recent BAN row for each target is eligible for the active cache. If that newest row is expired, retain it for history but do not reactivate an older BAN row.
 
 - [ ] **Step 3: Preserve history when checking expiration**
 
@@ -336,11 +342,8 @@ git commit -m "feat: send moderation Discord audit logs"
 ```yaml
 commands:
   warn:
-    permission: stellaria.warn
   kick:
-    permission: stellaria.kick
   ban:
-    permission: stellaria.ban
 
 permissions:
   stellaria.admin:
@@ -355,6 +358,8 @@ permissions:
   stellaria.ban:
     default: false
 ```
+
+Do not put `permission:` on these command declarations: permission enforcement stays in `ModerationCommand` so a denied sender receives the `ConfigManager`-backed `moderation.no_permission` message rather than Bukkit's default permission text.
 
 - [ ] **Step 2: Add config-driven usage, failure, and success messages**
 

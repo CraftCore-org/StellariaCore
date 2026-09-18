@@ -116,8 +116,8 @@ public final class HomeSelectGui extends Gui {
     private static ItemStack item(Material material, Component name, List<Component> lore) {
         ItemStack item = ItemStack.of(material);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(name);
-        meta.lore(lore);
+        meta.displayName(org.craftcore.stellaria.utils.GuiItemUtil.text(name));
+        meta.lore(org.craftcore.stellaria.utils.GuiItemUtil.lore(lore));
         item.setItemMeta(meta);
         return item;
     }

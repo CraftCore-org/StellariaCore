@@ -88,7 +88,7 @@ public class AdminShopGui extends Gui {
     private ItemStack createDisplayItem(ShopItem shopItem) {
         ItemStack itemStack = GuiItemUtil.cleanIcon(shopItem.material());
         ItemMeta meta = itemStack.getItemMeta();
-        meta.lore(List.of(ColorUtil.component("&%7価格: &%e" + plugin.getEconomyManager().format(shopItem.price()))));
+        meta.lore(List.of(GuiItemUtil.text("&%7価格: &%e" + plugin.getEconomyManager().format(shopItem.price()))));
         itemStack.setItemMeta(meta);
         return itemStack;
     }

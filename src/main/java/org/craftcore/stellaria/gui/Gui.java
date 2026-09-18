@@ -50,7 +50,7 @@ public abstract class Gui implements InventoryHolder {
         if (parent != null) {
             ItemStack item = new ItemStack(Material.ARROW);
             ItemMeta meta = item.getItemMeta();
-            meta.displayName(Component.text("← 戻る", NamedTextColor.GRAY));
+            meta.displayName(Component.text("← 戻る", NamedTextColor.GRAY).decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false));
             item.setItemMeta(meta);
             inventory.setItem(backButtonSlot, item);
         }

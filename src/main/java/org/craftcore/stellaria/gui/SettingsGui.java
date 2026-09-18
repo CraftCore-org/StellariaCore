@@ -7,7 +7,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.craftcore.stellaria.StellariaCore;
-import org.craftcore.stellaria.utils.ColorUtil;
+import org.craftcore.stellaria.utils.GuiItemUtil;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -65,6 +65,6 @@ public final class SettingsGui extends Gui {
     }
 
     private static Component messageComponent(StellariaCore plugin, String path, Player player) {
-        return ColorUtil.component(plugin.getConfigManager().getMessage(path, player));
+        return GuiItemUtil.text(plugin.getConfigManager().getMessage(path, player));
     }
 }

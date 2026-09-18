@@ -64,7 +64,7 @@ public class HeadshopGui extends Gui {
     private ItemStack createDisplayItem(HeadshopManager.PoolHead head, int price) {
         ItemStack item = plugin.getHeadshopManager().createHeadItem(head);
         ItemMeta meta = item.getItemMeta();
-        meta.lore(List.of(ColorUtil.component("&%7価格: &%e" + plugin.getEconomyManager().format(price))));
+        meta.lore(List.of(org.craftcore.stellaria.utils.GuiItemUtil.text("&%7価格: &%e" + plugin.getEconomyManager().format(price))));
         item.setItemMeta(meta);
         return item;
     }
@@ -72,7 +72,7 @@ public class HeadshopGui extends Gui {
     private ItemStack emptyHintItem(Player viewer) {
         ItemStack item = new ItemStack(Material.BARRIER);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(ColorUtil.component(plugin.getConfigManager().getMessage("headshop.shop-empty", viewer)));
+        meta.displayName(org.craftcore.stellaria.utils.GuiItemUtil.text(plugin.getConfigManager().getMessage("headshop.shop-empty", viewer)));
         item.setItemMeta(meta);
         return item;
     }
@@ -80,11 +80,11 @@ public class HeadshopGui extends Gui {
     private ItemStack hintItem(Player viewer) {
         ItemStack item = new ItemStack(Material.BOOK);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(ColorUtil.component(plugin.getConfigManager().getMessage("headshop.hint-title", viewer)));
+        meta.displayName(org.craftcore.stellaria.utils.GuiItemUtil.text(plugin.getConfigManager().getMessage("headshop.hint-title", viewer)));
         String resetTime = plugin.getConfigManager().getString("headshop.reset-time", "12:00");
         List<Component> lore = new ArrayList<>();
         for (String line : plugin.getConfigManager().getMessageList("headshop.main-hint")) {
-            lore.add(ColorUtil.component(FormatUtil.replace(line, "%reset_time%", resetTime)));
+            lore.add(org.craftcore.stellaria.utils.GuiItemUtil.text(FormatUtil.replace(line, "%reset_time%", resetTime)));
         }
         meta.lore(lore);
         item.setItemMeta(meta);
@@ -95,7 +95,7 @@ public class HeadshopGui extends Gui {
         ItemStack item = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta meta = (SkullMeta) item.getItemMeta();
         meta.setOwningPlayer(viewer);
-        meta.displayName(ColorUtil.component(plugin.getConfigManager().getMessage("headshop.player-heads-title", viewer)));
+        meta.displayName(org.craftcore.stellaria.utils.GuiItemUtil.text(plugin.getConfigManager().getMessage("headshop.player-heads-title", viewer)));
         item.setItemMeta(meta);
         return item;
     }

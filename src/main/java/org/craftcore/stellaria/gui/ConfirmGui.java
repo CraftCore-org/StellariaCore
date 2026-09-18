@@ -49,7 +49,7 @@ public class ConfirmGui extends Gui {
     private ItemStack item(Material material, Component displayName) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(displayName);
+        meta.displayName(org.craftcore.stellaria.utils.GuiItemUtil.text(displayName));
         item.setItemMeta(meta);
         return item;
     }

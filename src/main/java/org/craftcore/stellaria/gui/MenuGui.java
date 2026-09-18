@@ -13,6 +13,7 @@ import org.craftcore.stellaria.commands.WarpCommand;
 import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.CustomHeadUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
+import org.craftcore.stellaria.utils.GuiItemUtil;
 import org.craftcore.stellaria.utils.MenuItemUtil;
 
 import java.util.ArrayList;
@@ -57,8 +58,9 @@ public class MenuGui extends Gui {
             if (item == null) {
                 item = new ItemStack(menuEntry.material());
             }
+            GuiItemUtil.hideExtras(item);
             ItemMeta meta = item.getItemMeta();
-            meta.displayName(ColorUtil.component(menuEntry.name()));
+            meta.displayName(GuiItemUtil.text(menuEntry.name()));
             if (meta instanceof SkullMeta skullMeta && menuEntry.material() == Material.PLAYER_HEAD
                     && menuEntry.customHeadId() == null) {
                 skullMeta.setOwningPlayer(viewer);

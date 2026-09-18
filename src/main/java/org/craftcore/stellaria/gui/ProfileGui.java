@@ -9,7 +9,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.commands.ProfileCommand;
-import org.craftcore.stellaria.utils.ColorUtil;
+import org.craftcore.stellaria.utils.GuiItemUtil;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -48,7 +48,7 @@ public final class ProfileGui extends Gui {
         profileMeta.setOwningPlayer(player);
         profileMeta.displayName(messageComponent(plugin, "profile.gui_self", player));
         profileMeta.lore(ProfileCommand.buildProfileInfoLines(plugin, player, player).stream()
-                .map(line -> ColorUtil.component(plugin.getPlaceholderManager().resolve(line, player)))
+                .map(line -> GuiItemUtil.text(plugin.getPlaceholderManager().resolve(line, player)))
                 .toList());
         profile.setItemMeta(profileMeta);
         getInventory().setItem(PROFILE_SLOT, profile);
@@ -62,6 +62,6 @@ public final class ProfileGui extends Gui {
     }
 
     private static Component messageComponent(StellariaCore plugin, String path, Player player) {
-        return ColorUtil.component(plugin.getConfigManager().getMessage(path, player));
+        return GuiItemUtil.text(plugin.getConfigManager().getMessage(path, player));
     }
 }

@@ -34,10 +34,8 @@ public final class MenuItemUtil {
     public static ItemStack create(StellariaCore plugin) {
         ItemStack item = new ItemStack(Material.COMPASS);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(ColorUtil.component(plugin.getConfigManager().getMessage("menuitem.name", null)));
-        meta.lore(plugin.getConfigManager().getMessageList("menuitem.lore").stream()
-                .map(ColorUtil::component)
-                .toList());
+        meta.displayName(GuiItemUtil.text(plugin.getConfigManager().getMessage("menuitem.name", null)));
+        meta.lore(GuiItemUtil.loreFromStrings(plugin.getConfigManager().getMessageList("menuitem.lore")));
         meta.setEnchantmentGlintOverride(true);
         meta.setMaxStackSize(1);
         meta.getPersistentDataContainer().set(key(plugin), PersistentDataType.BYTE, (byte) 1);
