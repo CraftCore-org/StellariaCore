@@ -14,6 +14,7 @@ import org.craftcore.stellaria.utils.GuiItemUtil;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /** /report のカテゴリを選ぶ27スロットの画面。 */
 public final class ReportCategoryGui extends Gui {
@@ -22,21 +23,21 @@ public final class ReportCategoryGui extends Gui {
     private static final Material DEFAULT_MATERIAL = Material.PAPER;
 
     private final StellariaCore plugin;
-    private final java.util.UUID targetUuid;
+    private final UUID targetUuid;
     private final Map<Integer, String> categoriesBySlot = new HashMap<>();
 
-    public ReportCategoryGui(StellariaCore plugin, Player reporter, java.util.UUID targetUuid) {
+    public ReportCategoryGui(StellariaCore plugin, Player reporter, UUID targetUuid) {
         super(SIZE, title(plugin));
         this.plugin = plugin;
         this.targetUuid = targetUuid;
-        populate(reporter);
+        populate();
     }
 
     private static Component title(StellariaCore plugin) {
         return FormatUtil.component(plugin.getConfigManager().getMessage("report.gui_title", null));
     }
 
-    private void populate(Player reporter) {
+    private void populate() {
         List<Map<?, ?>> categories = plugin.getConfigManager().getMapList("report.categories");
         if (categories.isEmpty()) {
             plugin.getLogger().warning("report.categories が空のため、報告カテゴリを表示できません。");
@@ -78,7 +79,7 @@ public final class ReportCategoryGui extends Gui {
                 continue;
             }
 
-            getInventory().setItem(slot, categoryItem(material, FormatUtil.text(reporter, displayName)));
+            getInventory().setItem(slot, categoryItem(material, displayName));
         }
     }
 
