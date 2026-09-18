@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "org.craftcore.stellaria"
-version = "1.0.68"
+version = "1.0.81"
 
 repositories {
     mavenCentral()
@@ -15,6 +15,7 @@ repositories {
     maven("https://repo.codemc.org/repository/maven-public")               // VaultUnlocked
     maven("https://repo.extendedclip.com/content/repositories/placeholderapi/") // PlaceholderAPI
     maven("https://jitpack.io")                                             // NuVotifier
+    maven("https://repo.onarandombox.com/content/groups/public/")
 }
 
 dependencies {
@@ -35,6 +36,7 @@ dependencies {
     implementation("net.dv8tion:JDA:6.6.0")
     compileOnly("net.luckperms:api:5.4")
     compileOnly("com.github.nuvotifier:nuvotifier:2.7.2")
+    compileOnly("org.mvplugins.multiverse.core:multiverse-core:5.8.1")
     implementation("org.xerial:sqlite-jdbc:3.46.1.0")
     
 }

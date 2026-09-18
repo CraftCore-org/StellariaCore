@@ -87,6 +87,9 @@ public class StellariaCore extends JavaPlugin {
     private LandBorderParticleManager landBorderParticleManager;
     private LobbyManager lobbyManager;
     private WorldResetManager worldResetManager;
+    private JapanTimeSyncManager japanTimeSyncManager;
+    private ShopManager shopManager;
+    private ShopListener shopListener;
     private List<Feature> features;
     private ScheduledTask actionBarTask;
     private ScheduledTask persistentActionBarTask;
@@ -162,6 +165,7 @@ public class StellariaCore extends JavaPlugin {
         DatabaseManager.addColumnIfNotExists("players", "kikori_unlocked INTEGER NOT NULL DEFAULT 0");
         DatabaseManager.addColumnIfNotExists("players", "hide_balance INTEGER NOT NULL DEFAULT 0");
         DatabaseManager.addColumnIfNotExists("players", "mine_unlocked INTEGER NOT NULL DEFAULT 0");
+        DatabaseManager.addColumnIfNotExists("players", "mine_enabled INTEGER NOT NULL DEFAULT 0");
 
         DatabaseManager.createTableIfNotExists("land_claims",
             "world TEXT NOT NULL",
@@ -222,6 +226,12 @@ public class StellariaCore extends JavaPlugin {
         DatabaseManager.createTableIfNotExists("container_lock_blocks", "world TEXT NOT NULL", "x INTEGER NOT NULL", "y INTEGER NOT NULL", "z INTEGER NOT NULL", "lock_id TEXT NOT NULL", "PRIMARY KEY (world, x, y, z)");
         DatabaseManager.createTableIfNotExists("container_lock_members", "lock_id TEXT NOT NULL", "member_uuid TEXT NOT NULL", "PRIMARY KEY (lock_id, member_uuid)");
         DatabaseManager.createTableIfNotExists("container_lock_auto_players", "player_uuid TEXT PRIMARY KEY");
+        DatabaseManager.createTableIfNotExists("shops",
+            "id INTEGER PRIMARY KEY AUTOINCREMENT", "owner_uuid TEXT NOT NULL", "world TEXT NOT NULL",
+            "x INTEGER NOT NULL", "y INTEGER NOT NULL", "z INTEGER NOT NULL", "mode TEXT NOT NULL",
+            "item_data TEXT NOT NULL", "price REAL NOT NULL", "stock INTEGER NOT NULL DEFAULT 0",
+            "funds REAL NOT NULL DEFAULT 0", "display_item_uuid TEXT", "display_text_uuid TEXT", "created_at INTEGER NOT NULL",
+            "UNIQUE (world, x, y, z)");
 
         this.afkManager = new AfkManager(this);
         this.playtimeManager = new PlaytimeManager(this);
@@ -229,6 +239,7 @@ public class StellariaCore extends JavaPlugin {
         this.homeManager = new HomeManager(this);
         this.warpManager = new WarpManager(this);
         this.worldResetManager = new WorldResetManager(this);
+        this.japanTimeSyncManager = new JapanTimeSyncManager(this);
         this.headshopManager = new HeadshopManager(this);
         this.vanishManager = new VanishManager(this);
         this.kikoriManager = new KikoriManager(this);
@@ -257,6 +268,7 @@ public class StellariaCore extends JavaPlugin {
         // LandManagerはEconomyManagerに依存しないが、将来の拡張に備えて構築後に置く
         this.landManager = new LandManager(this);
         this.containerLockManager = new ContainerLockManager(this);
+        this.shopManager = new ShopManager(this);
         this.landBorderParticleManager = new LandBorderParticleManager(this);
 
         // 3. Vaultがサーバーにあるか確認し、登録する処理
@@ -296,6 +308,8 @@ public class StellariaCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new MineListener(this), this);
         getServer().getPluginManager().registerEvents(new LandProtectionListener(this), this);
         getServer().getPluginManager().registerEvents(new ContainerLockListener(this), this);
+        this.shopListener = new ShopListener(this);
+        getServer().getPluginManager().registerEvents(shopListener, this);
         getServer().getPluginManager().registerEvents(new LandAreaStatusListener(this), this);
         getServer().getPluginManager().registerEvents(new VanishListener(this), this);
         getServer().getPluginManager().registerEvents(new LobbyProtectListener(this),this);
@@ -303,6 +317,7 @@ public class StellariaCore extends JavaPlugin {
 
         // 6. Scoreboard/Tablist/Belowname のインスタンス化とtick開始
         this.scoreboardManager = new ScoreboardManager(
+            this,
             placeholderManager,
             configManager.getString("scoreboard.title", ""),
             configManager.getStringList("scoreboard.lines"),
@@ -413,6 +428,7 @@ public class StellariaCore extends JavaPlugin {
         getCommand("adminshop").setExecutor(new AdminShopCommand(this));
 
         getCommand("discord").setExecutor(new DiscordCommand(this));
+        getCommand("rules").setExecutor(new RulesCommand(this));
 
         getCommand("map").setExecutor(new MapCommand(this));
 
@@ -514,6 +530,10 @@ public class StellariaCore extends JavaPlugin {
         getCommand("worldreset").setExecutor(worldResetCommand);
         getCommand("worldreset").setTabCompleter(worldResetCommand);
 
+        ShopCommand shopCommand = new ShopCommand(this);
+        getCommand("shop").setExecutor(shopCommand);
+        getCommand("shop").setTabCompleter(shopCommand);
+
         SudoCommand sudoCommand = new SudoCommand(this);
         getCommand("sudo").setExecutor(sudoCommand);
         getCommand("sudo").setTabCompleter(sudoCommand);
@@ -523,12 +543,14 @@ public class StellariaCore extends JavaPlugin {
 
         headshopManager.start();
         worldResetManager.start();
+        japanTimeSyncManager.start();
 
         ConsoleUtil.printLogo(getPluginMeta().getVersion());
     }
 
     @Override
     public void onDisable() {
+        japanTimeSyncManager.stop();
         if (configManager.getBoolean("discord.bot.enabled",true)){
             discordBotManager.stop();
         }
@@ -642,6 +664,14 @@ public class StellariaCore extends JavaPlugin {
         return this.containerLockManager;
     }
 
+    public ShopManager getShopManager() {
+        return this.shopManager;
+    }
+
+    public ShopListener getShopListener() {
+        return this.shopListener;
+    }
+
     public DiscordBotManager getDiscordBotManager() {
         return this.discordBotManager;
     }
@@ -684,6 +714,7 @@ public class StellariaCore extends JavaPlugin {
         );
         autoBroadcastManager.restart();
         worldResetManager.restart();
+        japanTimeSyncManager.restart();
         headshopManager.start();
         rankManager.reload();
         restartConfigScheduledTasks();
@@ -703,10 +734,18 @@ public class StellariaCore extends JavaPlugin {
         cancelTask(kikoriTask);
         cancelTask(mineTask);
 
-        if (configManager.getBoolean("action-bar.enabled", true)) {
+        boolean actionBarEnabled = configManager.getBoolean("action-bar.enabled", true);
+        boolean persistentActionBarEnabled = actionBarEnabled
+                && configManager.getBoolean("action-bar.persistent.enabled", false);
+        if (!persistentActionBarEnabled) {
+            for (org.bukkit.entity.Player online : Bukkit.getOnlinePlayers()) {
+                actionBarManager.clearChannel(online, "persistent");
+            }
+        }
+        if (actionBarEnabled) {
             long interval = SchedulerIntervalUtil.ticks(configManager.getInt("action-bar.update-interval-ticks", 5));
             actionBarTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> actionBarManager.tick(), interval, interval);
-            if (configManager.getBoolean("action-bar.persistent.enabled", false)) {
+            if (persistentActionBarEnabled) {
                 persistentActionBarTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> {
                     String template = configManager.getString("action-bar.persistent.template", "");
                     for (org.bukkit.entity.Player online : Bukkit.getOnlinePlayers()) {

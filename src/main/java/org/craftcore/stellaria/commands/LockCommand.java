@@ -16,7 +16,6 @@ import org.craftcore.stellaria.managers.ContainerLock;
 import org.craftcore.stellaria.managers.ContainerLockManager;
 import org.craftcore.stellaria.utils.FormatUtil;
 import org.craftcore.stellaria.utils.TabCompleteUtil;
-import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.ContainerLockMessages;
 import org.jetbrains.annotations.NotNull;
 
@@ -54,6 +53,10 @@ public class LockCommand implements CommandExecutor, TabCompleter {
         }
         if (command.getName().equalsIgnoreCase("lock") && args.length == 1 && args[0].equalsIgnoreCase("bypass")) { handleBypass(player); return true; }
         if (command.getName().equalsIgnoreCase("lock") && args.length == 1 && args[0].equalsIgnoreCase("auto")) { handleAuto(player); return true; }
+        if (command.getName().equalsIgnoreCase("unlock") && !acceptsUnlockArguments(args)) {
+            message(player, "lock.unlock_usage");
+            return true;
+        }
 
         Block target = player.getTargetBlockExact(5);
         if (target == null || !isActionableTarget(target.getType())) {
@@ -85,6 +88,12 @@ public class LockCommand implements CommandExecutor, TabCompleter {
     private void create(Player player, Block target) {
         ContainerLockManager manager = plugin.getContainerLockManager();
         Set<ContainerLock.BlockKey> keys = targetKeys(target);
+        for (ContainerLock.BlockKey key : keys) {
+            if (!plugin.getLandManager().canBuild(target.getWorld().getBlockAt(key.x(), key.y(), key.z()).getLocation(), player)) {
+                message(player, "land.protected_block");
+                return;
+            }
+        }
         for (ContainerLock.BlockKey key : keys) {
             Optional<ContainerLock> existing = manager.find(key);
             if (existing.isPresent()) {
@@ -176,6 +185,10 @@ public class LockCommand implements CommandExecutor, TabCompleter {
         return lock.owner().equals(playerId) ? "lock.already_locked_self" : "lock.already_locked";
     }
 
+    static boolean acceptsUnlockArguments(String[] args) {
+        return args.length == 0;
+    }
+
     private String ownerName(UUID owner) {
         String name = Bukkit.getOfflinePlayer(owner).getName();
         return name == null ? owner.toString() : name;
@@ -195,7 +208,14 @@ public class LockCommand implements CommandExecutor, TabCompleter {
             case DATABASE_ERROR -> message(player, "lock.database_error");
         }
     }
-    private void handleBypass(Player p) { if (!p.hasPermission("stellaria.lock.admin")) { message(p,"lock.no_permission"); return; } boolean on=plugin.getContainerLockManager().toggleBypass(p.getUniqueId()); message(p,on?"lock.bypass_enabled":"lock.bypass_disabled"); if(on) plugin.getActionBarManager().setChannel(p,"lock_bypass",ColorUtil.component(plugin.getConfigManager().getMessage("lock.bypass_indicator",p))); else plugin.getActionBarManager().clearChannel(p,"lock_bypass"); }
+    private void handleBypass(Player player) {
+        if (!player.hasPermission("stellaria.lock.admin")) {
+            message(player, "lock.no_permission");
+            return;
+        }
+        boolean enabled = plugin.getContainerLockManager().toggleBypass(player.getUniqueId());
+        message(player, enabled ? "lock.bypass_enabled" : "lock.bypass_disabled");
+    }
 
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias,

@@ -25,8 +25,9 @@ import java.util.UUID;
 
 /**
  * 鉱石一括破壊機能（/mine）の状態管理・人工物タグ管理・購入処理。
- * トグル状態とpass予約はKikoriManagerと同様インメモリのみ（永続化なし）。
- * 購入済みフラグ（players.mine_unlocked）だけはDB永続化する。
+ * pass予約はKikoriManagerと同様インメモリのみ（永続化なし）。
+ * 購入済みフラグ（players.mine_unlocked）とトグルON/OFF状態（players.mine_enabled）はDB永続化する
+ * （KikoriManagerと違い、再ログイン・サーバー再起動を挟んでもONを維持したいという要望のため）。
  * kikoriと違い、連結した鉱石は1tickずつではなく同一tick内で同期的に全て破壊する
  * （進行中タスクを跨いで保持する必要が無い分、KikoriManagerよりシンプル）。
  */
@@ -63,10 +64,31 @@ public class MineManager {
             enabledPlayers.remove(uuid);
             pendingPass.remove(uuid);
         }
+        DatabaseManager.executeAsync(
+                "UPDATE players SET mine_enabled = ? WHERE uuid = ?",
+                enabled ? 1 : 0, uuid.toString());
+    }
+
+    /**
+     * 参加時に呼ぶ。DBに保存されたトグルON/OFF状態を読み込み、ONだった場合はインメモリ状態に復元する
+     * （再ログイン・サーバー再起動を挟んでもONを維持するため）。
+     */
+    public void loadEnabled(Player player) {
+        UUID uuid = player.getUniqueId();
+        Integer enabled = DatabaseManager.queryOne(
+                "SELECT mine_enabled FROM players WHERE uuid = ?",
+                rs -> rs.getInt("mine_enabled"),
+                uuid.toString()
+        );
+        if (enabled != null && enabled != 0) {
+            enabledPlayers.add(uuid);
+            lastMineMillis.put(uuid, System.currentTimeMillis());
+        }
     }
 
     /** タイムアウト監視。mine.enabled が true の間、10秒毎に呼ばれる想定（KikoriManagerと同方式）。 */
     public void tick() {
+        if (plugin.getConfigManager().getInt("mine.timeout-seconds", 300) == 0) { return; }
         long timeoutMillis = plugin.getConfigManager().getInt("mine.timeout-seconds", 300) * 1000L;
         long now = System.currentTimeMillis();
 

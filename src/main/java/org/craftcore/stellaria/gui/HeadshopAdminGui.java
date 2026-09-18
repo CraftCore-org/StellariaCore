@@ -74,7 +74,7 @@ public final class HeadshopAdminGui extends Gui {
     private ItemStack poolEntryItem(HeadshopManager.PoolHead head) {
         ItemStack item = plugin.getHeadshopManager().createHeadItem(head);
         ItemMeta meta = item.getItemMeta();
-        meta.lore(List.of(ColorUtil.component(plugin.getConfigManager().getMessage("headshop.admin.remove-hint", null))));
+        meta.lore(List.of(org.craftcore.stellaria.utils.GuiItemUtil.text(plugin.getConfigManager().getMessage("headshop.admin.remove-hint", null))));
         item.setItemMeta(meta);
         return item;
     }
@@ -85,7 +85,7 @@ public final class HeadshopAdminGui extends Gui {
         String text = plugin.getConfigManager().getMessage("headshop.gui-page", null);
         text = FormatUtil.replace(text, "%page%", String.valueOf(page + 1));
         text = FormatUtil.replace(text, "%max_page%", String.valueOf(maxPage + 1));
-        meta.displayName(ColorUtil.component(text));
+        meta.displayName(org.craftcore.stellaria.utils.GuiItemUtil.text(text));
         item.setItemMeta(meta);
         return item;
     }
@@ -93,7 +93,7 @@ public final class HeadshopAdminGui extends Gui {
     private ItemStack message(Material material, String path) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(ColorUtil.component(plugin.getConfigManager().getMessage(path, null)));
+        meta.displayName(org.craftcore.stellaria.utils.GuiItemUtil.text(plugin.getConfigManager().getMessage(path, null)));
         item.setItemMeta(meta);
         return item;
     }
@@ -101,10 +101,10 @@ public final class HeadshopAdminGui extends Gui {
     private ItemStack hintItem() {
         ItemStack item = new ItemStack(Material.BOOK);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(ColorUtil.component(plugin.getConfigManager().getMessage("headshop.hint-title", null)));
+        meta.displayName(org.craftcore.stellaria.utils.GuiItemUtil.text(plugin.getConfigManager().getMessage("headshop.hint-title", null)));
         List<Component> lore = new ArrayList<>();
         for (String line : plugin.getConfigManager().getMessageList("headshop.admin.hint")) {
-            lore.add(ColorUtil.component(line));
+            lore.add(org.craftcore.stellaria.utils.GuiItemUtil.text(line));
         }
         meta.lore(lore);
         item.setItemMeta(meta);

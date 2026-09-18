@@ -10,6 +10,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.managers.DatabaseManager;
+import org.craftcore.stellaria.utils.FormatUtil;
 import org.craftcore.stellaria.utils.MenuItemUtil;
 import org.craftcore.stellaria.utils.ParticleUtil;
 
@@ -31,8 +32,14 @@ public class PlayerJoinListener implements Listener {
 
         plugin.getVanishManager().syncVisibilityForJoiningPlayer(player);
 
-        // messages.yml からフォーマット済みのメッセージを取得
-        String joinMsg = plugin.getConfigManager().getMessage("join", player);
+        // messages.yml からフォーマット済みのメッセージを取得。
+        // 初回参加時は join-first を優先し、未設定（空文字）なら通常の join にフォールバックする。
+        String joinMsg = player.hasPlayedBefore()
+                ? plugin.getConfigManager().getMessage("join", player)
+                : plugin.getConfigManager().getMessage("join-first", player, true);
+        if (joinMsg.isEmpty() && !player.hasPlayedBefore()) {
+            joinMsg = plugin.getConfigManager().getMessage("join", player);
+        }
 
         if (!joinMsg.isEmpty()) {
             event.setJoinMessage(joinMsg);
@@ -50,10 +57,23 @@ public class PlayerJoinListener implements Listener {
         // INSERT OR IGNOREで同期的に確保するため、参加直後の経済操作も必ず行を更新できる。
         plugin.getEconomyManager().ensurePlayerRecord(player);
 
+        // /mineのトグルON/OFF状態はDB永続化されているため、再ログイン後に復元する。
+        plugin.getMineManager().loadEnabled(player);
+
         // 投票報酬によりログイン前からレコードがある場合でも、初回キットは配布する。
         if (!player.hasPlayedBefore()) {
+            sendWelcomeMessage(player);
             giveFirstJoinKit(player);
             player.getInventory().addItem(MenuItemUtil.create(plugin));
+        }
+    }
+
+    /** 初回ログイン時のみ、ウェルカムメッセージ（messages.yml の welcome.lines）を本人へ送る。 */
+    private void sendWelcomeMessage(Player player) {
+        if (!plugin.getConfigManager().getBoolean("welcome.enabled", true)) return;
+
+        for (String rawLine : plugin.getConfigManager().getMessageList("welcome.lines")) {
+            player.sendMessage(FormatUtil.component(FormatUtil.text(player, rawLine)));
         }
     }
 

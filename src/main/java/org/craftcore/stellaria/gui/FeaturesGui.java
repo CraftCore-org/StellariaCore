@@ -68,7 +68,7 @@ public class FeaturesGui extends Gui {
             Feature feature = features.get(index);
             ItemStack item = GuiItemUtil.cleanIcon(feature.icon());
             ItemMeta meta = item.getItemMeta();
-            meta.displayName(feature.displayName());
+            meta.displayName(GuiItemUtil.text(feature.displayName()));
 
             List<Component> lore = new ArrayList<>();
             if (feature.isUnlocked(player)) {
@@ -80,7 +80,7 @@ public class FeaturesGui extends Gui {
                         .replaceText(builder -> builder.matchLiteral("%price%").replacement(Component.text(priceText(feature)))));
                 lore.add(messageComponent(plugin, "features.gui_purchase_hint", null));
             }
-            meta.lore(lore);
+            meta.lore(GuiItemUtil.lore(lore));
             item.setItemMeta(meta);
             getInventory().setItem(10 + index, item);
         }
@@ -105,6 +105,6 @@ public class FeaturesGui extends Gui {
     }
 
     private static Component messageComponent(StellariaCore plugin, String path, Player player) {
-        return ColorUtil.component(plugin.getConfigManager().getMessage(path, player));
+        return GuiItemUtil.text(plugin.getConfigManager().getMessage(path, player));
     }
 }

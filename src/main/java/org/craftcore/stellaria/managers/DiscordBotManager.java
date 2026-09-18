@@ -26,6 +26,9 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.listeners.DiscordListener;
 import org.craftcore.stellaria.utils.ColorUtil;
+import org.craftcore.stellaria.utils.DiscordCommandCleanupUtil;
+import org.craftcore.stellaria.utils.DiscordEmbedUtil;
+import org.craftcore.stellaria.utils.DiscordTextUtil;
 import org.craftcore.stellaria.utils.DurationParser;
 import org.craftcore.stellaria.utils.YamlScalarPatcher;
 
@@ -216,7 +219,8 @@ public class DiscordBotManager {
     private void postWebhook(String webhookUrl, String username, String avatarUrl, String content) {
         String json = "{\"username\":" + jsonString(username)
                 + ",\"avatar_url\":" + jsonString(avatarUrl)
-                + ",\"content\":" + jsonString(content) + "}";
+                + ",\"content\":" + jsonString(content)
+                + ",\"allowed_mentions\":{\"parse\":[]}}";
         HttpRequest request = HttpRequest.newBuilder(URI.create(webhookUrl))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(json))
@@ -271,6 +275,7 @@ public class DiscordBotManager {
         }
         Guild guild = guildById(serverGuildId, "一般");
         if (guild == null) return;
+        removeRetiredCommands(guild);
         guild.upsertCommand(Commands.slash("players", "オンラインのMinecraftプレイヤー一覧"))
                 .queue(null, error -> plugin.getLogger().warning("/players の登録に失敗しました: " + error.getMessage()));
         guild.upsertCommand(Commands.slash("profile", "Minecraftプレイヤー情報を確認します")
@@ -280,6 +285,16 @@ public class DiscordBotManager {
                         .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MANAGE_SERVER))
                         .addSubcommands(new SubcommandData("chat-channel", "このチャンネルをMinecraftチャットの中継先に設定します")))
                 .queue(null, error -> plugin.getLogger().warning("/settings の登録に失敗しました: " + error.getMessage()));
+    }
+
+    private void removeRetiredCommands(Guild guild) {
+        guild.retrieveCommands().queue(commands -> commands.stream()
+                        .filter(command -> DiscordCommandCleanupUtil.isRetiredCommand(command.getName()))
+                        .forEach(command -> guild.deleteCommandById(command.getId()).queue(
+                                ignored -> plugin.getLogger().info("旧Discordコマンドを削除しました: /" + command.getName()),
+                                error -> plugin.getLogger().warning("旧Discordコマンドの削除に失敗しました: /"
+                                        + command.getName() + " / " + error.getMessage()))),
+                error -> plugin.getLogger().warning("Discordコマンド一覧の取得に失敗しました: " + error.getMessage()));
     }
 
     private Guild guildById(String guildId, String description) {
@@ -345,7 +360,7 @@ public class DiscordBotManager {
                         .addField("ランク", rankName, true)
                         .addField("最終ログアウト", lastSeen, true)
                         .addField("プレイ時間", DurationParser.formatDuration(playtime), true)
-                        .addField("所持金", balance, true);
+                        .addField("所持金", DiscordTextUtil.plainMinecraftText(balance), true);
                 hook.editOriginalEmbeds(embed.build()).queue();
             });
         }));
@@ -387,18 +402,18 @@ public class DiscordBotManager {
     public void sendPlayerJoinLog(PlayerJoinEvent event) {
         if (!hasConfiguredGuild() || jda == null) return;
         Player player = event.getPlayer();
-        EmbedBuilder embed = new EmbedBuilder();
-        embed.setDescription(plugin.getConfigManager().getString("discord.bot.joinlog-format", "").replace("%player%", player.getName()));
-        embed.setThumbnail("https://mc-heads.net/avatar/" + player.getUniqueId() + "/128");
-        embed.setColor(SOFT_GREEN);
+        var embed = DiscordEmbedUtil.playerActivity(player.getName(),
+                plugin.getConfigManager().getString("discord.bot.joinlog-format", "").replace("%player%", player.getName()),
+                player.getUniqueId(), SOFT_GREEN);
         sendEmbedToChatChannels(embed);
     }
 
     public void sendPlayerQuitLog(PlayerQuitEvent event) {
         if (!hasConfiguredGuild() || jda == null) return;
-        EmbedBuilder embed = new EmbedBuilder();
-        embed.setDescription(plugin.getConfigManager().getString("discord.bot.quitlog-format", "").replace("%player%", event.getPlayer().getName()));
-        embed.setColor(SOFT_RED);
+        Player player = event.getPlayer();
+        var embed = DiscordEmbedUtil.playerActivity(player.getName(),
+                plugin.getConfigManager().getString("discord.bot.quitlog-format", "").replace("%player%", player.getName()),
+                player.getUniqueId(), SOFT_RED);
         sendEmbedToChatChannels(embed);
     }
 
@@ -419,9 +434,13 @@ public class DiscordBotManager {
     }
 
     private void sendEmbedToChatChannels(EmbedBuilder embed) {
+        sendEmbedToChatChannels(embed.build());
+    }
+
+    private void sendEmbedToChatChannels(net.dv8tion.jda.api.entities.MessageEmbed embed) {
         for (String channelId : plugin.getConfigManager().getStringList("discord.bot.serverchat-channel-id")) {
             TextChannel channel = jda.getTextChannelById(channelId);
-            if (channel != null) channel.sendMessageEmbeds(embed.build()).queue();
+            if (channel != null) channel.sendMessageEmbeds(embed).queue();
         }
     }
 

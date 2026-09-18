@@ -6,7 +6,7 @@ description: Feature plugin for Stellaria MC
 api-version: 1.21
 
 depend: [Citizens, packetevents, Vault, PlaceholderAPI]
-softdepend: [LuckPerms, NuVotifier]
+softdepend: [LuckPerms, NuVotifier, Multiverse-Core]
 
 commands:
   menu:
@@ -57,6 +57,7 @@ commands:
   adminshop:
   discord:
     aliases: [dc]
+  rules:
   map:
   homepage:
   enderchest:
@@ -100,6 +101,7 @@ commands:
   unlock:
   worldreset:
     permission: stellaria.worldreset
+  shop:
 
 permissions:
   stellaria.msg:

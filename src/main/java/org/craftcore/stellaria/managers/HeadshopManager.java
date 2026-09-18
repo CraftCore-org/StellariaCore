@@ -246,7 +246,7 @@ public class HeadshopManager {
         PlayerProfile profile = Bukkit.createProfile(profileId);
         profile.setProperty(new ProfileProperty("textures", head.texture()));
         meta.setPlayerProfile(profile);
-        meta.displayName(ColorUtil.component(head.displayName()));
+        meta.displayName(org.craftcore.stellaria.utils.GuiItemUtil.text(head.displayName()));
         item.setItemMeta(meta);
         return item;
     }

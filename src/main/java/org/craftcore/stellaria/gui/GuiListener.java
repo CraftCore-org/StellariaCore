@@ -36,9 +36,9 @@ public class GuiListener implements Listener {
     @EventHandler
     public void onInventoryDrag(InventoryDragEvent event) {
         Inventory topInventory = event.getView().getTopInventory();
-        if (topInventory.getHolder() instanceof Gui
+        if (topInventory.getHolder() instanceof Gui gui
                 && shouldCancelDrag(event.getRawSlots(), topInventory.getSize())) {
-            event.setCancelled(true);
+            gui.onDrag(event);
         }
     }
 

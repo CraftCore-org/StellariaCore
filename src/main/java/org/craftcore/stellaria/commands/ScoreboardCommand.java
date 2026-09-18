@@ -36,7 +36,7 @@ public class ScoreboardCommand implements CommandExecutor, TabCompleter {
 
         boolean newHidden;
         if (args.length == 0) {
-            newHidden = !plugin.getScoreboardManager().isHidden(player.getUniqueId());
+            newHidden = !plugin.getScoreboardManager().isHidden(player);
         } else if (args[0].equalsIgnoreCase("hide")) {
             newHidden = true;
         } else if (args[0].equalsIgnoreCase("show")) {

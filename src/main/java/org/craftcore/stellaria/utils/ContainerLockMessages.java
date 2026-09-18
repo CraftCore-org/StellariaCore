@@ -14,6 +14,7 @@ public final class ContainerLockMessages {
             Map.entry("lock.already_locked_self", "&%cこのコンテナはすでに保護済みです。"),
             Map.entry("lock.auto_enabled", "&%a設置したコンテナを自動で保護します。"),
             Map.entry("lock.auto_disabled", "&%cコンテナの自動保護を解除しました。"),
+            Map.entry("lock.unlock_usage", "&%c使用方法: /unlock"),
             Map.entry("lock.database_error", "&%c保護設定を保存できませんでした。しばらくしてからもう一度お試しください。"),
             Map.entry("lock.auto_failed", "&%c保護設定を保存できなかったため、設置を取り消しました。")
     );

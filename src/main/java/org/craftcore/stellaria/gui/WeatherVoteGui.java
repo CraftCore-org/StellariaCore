@@ -8,6 +8,8 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.ColorUtil;
 
+import org.craftcore.stellaria.utils.GuiItemUtil;
+
 /** 天気投票を開始するためのメニュー。投票処理は既存コマンドに委譲する。 */
 public class WeatherVoteGui extends Gui {
     private final StellariaCore plugin;
@@ -51,7 +53,7 @@ public class WeatherVoteGui extends Gui {
     private ItemStack button(Material material, String messagePath, Player player) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(ColorUtil.component(plugin.getConfigManager().getMessage(messagePath, player)));
+        meta.displayName(GuiItemUtil.text(plugin.getConfigManager().getMessage(messagePath, player)));
         item.setItemMeta(meta);
         return item;
     }

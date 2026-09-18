@@ -8,6 +8,7 @@ import org.craftcore.stellaria.utils.ColorUtil;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -19,14 +20,58 @@ import java.util.UUID;
  */
 public class ActionBarManager {
 
-    private record ChannelEntry(Component content, long expiresAtMillis) {
+    record ChannelEntry(Component content, long expiresAtMillis) {
         boolean isExpired(long now) {
             return expiresAtMillis >= 0 && now >= expiresAtMillis;
         }
     }
 
+    record ChannelSnapshot(long generation, List<ChannelEntry> entries, boolean clearsDisplay) {
+    }
+
+    static final class ChannelState {
+        private final LinkedHashMap<String, ChannelEntry> entries = new LinkedHashMap<>();
+        private long generation;
+
+        void put(String channelId, ChannelEntry entry) {
+            entries.put(channelId, entry);
+            generation++;
+        }
+
+        boolean remove(String channelId) {
+            if (entries.remove(channelId) == null) {
+                return false;
+            }
+            generation++;
+            return true;
+        }
+
+        boolean isEmpty() {
+            return entries.isEmpty();
+        }
+
+        ChannelSnapshot expireAndSnapshot(long now) {
+            int sizeBeforeExpiry = entries.size();
+            List<ChannelEntry> snapshot = ActionBarManager.expireAndSnapshot(entries, now);
+            boolean expiredEntries = snapshot.size() != sizeBeforeExpiry;
+            if (expiredEntries) {
+                generation++;
+            }
+            return new ChannelSnapshot(generation, snapshot, expiredEntries && snapshot.isEmpty());
+        }
+
+        ChannelSnapshot clearSnapshot() {
+            return new ChannelSnapshot(generation, List.of(), true);
+        }
+
+        boolean isCurrent(ChannelSnapshot snapshot) {
+            return generation == snapshot.generation();
+        }
+    }
+
     private final StellariaCore plugin;
-    private final Map<UUID, LinkedHashMap<String, ChannelEntry>> channels = new HashMap<>();
+    private final Map<UUID, ChannelState> channels = new HashMap<>();
+    private final Object channelLock = new Object();
 
     public ActionBarManager(StellariaCore plugin) {
         this.plugin = plugin;
@@ -37,7 +82,9 @@ public class ActionBarManager {
         if (!plugin.getConfigManager().getBoolean("action-bar.enabled", true)) {
             return;
         }
-        channelsFor(player).put(channelId, new ChannelEntry(content, -1));
+        synchronized (channelLock) {
+            channelsFor(player).put(channelId, new ChannelEntry(content, -1));
+        }
     }
 
     /** durationTicks 後に自動的に消えるチャンネルを設定する（AFK通知などの一時フラッシュ）。 */
@@ -46,7 +93,9 @@ public class ActionBarManager {
             return;
         }
         long expiresAt = System.currentTimeMillis() + (durationTicks * 50L); // 1 tick = 50ms
-        channelsFor(player).put(channelId, new ChannelEntry(content, expiresAt));
+        synchronized (channelLock) {
+            channelsFor(player).put(channelId, new ChannelEntry(content, expiresAt));
+        }
     }
 
     /**
@@ -55,15 +104,25 @@ public class ActionBarManager {
      * — Minecraftのアクションバーは能動的に上書きしない限り一定時間表示され続けるため。
      */
     public void clearChannel(Player player, String channelId) {
-        LinkedHashMap<String, ChannelEntry> playerChannels = channels.get(player.getUniqueId());
-        if (playerChannels != null && playerChannels.remove(channelId) != null && playerChannels.isEmpty()) {
-            player.sendActionBar(Component.empty());
+        ChannelState state = null;
+        ChannelSnapshot snapshot = null;
+        synchronized (channelLock) {
+            ChannelState playerChannels = channels.get(player.getUniqueId());
+            if (playerChannels != null && playerChannels.remove(channelId) && playerChannels.isEmpty()) {
+                state = playerChannels;
+                snapshot = playerChannels.clearSnapshot();
+            }
+        }
+        if (snapshot != null) {
+            sendIfCurrent(player, state, snapshot, Component.empty());
         }
     }
 
     /** プレイヤー退出時に呼ぶ。保持しているチャンネル情報を全て破棄する（メモリリーク防止）。 */
     public void removePlayer(UUID uuid) {
-        channels.remove(uuid);
+        synchronized (channelLock) {
+            channels.remove(uuid);
+        }
     }
 
     /** action-bar.update-interval-ticks ごとにグローバルリージョンスケジューラから呼ばれる想定。 */
@@ -73,23 +132,43 @@ public class ActionBarManager {
         Component separator = ColorUtil.component(separatorTemplate);
 
         for (Player player : Bukkit.getOnlinePlayers()) {
-            LinkedHashMap<String, ChannelEntry> playerChannels = channels.get(player.getUniqueId());
-            if (playerChannels == null || playerChannels.isEmpty()) {
-                continue;
-            }
-            boolean anyExpired = playerChannels.entrySet().removeIf(entry -> entry.getValue().isExpired(now));
-            if (playerChannels.isEmpty()) {
-                if (anyExpired) {
-                    player.sendActionBar(Component.empty());
+            ChannelState state;
+            ChannelSnapshot snapshot;
+            synchronized (channelLock) {
+                state = channels.get(player.getUniqueId());
+                if (state == null || state.isEmpty()) {
+                    continue;
                 }
-                continue;
+                snapshot = state.expireAndSnapshot(now);
             }
-            player.sendActionBar(join(playerChannels.values(), separator));
+            if (snapshot.clearsDisplay()) {
+                sendIfCurrent(player, state, snapshot, Component.empty());
+            } else if (!snapshot.entries().isEmpty()) {
+                sendIfCurrent(player, state, snapshot, join(snapshot.entries(), separator));
+            }
         }
     }
 
-    private LinkedHashMap<String, ChannelEntry> channelsFor(Player player) {
-        return channels.computeIfAbsent(player.getUniqueId(), k -> new LinkedHashMap<>());
+    /**
+     * Removes expired entries and returns an immutable, insertion-ordered snapshot.
+     * Callers must hold {@link #channelLock} while invoking this method.
+     */
+    static List<ChannelEntry> expireAndSnapshot(LinkedHashMap<String, ChannelEntry> playerChannels, long now) {
+        playerChannels.entrySet().removeIf(entry -> entry.getValue().isExpired(now));
+        return List.copyOf(playerChannels.values());
+    }
+
+    private ChannelState channelsFor(Player player) {
+        return channels.computeIfAbsent(player.getUniqueId(), k -> new ChannelState());
+    }
+
+    private void sendIfCurrent(Player player, ChannelState state, ChannelSnapshot snapshot, Component content) {
+        synchronized (channelLock) {
+            if (channels.get(player.getUniqueId()) != state || !state.isCurrent(snapshot)) {
+                return;
+            }
+        }
+        player.sendActionBar(content);
     }
 
     private Component join(Iterable<ChannelEntry> entries, Component separator) {

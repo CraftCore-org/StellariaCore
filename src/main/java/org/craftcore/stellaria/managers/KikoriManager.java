@@ -1,13 +1,11 @@
 package org.craftcore.stellaria.managers;
 
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
-import org.bukkit.Bukkit;
-import org.bukkit.Chunk;
-import org.bukkit.NamespacedKey;
-import org.bukkit.OfflinePlayer;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.type.Leaves;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.craftcore.stellaria.StellariaCore;
@@ -69,6 +67,7 @@ public class KikoriManager {
 
     /** タイムアウト監視。kikori.enabled が true の間、10秒毎に呼ばれる想定（AfkManagerと同方式）。 */
     public void tick() {
+        if (plugin.getConfigManager().getInt("kikori.timeout-seconds", 300) == 0) { return; }
         long timeoutMillis = plugin.getConfigManager().getInt("kikori.timeout-seconds", 300) * 1000L;
         long now = System.currentTimeMillis();
 
@@ -332,31 +331,87 @@ public class KikoriManager {
      */
     private void startFellTask(Player player, Deque<Block> breakQueue) {
         UUID uuid = player.getUniqueId();
+
+        int axeSlot = player.getInventory().getHeldItemSlot();
+        ItemStack originalAxe = player.getInventory().getItem(axeSlot);
+
+        if (originalAxe == null || !Tag.ITEMS_AXES.isTagged(originalAxe.getType())) {
+            return;
+        }
+
         ScheduledTask[] taskRef = new ScheduledTask[1];
+
         taskRef[0] = player.getScheduler().runAtFixedRate(plugin, scheduledTask -> {
+            Player current = Bukkit.getPlayer(uuid);
+
+            if (current == null) {
+                scheduledTask.cancel();
+                return;
+            }
+
+            // 伐採開始時に使っていた斧が、まだそのスロットに（斧のまま）残っているか確認。
+            // メインハンドを持ち替えても中断しない（斧自体がインベントリから無くなった時だけ中断）。
+            ItemStack axeInSlot = current.getInventory().getItem(axeSlot);
+
+            if (axeInSlot == null || !Tag.ITEMS_AXES.isTagged(axeInSlot.getType())) {
+                scheduledTask.cancel();
+                breakQueue.forEach(claimedBlocks::remove);
+                removeActiveTask(uuid, taskRef[0]);
+                return;
+            }
+
             Block block = breakQueue.poll();
+
             if (block != null) {
-                Player current = Bukkit.getPlayer(uuid);
                 boolean isLeaf = TreeUtil.isLeaves(block.getType());
-                if (current != null && (TreeUtil.isLog(block.getType()) || isLeaf)) {
+
+                if (TreeUtil.isLog(block.getType()) || isLeaf) {
+                    // breakBlockは「現在メインハンドにあるアイテム」にしか耐久ダメージを与えないため、
+                    // 持ち替え済みでも斧に正しくダメージが入るよう、破壊の瞬間だけ斧をメインハンドへ戻す。
+                    // 元スロットとメインハンドの両方に斧が同時に存在する瞬間を絶対に作らないよう、
+                    // 必ず「元スロットを空にしてからメインハンドへ置く」「メインハンドを空にしてから元スロットへ戻す」
+                    // の順で処理する（同時に2箇所に存在すると、その瞬間にドロップされた場合に複製されてしまう）。
+                    boolean heldAxe = current.getInventory().getHeldItemSlot() == axeSlot;
+                    ItemStack previousMainHand = null;
+
+                    if (!heldAxe) {
+                        previousMainHand = current.getInventory().getItemInMainHand();
+                        current.getInventory().setItem(axeSlot, null);
+                        current.getInventory().setItemInMainHand(axeInSlot);
+                    }
+
                     if (isLeaf) {
                         suppressLeafDurability.add(uuid);
+
+                        try {
+                            current.breakBlock(block);
+                        } finally {
+                            suppressLeafDurability.remove(uuid);
+                        }
+                    } else {
+                        current.breakBlock(block);
                     }
-                    current.breakBlock(block);
-                    if (isLeaf) {
-                        suppressLeafDurability.remove(uuid);
+
+                    if (!heldAxe) {
+                        ItemStack axeAfterBreak = current.getInventory().getItemInMainHand();
+                        current.getInventory().setItemInMainHand(previousMainHand);
+                        current.getInventory().setItem(axeSlot, axeAfterBreak);
                     }
                 }
-                claimedBlocks.remove(block); // 壊し終わってから解放（壊してる最中の内部BlockBreakEvent再入を防ぐため）
+
+                claimedBlocks.remove(block);
             }
+
             if (breakQueue.isEmpty()) {
                 scheduledTask.cancel();
                 removeActiveTask(uuid, taskRef[0]);
             }
+
         }, () -> {
-            breakQueue.forEach(claimedBlocks::remove); // 切断等で途中終了した分の解放
+            breakQueue.forEach(claimedBlocks::remove);
             removeActiveTask(uuid, taskRef[0]);
         }, 1L, 1L);
+
         addActiveTask(uuid, taskRef[0]);
     }
 
