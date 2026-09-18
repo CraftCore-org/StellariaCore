@@ -37,6 +37,7 @@ commands:
   warn:
   kick:
   ban:
+  report:
   pay:
   eco:
     permission: stellaria.eco

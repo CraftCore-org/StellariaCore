@@ -110,6 +110,19 @@ moderation:
   ban_screen: "&%cあなたはBANされています。\n&%7理由: &%f%reason%\n&%7期限: &%f%expires%\n&%7Discord: &%b%discord_invite%"
   ban_login_screen: "&%cあなたはBANされています。\n&%7理由: &%f%reason%\n&%7期限: &%f%expires%\n&%7異議申し立て: &%b%discord_invite%"
 
+report:
+  usage:
+    - "&%e① &%f/report <プレイヤー> で対象を指定"
+    - "&%e② &%f理由カテゴリを選択"
+    - "&%e③ &%fチャットで詳細を入力"
+    - "&%e④ &%f送信完了"
+  must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
+  player_not_found: "&%c対象が見つかりません。オンライン、または過去にログインしたプレイヤー名を指定してください。"
+  gui_title: "&%9&l報告カテゴリを選択"
+  detail_prompt: "&%e報告の詳細をチャットに入力してください。"
+  detail_required: "&%c詳細を空欄にはできません。もう一度入力してください。"
+  submitted: "&%a報告を受け付けました。ご協力ありがとうございます。"
+
 msg:
   usage: "&%c使用方法: /msg <プレイヤー> <メッセージ>"
   no_permission: "&%cこのコマンドを実行する権限がありません。"

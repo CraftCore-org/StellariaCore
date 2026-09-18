@@ -43,6 +43,9 @@ public class ChatListener implements Listener {
 
     @EventHandler
     public void onChat(AsyncChatEvent event) {
+        if (event.isCancelled()) {
+            return;
+        }
         ConfigManager config = plugin.getConfigManager();
         Player sender = event.getPlayer();
 

@@ -338,6 +338,7 @@ public class StellariaCore extends JavaPlugin {
             getServer().getPluginManager().registerEvents(new ChatListener(this, mentionService), this);
             getServer().getPluginManager().registerEvents(new MentionTabCompleteListener(), this);
         }
+        getServer().getPluginManager().registerEvents(new ReportListener(this), this);
 
         TpaCore tpaCore = new TpaCore(this);
         getServer().getPluginManager().registerEvents(tpaCore, this);
@@ -373,6 +374,9 @@ public class StellariaCore extends JavaPlugin {
             getCommand(name).setExecutor(moderationCommand);
             getCommand(name).setTabCompleter(moderationCommand);
         }
+        ReportCommand reportCommand = new ReportCommand(this);
+        getCommand("report").setExecutor(reportCommand);
+        getCommand("report").setTabCompleter(reportCommand);
         getServer().getPluginManager().registerEvents(new MuteCommandBlockListener(this), this);
         getServer().getPluginManager().registerEvents(new GuiListener(), this);
         getServer().getPluginManager().registerEvents(new MenuItemListener(this), this);
