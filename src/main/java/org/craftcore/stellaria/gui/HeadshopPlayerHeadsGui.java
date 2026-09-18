@@ -86,7 +86,18 @@ public final class HeadshopPlayerHeadsGui extends Gui {
         SkullMeta meta = (SkullMeta) item.getItemMeta();
         meta.setOwningPlayer(Bukkit.getOfflinePlayer(recentPlayer.uuid()));
         meta.displayName(org.craftcore.stellaria.utils.GuiItemUtil.text(Component.text(recentPlayer.name(), NamedTextColor.WHITE)));
-        meta.lore(List.of(org.craftcore.stellaria.utils.GuiItemUtil.text("&%7価格: &%e" + plugin.getEconomyManager().format(price))));
+        String priceLore = plugin.getConfigManager()
+                .getMessage("headshop.price-lore", null);
+
+        priceLore = FormatUtil.replace(
+                priceLore,
+                "%price%",
+                plugin.getEconomyManager().format(price)
+        );
+
+        meta.lore(List.of(
+                org.craftcore.stellaria.utils.GuiItemUtil.text(priceLore)
+        ));
         item.setItemMeta(meta);
         return item;
     }
@@ -151,7 +162,73 @@ public final class HeadshopPlayerHeadsGui extends Gui {
         if (index >= players.size()) {
             return;
         }
-        purchase(player, players.get(index));
+        openPurchaseConfirm(
+                player,
+                players.get(index)
+        );
+    }
+
+    private void openPurchaseConfirm(
+            Player player,
+            HeadshopManager.RecentPlayer recentPlayer
+    ) {
+        int price = plugin.getConfigManager()
+                .getInt(
+                        "headshop.normal-price",
+                        500
+                )
+                + plugin.getConfigManager()
+                .getInt(
+                        "headshop.player-head-markup",
+                        300
+                );
+
+        Component title = ColorUtil.component(
+                plugin.getConfigManager()
+                        .getMessage("headshop.confirm-title", player)
+        );
+
+        String descriptionText = plugin.getConfigManager()
+                .getMessage(
+                        "headshop.confirm-player-head-description",
+                        player
+                );
+
+        descriptionText = FormatUtil.replace(
+                descriptionText,
+                "%player%",
+                recentPlayer.name()
+        );
+
+        descriptionText = FormatUtil.replace(
+                descriptionText,
+                "%price%",
+                plugin.getEconomyManager().format(price)
+        );
+
+        Component description = ColorUtil.component(descriptionText);
+
+        Component confirmText = ColorUtil.component(
+                plugin.getConfigManager()
+                        .getMessage("gui.confirm", player)
+        );
+
+        Component cancelText = ColorUtil.component(
+                plugin.getConfigManager()
+                        .getMessage("gui.cancel", player)
+        );
+
+        new ConfirmGui(
+                title,
+                description,
+                confirmText,
+                cancelText,
+                () -> purchase(
+                        player,
+                        recentPlayer
+                ),
+                () -> this.open(player)
+        ).open(player);
     }
 
     private void purchase(Player player, HeadshopManager.RecentPlayer recentPlayer) {

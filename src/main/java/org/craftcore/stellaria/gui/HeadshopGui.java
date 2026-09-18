@@ -64,7 +64,29 @@ public class HeadshopGui extends Gui {
     private ItemStack createDisplayItem(HeadshopManager.PoolHead head, int price) {
         ItemStack item = plugin.getHeadshopManager().createHeadItem(head);
         ItemMeta meta = item.getItemMeta();
-        meta.lore(List.of(org.craftcore.stellaria.utils.GuiItemUtil.text("&%7価格: &%e" + plugin.getEconomyManager().format(price))));
+        List<Component> lore =
+                meta.lore() == null
+                        ? new ArrayList<>()
+                        : new ArrayList<>(meta.lore());
+
+        if (!lore.isEmpty()) {
+            lore.add(Component.empty());
+        }
+
+        String priceLore = plugin.getConfigManager()
+                .getMessage("headshop.price-lore", null);
+
+        priceLore = FormatUtil.replace(
+                priceLore,
+                "%price%",
+                plugin.getEconomyManager().format(price)
+        );
+
+        lore.add(
+                org.craftcore.stellaria.utils.GuiItemUtil.text(priceLore)
+        );
+
+        meta.lore(lore);
         item.setItemMeta(meta);
         return item;
     }
@@ -120,7 +142,7 @@ public class HeadshopGui extends Gui {
         if (head == null) {
             return;
         }
-        purchase(player, head);
+        openPurchaseConfirm(player, head);
     }
 
     private void purchase(Player player, HeadshopManager.PoolHead head) {
@@ -149,5 +171,54 @@ public class HeadshopGui extends Gui {
                 .replaceText(builder -> builder.matchLiteral("%item%")
                         .replacement(ColorUtil.component(head.displayName())));
         player.sendMessage(purchasedMessage);
+    }
+
+    private void openPurchaseConfirm(
+            Player player,
+            HeadshopManager.PoolHead head
+    ) {
+        int price = plugin.getConfigManager()
+                .getInt("headshop.normal-price", 500);
+
+        Component title = ColorUtil.component(
+                plugin.getConfigManager()
+                        .getMessage("headshop.confirm-title", player)
+        );
+
+        String descriptionText = plugin.getConfigManager()
+                .getMessage("headshop.confirm-description", player);
+
+        descriptionText = FormatUtil.replace(
+                descriptionText,
+                "%item%",
+                head.displayName()
+        );
+
+        descriptionText = FormatUtil.replace(
+                descriptionText,
+                "%price%",
+                plugin.getEconomyManager().format(price)
+        );
+
+        Component description = ColorUtil.component(descriptionText);
+
+        Component confirmText = ColorUtil.component(
+                plugin.getConfigManager()
+                        .getMessage("gui.confirm", player)
+        );
+
+        Component cancelText = ColorUtil.component(
+                plugin.getConfigManager()
+                        .getMessage("gui.cancel", player)
+        );
+
+        new ConfirmGui(
+                title,
+                description,
+                confirmText,
+                cancelText,
+                () -> purchase(player, head),
+                () -> this.open(player)
+        ).open(player);
     }
 }

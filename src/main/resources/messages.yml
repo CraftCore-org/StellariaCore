@@ -4,6 +4,11 @@ join: "&%a> &%f%player%&%7 さんがログインしました。"
 join-first: "&%e✳ &%f%player%&%7 さんが初めてサーバーにログインしました！"
 quit: "&%c< &%f%player%&%7 さんがログアウトしました。"
 
+gui:
+  back: "&%7← 戻る" # TODO: 未参照。ハードコードしてる
+  confirm: "&%a確認"
+  cancel: "&%cキャンセル"
+
 # 初回ログイン時にだけ本人へ送るウェルカムメッセージ（config.ymlのwelcome.enabledで有効/無効を切替）
 welcome:
   lines:
@@ -659,6 +664,10 @@ menuitem:
   cooldown: "&%cメニューアイテムの再入手はあと%seconds%秒お待ちください。"
 
 headshop:
+  price-lore: "&%7価格: &%e%price%"
+  confirm-title: "&%9購入確認"
+  confirm-description: "&%f%item% &%7を &%e%price% &%7で購入しますか？"
+  confirm-player-head-description: "&%f%player% の頭 &%7を &%e%price% &%7で購入しますか？"
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   title: "&%9&lヘッドショップ"
@@ -687,18 +696,19 @@ headshop:
   gui-next-page: "&%e次のページ"
   gui-page: "&%7ページ %page%/%max_page%"
   admin:
-    added: "&%aヘッドをプールに登録しました：&%e%item%"
+    added: "&%e%item% &%aをショップ登録しました"
     save-failed: "&%cヘッドの登録を保存できませんでした。コンソールを確認してください。"
     duplicate: "&%cこのヘッドは既に登録されています"
     invalid_head: "&%c頭アイテムをカーソルに乗せた状態でクリックしてください"
     unnamed-head: "名称未設定の頭"
-    removed: "&%aプールからヘッドを削除しました：&%e%item%"
+    removed: "&%e%item% &%7のショップ登録を解除しました。"
     remove-hint: "&%eクリックで取り出す"
     hint:
       - "&%9&l| &%bヘッド登録のヒント"
-      - "&%7頭アイテムをカーソルに乗せた状態で"
-      - "&%7空きスロットを &%eShiftクリック &%7すると登録されます"
-      - "&%7既存の頭は &%eクリック &%7で取り出せます"
+      - "&%7頭アイテムをそのまま入れると登録できます"
+      - "&%7頭アイテムを取り出すと登録解除できます"
+      - "&%7アイテム名の変更と説明文の変更は"
+      - "&%e/setname &%7と &%e/setlore &%7でできます"
 
 lock:
   no_permission: "&%cこのコマンドを実行する権限がありません。"
