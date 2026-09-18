@@ -37,6 +37,7 @@ commands:
   warn:
   kick:
   ban:
+  unban:
   report:
   userhistory:
   pay:
@@ -158,6 +159,7 @@ permissions:
       stellaria.warn: true
       stellaria.kick: true
       stellaria.ban: true
+      stellaria.unban: true
       stellaria.eco: true
       stellaria.chat.color: true
       stellaria.heal: true
@@ -176,6 +178,8 @@ permissions:
   stellaria.kick:
     default: false
   stellaria.ban:
+    default: false
+  stellaria.unban:
     default: false
   stellaria.userhistory:
     default: false

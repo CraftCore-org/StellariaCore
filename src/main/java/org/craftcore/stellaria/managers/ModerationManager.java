@@ -4,6 +4,7 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.utils.DurationParser;
 
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -19,7 +20,7 @@ import java.util.UUID;
  */
 public class ModerationManager {
 
-    public record HistoryEntry(String type, UUID actorUuid, String reason, long occurredAt) {
+    public record HistoryEntry(String type, UUID actorUuid, String reason, long occurredAt, Long expiresAt) {
     }
 
     public record Counts(int warns, int kicks, int bans, int reports) {
@@ -62,7 +63,7 @@ public class ModerationManager {
             targetUuid.toString(), nullableUuidString(moderatorUuid), reason, System.currentTimeMillis()
         );
         if (changed > 0) {
-            sendModerationLog("WARN", targetUuid, moderatorUuid, reason);
+            sendModerationLog("WARN", targetUuid, moderatorUuid, reason, null);
             return true;
         }
         return false;
@@ -74,7 +75,7 @@ public class ModerationManager {
             targetUuid.toString(), nullableUuidString(moderatorUuid), reason, System.currentTimeMillis()
         );
         if (changed > 0) {
-            sendModerationLog("KICK", targetUuid, moderatorUuid, reason);
+            sendModerationLog("KICK", targetUuid, moderatorUuid, reason, null);
             return true;
         }
         return false;
@@ -101,10 +102,24 @@ public class ModerationManager {
             if (!entry.isExpired(bannedAt)) {
                 activeBans.put(entry);
             }
-            sendModerationLog("BAN", targetUuid, moderatorUuid, reason);
+            sendModerationLog("BAN", targetUuid, moderatorUuid, reason, formatBanExpires(normalizedExpiresAt, bannedAt));
             return true;
         }
         return false;
+    }
+
+    /**
+     * 有効なBANをキャッシュから外す。履歴のBAN行は残す。
+     * @return 解除できた場合 true、有効BANが無い場合 false
+     */
+    public boolean unban(UUID targetUuid, UUID moderatorUuid, String reason) {
+        ActiveBanRegistry.BanEntry active = getActiveBan(targetUuid);
+        if (active == null) {
+            return false;
+        }
+        activeBans.remove(targetUuid);
+        sendModerationLog("UNBAN", targetUuid, moderatorUuid, reason, null);
+        return true;
     }
 
     /** 現在有効なBANを返す。期限切れ時はキャッシュから外すだけで、履歴行は保持する。 */
@@ -115,24 +130,29 @@ public class ModerationManager {
     /** 対象プレイヤーの直近のモデレーション・通報履歴を新しい順に取得する。 */
     public List<HistoryEntry> getHistory(UUID targetUuid, int limit) {
         return DatabaseManager.query(
-            "SELECT type, actor_uuid, reason, occurred_at FROM ("
-                + "SELECT 'WARN' AS type, moderator_uuid AS actor_uuid, reason, created_at AS occurred_at "
+            "SELECT type, actor_uuid, reason, occurred_at, expires_at FROM ("
+                + "SELECT 'WARN' AS type, moderator_uuid AS actor_uuid, reason, created_at AS occurred_at, "
+                + "CAST(NULL AS INTEGER) AS expires_at "
                 + "FROM warns WHERE target_uuid = ? "
                 + "UNION ALL "
-                + "SELECT 'KICK' AS type, moderator_uuid AS actor_uuid, reason, created_at AS occurred_at "
+                + "SELECT 'KICK' AS type, moderator_uuid AS actor_uuid, reason, created_at AS occurred_at, "
+                + "CAST(NULL AS INTEGER) AS expires_at "
                 + "FROM kicks WHERE target_uuid = ? "
                 + "UNION ALL "
-                + "SELECT 'BAN' AS type, moderator_uuid AS actor_uuid, reason, banned_at AS occurred_at "
+                + "SELECT 'BAN' AS type, moderator_uuid AS actor_uuid, reason, banned_at AS occurred_at, "
+                + "expires_at "
                 + "FROM bans WHERE target_uuid = ? "
                 + "UNION ALL "
                 + "SELECT 'REPORT' AS type, reporter_uuid AS actor_uuid, category || ': ' || reason AS reason, "
-                + "created_at AS occurred_at FROM reports WHERE target_uuid = ?"
+                + "created_at AS occurred_at, CAST(NULL AS INTEGER) AS expires_at "
+                + "FROM reports WHERE target_uuid = ?"
                 + ") ORDER BY occurred_at DESC LIMIT ?",
             rs -> new HistoryEntry(
                 rs.getString("type"),
                 nullableUuid(rs.getString("actor_uuid")),
                 rs.getString("reason"),
-                rs.getLong("occurred_at")
+                rs.getLong("occurred_at"),
+                normalizeBanExpiry(rs.getObject("expires_at") == null ? null : rs.getLong("expires_at"))
             ),
             targetUuid.toString(), targetUuid.toString(), targetUuid.toString(), targetUuid.toString(), limit
         );
@@ -152,6 +172,15 @@ public class ModerationManager {
         return counts != null ? counts : new Counts(0, 0, 0, 0);
     }
 
+    /** BAN履歴・Discord向けの期間表示。永久は「永久」、時限は付与時の長さ。 */
+    public static String formatBanExpires(Long expiresAt, long bannedAt) {
+        if (expiresAt == null) {
+            return "永久";
+        }
+        long durationSeconds = Math.max(0L, (expiresAt - bannedAt) / 1000L);
+        return DurationParser.formatDuration(durationSeconds);
+    }
+
     private static UUID nullableUuid(String value) {
         return value == null ? null : UUID.fromString(value);
     }
@@ -165,13 +194,15 @@ public class ModerationManager {
         return expiresAt != null && expiresAt < 0 ? null : expiresAt;
     }
 
-    private void sendModerationLog(String type, UUID targetUuid, UUID moderatorUuid, String reason) {
-        plugin.getDiscordBotManager().sendModerationLog(
-            new EmbedBuilder().setTitle(type)
+    private void sendModerationLog(String type, UUID targetUuid, UUID moderatorUuid, String reason, String expires) {
+        EmbedBuilder embed = new EmbedBuilder().setTitle(type)
                 .addField("実行者", playerName(moderatorUuid), true)
                 .addField("対象", playerName(targetUuid), true)
-                .addField("理由", reason, false)
-        );
+                .addField("理由", reason == null || reason.isBlank() ? "-" : reason, false);
+        if (expires != null) {
+            embed.addField("期限", expires, true);
+        }
+        plugin.getDiscordBotManager().sendModerationLog(embed);
     }
 
     private static String playerName(UUID uuid) {

@@ -128,17 +128,23 @@ moderation:
   ban_usage:
     - "&%c使用方法: /ban <プレイヤー> <期間|permanent> <理由>"
     - "&%7期間の例: 10m, 1h, 3d, permanent"
+  unban_usage:
+    - "&%c使用方法: /unban <プレイヤー> [理由]"
+    - "&%7理由は省略できます。"
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   database_error: "&%c処理を記録できませんでした。しばらくしてからもう一度お試しください。"
   player_not_found: "&%c%player% &%7はオフラインまたは存在しません。"
   player_not_online: "&%c%player% &%7はオンラインではありません。"
   warned_sender: "&%a%player% &%7に警告しました。（理由: %reason%）"
+  warned_target: "&%cあなたは警告を受けました。（理由: %reason%）"
   warned_target_actionbar: "&%c警告を受けました。（理由: %reason%）"
   kicked_sender: "&%a%player% &%7をキックしました。（理由: %reason%）"
   kick_screen: "&%cサーバーからキックされました。\n&%7理由: &%f%reason%\n&%7異議申し立て: &%b%discord_invite%\n%7ホームページ: &%bhttps://craftcore.org/stellaria"
   banned_sender: "&%a%player% &%7をBANしました。（理由: %reason%、期限: %expires%）"
   ban_screen: "&%cあなたはBANされました。\n&%7理由: &%f%reason%\n&%7期限: &%f%expires%\n&%7異議申し立て: &%b%discord_invite%\n%7ホームページ: &%bhttps://craftcore.org/stellaria"
   ban_login_screen: "&%cあなたはBANされています。\n&%7理由: &%f%reason%\n&%7期限: &%f%expires%\n&%7異議申し立て: &%b%discord_invite%\n%7ホームページ: &%bhttps://craftcore.org/stellaria"
+  not_banned: "&%c%player% &%7は現在BANされていません。"
+  unbanned_sender: "&%a%player% &%7のBANを解除しました。（理由: %reason%）"
 
 report:
   usage:
@@ -160,7 +166,7 @@ userhistory:
   player_not_found: "&%c%player% &%7の記録が見つかりません。"
   header: "&%9&l--- %player% のモデレーション履歴 ---"
   counts: "&%7警告: &%f%warns% &%7Kick: &%f%kicks% &%7BAN: &%f%bans% &%7報告: &%f%reports%"
-  entry: "&%8[%time%前] &%f%type% &%7実行者: &%f%actor% &%7理由: &%f%reason%"
+  entry: "&%8[%time%前] &%f%type% &%7実行者: &%f%actor% &%7理由: &%f%reason% &%7期限: &%f%expires%"
   empty: "&%7直近の履歴はありません。"
 
 msg:
@@ -740,9 +746,9 @@ world-reset:
   usage_now: "&%c使用方法: /worldreset now <ワールド名>"
   not_a_target: "&%c&%f%world% &%cはリセット対象ワールドに設定されていません。"
   reset_now_started: "&%aワールド &%f%world% &%aを即時リセットします。プレイヤーを退避させました。"
-  announce: "&%e&l[ワールドリセット] &%f%worlds% &%eは%minutes%分後に自動リセットされます。"
+  announce: "&%6&l[&r&%eワールドリセット&%6]&r &%f%worlds% &%eは%minutes%分後に自動リセットされます。"
   evacuated: "&%eワールドリセットのため、安全な場所へ避難させました。"
-  kicked: "&%c&l[ワールドリセット] &%fワールド &%e%world% &%fの再生成のため、サーバーから切断されました。再度ログインしてください。"
+  kicked: "&%4&l[&r&%cワールドリセット&%4]&r &%fワールド &%e%world% &%fの再生成のため、サーバーから切断されました。再度ログインしてください。"
   lockout_warning: "&%cこのワールドはまもなくリセットされるため、現在は立ち入りできません。もう一度実行すると10秒以内なら強制的に入場します。"
   next_reset_notice: "&%7このワールドは自動リセット対象です。次回リセット予定: &%f%next_reset%"
   sethome_warning: "&%cこのワールドは自動リセット対象のため、リセット時にこのhome/warpは削除されます。"

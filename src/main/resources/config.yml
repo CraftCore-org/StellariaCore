@@ -243,8 +243,28 @@ message:
 mute:
   level3-command-blacklist: ["msg","tell","w","reply","r","tpa","tphere"] # Lv3ミュート中に禁止するコマンド名（例: ["msg","tell","w","reply","r"]）
 
+moderation:
+  warn-sound:
+    enabled: true
+    name: "BLOCK_NOTE_BLOCK_BASS"
+    volume: 1.0
+    pitch: 0.8
+
 report:
-  categories: ["暴言", "チート", "荒らし", "その他"]
+  categories:
+    - name: "&%c&l暴言"
+      material: PAPER
+      slot: 10
+    - name: "&%e&lチート"
+      material: PAPER
+      slot: 12
+    - name: "&%6&l荒らし"
+      material: PAPER
+      slot: 14
+    - name: "&%7&lその他"
+      material: PAPER
+      slot: 16
+
 
 tpa:
   teleport-delay-seconds: 5 # 承認後、実際にテレポートするまでの詠唱時間。0以下で即時テレポート。ダメージを受けるとキャンセルされる

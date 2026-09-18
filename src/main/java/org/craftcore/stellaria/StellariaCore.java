@@ -385,7 +385,7 @@ public class StellariaCore extends JavaPlugin {
         getCommand("unmute").setTabCompleter(muteCommand);
 
         ModerationCommand moderationCommand = new ModerationCommand(this);
-        for (String name : new String[]{"warn", "kick", "ban"}) {
+        for (String name : new String[]{"warn", "kick", "ban", "unban"}) {
             getCommand(name).setExecutor(moderationCommand);
             getCommand(name).setTabCompleter(moderationCommand);
         }

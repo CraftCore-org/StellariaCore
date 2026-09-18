@@ -101,6 +101,7 @@ public final class UserHistoryCommand implements CommandExecutor, TabCompleter {
                     DurationParser.formatDuration(elapsedSeconds);
 
             String actor = actorName(entry.actorUuid());
+            String expires = expiresText(entry);
 
             sender.sendMessage(
                     plugin.getConfigManager()
@@ -109,10 +110,18 @@ public final class UserHistoryCommand implements CommandExecutor, TabCompleter {
                             .replace("%type%", entry.type())
                             .replace("%actor%", actor)
                             .replace("%reason%", entry.reason())
+                            .replace("%expires%", expires)
             );
         }
 
         return true;
+    }
+
+    private static String expiresText(ModerationManager.HistoryEntry entry) {
+        if (!"BAN".equals(entry.type())) {
+            return "-";
+        }
+        return ModerationManager.formatBanExpires(entry.expiresAt(), entry.occurredAt());
     }
 
     @Override
