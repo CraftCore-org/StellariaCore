@@ -38,6 +38,7 @@ commands:
   kick:
   ban:
   report:
+  userhistory:
   pay:
   eco:
     permission: stellaria.eco
@@ -161,6 +162,7 @@ permissions:
       stellaria.setlore: true
       stellaria.setname: true
       stellaria.lock.admin: true
+      stellaria.userhistory: true
   stellaria.reload:
     default: false
   stellaria.broadcast:
@@ -172,6 +174,8 @@ permissions:
   stellaria.kick:
     default: false
   stellaria.ban:
+    default: false
+  stellaria.userhistory:
     default: false
   stellaria.eco:
     default: false

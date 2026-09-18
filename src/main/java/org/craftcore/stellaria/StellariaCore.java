@@ -377,6 +377,11 @@ public class StellariaCore extends JavaPlugin {
         ReportCommand reportCommand = new ReportCommand(this);
         getCommand("report").setExecutor(reportCommand);
         getCommand("report").setTabCompleter(reportCommand);
+
+        UserHistoryCommand userHistoryCommand = new UserHistoryCommand(this);
+        getCommand("userhistory").setExecutor(userHistoryCommand);
+        getCommand("userhistory").setTabCompleter(userHistoryCommand);
+
         getServer().getPluginManager().registerEvents(new MuteCommandBlockListener(this), this);
         getServer().getPluginManager().registerEvents(new GuiListener(), this);
         getServer().getPluginManager().registerEvents(new MenuItemListener(this), this);

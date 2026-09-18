@@ -123,6 +123,15 @@ report:
   detail_required: "&%c詳細を空欄にはできません。もう一度入力してください。"
   submitted: "&%a報告を受け付けました。ご協力ありがとうございます。"
 
+userhistory:
+  usage: "&%c使用方法: /userhistory <プレイヤー>"
+  no_permission: "&%cこのコマンドを実行する権限がありません。"
+  player_not_found: "&%c%player% &%7の記録が見つかりません。"
+  header: "&%9&l--- %player% のモデレーション履歴 ---"
+  counts: "&%7警告: &%f%warns% &%7Kick: &%f%kicks% &%7BAN: &%f%bans% &%7報告: &%f%reports%"
+  entry: "&%8[%time%前] &%f%type% &%7実行者: &%f%actor% &%7理由: &%f%reason%"
+  empty: "&%7直近の履歴はありません。"
+
 msg:
   usage: "&%c使用方法: /msg <プレイヤー> <メッセージ>"
   no_permission: "&%cこのコマンドを実行する権限がありません。"
@@ -678,7 +687,7 @@ lock:
   database_error: "&%c保護設定を保存できませんでした。しばらくしてからもう一度お試しください。"
   auto_failed: "&%c保護設定を保存できなかったため、設置を取り消しました。"
   auto_locked: "&%aこのコンテナを自動で保護しました。"
-  auto_unlocked: "&%aコンテナの破壊に伴い保護を解除しました。"
+  auto_unlocked: "&%aコンテナが破壊されたため保護を解除しました。"
 
 sudo:
   usage: "&%c使用方法: /sudo <プレイヤー> <コマンド>"
