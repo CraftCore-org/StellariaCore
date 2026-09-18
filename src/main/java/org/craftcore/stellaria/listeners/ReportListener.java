@@ -34,13 +34,15 @@ public final class ReportListener implements Listener {
                 if (!reporter.isOnline()) {
                     return;
                 }
-                plugin.getReportManager().restorePending(reporter.getUniqueId(), pending);
-                reporter.sendMessage(plugin.getConfigManager().getMessage("report.detail_required", reporter));
+                if (plugin.getReportManager().restorePendingIfCurrent(reporter.getUniqueId(), pending)) {
+                    reporter.sendMessage(plugin.getConfigManager().getMessage("report.detail_required", reporter));
+                }
             }, null);
             return;
         }
 
         plugin.getReportManager().completeReport(reporter, pending, reason);
+        plugin.getReportManager().completePending(reporter.getUniqueId(), pending);
         reporter.getScheduler().run(plugin, task -> reporter.sendMessage(
                 plugin.getConfigManager().getMessage("report.submitted", reporter)), null);
     }

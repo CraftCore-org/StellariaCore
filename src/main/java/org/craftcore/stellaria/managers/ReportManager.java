@@ -24,7 +24,7 @@ public class ReportManager {
         Location location = reporter.getLocation();
         String world = location.getWorld() == null ? "" : location.getWorld().getName();
         pendingReports.put(reporter.getUniqueId(), new PendingReportRegistry.PendingReport(
-            targetUuid, category, world, location.getBlockX(), location.getBlockY(), location.getBlockZ()
+            targetUuid, category, world, location.getBlockX(), location.getBlockY(), location.getBlockZ(), UUID.randomUUID()
         ));
     }
 
@@ -32,8 +32,13 @@ public class ReportManager {
         return pendingReports.take(reporterUuid);
     }
 
-    public void restorePending(UUID reporterUuid, PendingReportRegistry.PendingReport pending) {
-        pendingReports.put(reporterUuid, pending);
+    public boolean restorePendingIfCurrent(UUID reporterUuid, PendingReportRegistry.PendingReport pending) {
+        return pendingReports.restoreIfCurrent(reporterUuid, pending);
+    }
+
+    /** 完了した報告と同じsession tokenが有効な時だけ無効化し、新しい報告を消さない。 */
+    public void completePending(UUID reporterUuid, PendingReportRegistry.PendingReport pending) {
+        pendingReports.removeIfCurrent(reporterUuid, pending);
     }
 
     public void completeReport(Player reporter, PendingReportRegistry.PendingReport pending, String reason) {
