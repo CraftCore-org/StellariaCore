@@ -264,17 +264,10 @@ public final class ShopListener implements Listener {
                 msg(p, "shop.insufficient_funds");
                 return;
             }
-            if (!plugin.getShopManager().addFunds(s.shop(), -n)) {
-                msg(p, "shop.settings_failed");
-                return;
-            }
 
-            if (!plugin.getEconomyManager().depositPlayer(p, n).transactionSuccess()) {
-                // プレイヤーへの入金に失敗したのでショップへ戻す
-                plugin.getShopManager().addFunds(
-                        plugin.getShopManager().find(s.shop().key()),
-                        n
-                );
+            if (!plugin.getShopManager().addFunds(s.shop(), n)) {
+                // ショップ資金の更新に失敗したので返金
+                plugin.getEconomyManager().depositPlayer(p, n);
 
                 msg(p, "shop.settings_failed");
                 return;
@@ -282,10 +275,11 @@ public final class ShopListener implements Listener {
 
             msg(
                     p,
-                    "shop.funds_withdrawn",
+                    "shop.funds_deposited",
                     "%amount%",
                     plugin.getEconomyManager().formatExact(n)
             );
+
             return;
         }
         if (n > s.shop().funds()) {
