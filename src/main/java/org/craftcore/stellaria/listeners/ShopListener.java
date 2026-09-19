@@ -116,7 +116,7 @@ public final class ShopListener implements Listener {
             return;
         }
         if (!plugin.getEconomyManager().withdrawPlayer(p, cost).transactionSuccess()) {
-            plugin.getShopManager().remove(s, p);
+            plugin.getShopManager().remove(s);
             msg(p, "shop.insufficient_creation_funds");
             p.playSound(p, Sound.BLOCK_NOTE_BLOCK_BASS,1,1);
             return;
@@ -264,24 +264,56 @@ public final class ShopListener implements Listener {
                 msg(p, "shop.insufficient_funds");
                 return;
             }
-            if (!plugin.getShopManager().addFunds(s.shop(), n)) {
-                plugin.getEconomyManager().depositPlayer(p, n);
+            if (!plugin.getShopManager().addFunds(s.shop(), -n)) {
                 msg(p, "shop.settings_failed");
                 return;
             }
-            msg(p, "shop.funds_deposited", "%amount%", plugin.getEconomyManager().formatExact(n));
+
+            if (!plugin.getEconomyManager().depositPlayer(p, n).transactionSuccess()) {
+                // プレイヤーへの入金に失敗したのでショップへ戻す
+                plugin.getShopManager().addFunds(
+                        plugin.getShopManager().find(s.shop().key()),
+                        n
+                );
+
+                msg(p, "shop.settings_failed");
+                return;
+            }
+
+            msg(
+                    p,
+                    "shop.funds_withdrawn",
+                    "%amount%",
+                    plugin.getEconomyManager().formatExact(n)
+            );
             return;
         }
         if (n > s.shop().funds()) {
             msg(p, "shop.insufficient_pool");
             return;
         }
-        if (!plugin.getShopManager().addFunds(s.shop(), n)) {
-            plugin.getEconomyManager().depositPlayer(p, n);
+        if (!plugin.getShopManager().addFunds(s.shop(), -n)) {
             msg(p, "shop.settings_failed");
             return;
         }
-        msg(p, "shop.funds_withdrawn", "%amount%", plugin.getEconomyManager().formatExact(n));
+
+        if (!plugin.getEconomyManager().depositPlayer(p, n).transactionSuccess()) {
+            // プレイヤーへの入金に失敗したのでショップへ戻す
+            plugin.getShopManager().addFunds(
+                    plugin.getShopManager().find(s.shop().key()),
+                    n
+            );
+
+            msg(p, "shop.settings_failed");
+            return;
+        }
+
+        msg(
+                p,
+                "shop.funds_withdrawn",
+                "%amount%",
+                plugin.getEconomyManager().formatExact(n)
+        );
     }
 
     public void requestFunds(Player p, ShopManager.Shop s, boolean deposit) {

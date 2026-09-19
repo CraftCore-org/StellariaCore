@@ -33,6 +33,7 @@ public final class ShopCreateGui extends Gui {
             m.lore(GuiItemUtil.loreFromStrings(java.util.List.of("&%eクリックして持ち替え")));
             item.setItemMeta(m);
         }
+        getInventory().setItem(15, item);
         getInventory().setItem(18, button(Material.BARRIER, "作成をキャンセル"));
         getInventory().setItem(22, button(Material.EMERALD, "作成を確定"));
     }

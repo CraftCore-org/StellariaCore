@@ -14,6 +14,7 @@ import org.bukkit.inventory.InventoryHolder;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.managers.ContainerLock;
 import org.craftcore.stellaria.managers.ContainerLockManager;
+import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
 import org.craftcore.stellaria.utils.TabCompleteUtil;
 import org.craftcore.stellaria.utils.ContainerLockMessages;
@@ -29,6 +30,8 @@ import java.util.UUID;
 public class LockCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> SUBCOMMANDS = List.of("trust", "untrust", "auto", "bypass");
+
+    private static final String BYPASS_ACTIONBAR_CHANNEL = "lock_bypass";
 
     private final StellariaCore plugin;
 
@@ -213,8 +216,35 @@ public class LockCommand implements CommandExecutor, TabCompleter {
             message(player, "lock.no_permission");
             return;
         }
-        boolean enabled = plugin.getContainerLockManager().toggleBypass(player.getUniqueId());
-        message(player, enabled ? "lock.bypass_enabled" : "lock.bypass_disabled");
+
+        boolean enabled =
+                plugin.getContainerLockManager()
+                        .toggleBypass(player.getUniqueId());
+
+        message(
+                player,
+                enabled
+                        ? "lock.bypass_enabled"
+                        : "lock.bypass_disabled"
+        );
+
+        if (enabled) {
+            plugin.getActionBarManager().setChannel(
+                    player,
+                    BYPASS_ACTIONBAR_CHANNEL,
+                    ColorUtil.component(
+                            plugin.getConfigManager().getMessage(
+                                    "lock.bypass_indicator",
+                                    player
+                            )
+                    )
+            );
+        } else {
+            plugin.getActionBarManager().clearChannel(
+                    player,
+                    BYPASS_ACTIONBAR_CHANNEL
+            );
+        }
     }
 
     @Override
