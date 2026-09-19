@@ -1,5 +1,6 @@
 package org.craftcore.stellaria.commands;
 
+import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -26,7 +27,6 @@ public class MenuCommand implements CommandExecutor {
             sender.sendMessage(plugin.getConfigManager().getMessage("menu.must_be_player", null));
             return true;
         }
-
         new MenuGui(plugin, player).open(player);
         return true;
     }
