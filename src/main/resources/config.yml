@@ -130,7 +130,7 @@ world:
   display-names: {}
   # ワールド名ごとにcustomhead.ymlのヘッドIDを指定できる（上記 worlds の各項目で custom-head を指定した場合はそちらが優先）
   gui-custom-heads:
-    world: "earth"
+    lobby: "earth"
 
 lobby:
   world: "lobby"
