@@ -125,12 +125,12 @@ public final class ShopManager {
             return TradeResult.FAILED;
         }
         if (old.mode() == Mode.BUY) {
-            // 要求数より在庫が少なければ、在庫分だけ買う
-            int tradeQuantity = Math.min(quantity, old.stock());
-            // 在庫が0なら購入できない
-            if (tradeQuantity < 1) {
+            if (old.stock() < quantity) {
                 return TradeResult.NOT_ENOUGH_STOCK;
             }
+
+            int tradeQuantity = quantity;
+
             long total;
             try {
                 total = Math.multiplyExact(old.price(), tradeQuantity);
@@ -212,14 +212,43 @@ public final class ShopManager {
         updateDisplay(now);
     }
 
-    public boolean remove(Shop shop, Player recipient) {
-        if (DatabaseManager.execute("DELETE FROM shops WHERE id = ?", shop.id()) != 1) return false;
-        plugin.getShopListener().removePending(recipient);
+    public boolean remove(Shop shop) {
+        if (DatabaseManager.execute(
+                "DELETE FROM shops WHERE id = ?",
+                shop.id()
+        ) != 1) {
+            return false;
+        }
+
         shops.remove(shop.key());
         removeDisplays(shop);
-        plugin.getContainerLockManager().find(shop.key()).ifPresent(plugin.getContainerLockManager()::unlock);
-        giveOrDrop(recipient, shop.item(), shop.stock());
-        if (shop.funds() > 0) plugin.getEconomyManager().depositPlayer(recipient, shop.funds());
+
+        plugin.getContainerLockManager()
+                .find(shop.key())
+                .ifPresent(plugin.getContainerLockManager()::unlock);
+
+        Player owner = Bukkit.getPlayer(shop.owner());
+
+        if (owner != null) {
+            plugin.getShopListener().removePending(owner);
+
+            giveOrDrop(owner, shop.item(), shop.stock());
+
+            if (shop.funds() > 0) {
+                plugin.getEconomyManager().depositPlayer(owner, shop.funds());
+            }
+        } else {
+            // オーナーがオフラインでも資金だけはUUIDで返金できるようにする
+            if (shop.funds() > 0) {
+                plugin.getEconomyManager().depositPlayer(
+                        Bukkit.getOfflinePlayer(shop.owner()),
+                        shop.funds()
+                );
+            }
+
+            // 在庫については後述
+        }
+
         return true;
     }
 

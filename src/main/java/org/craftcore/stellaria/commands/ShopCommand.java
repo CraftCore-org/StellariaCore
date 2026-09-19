@@ -65,7 +65,7 @@ public final class ShopCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (args[0].equalsIgnoreCase("remove")) {
-            plugin.getShopManager().remove(shop, p);
+            plugin.getShopManager().remove(shop);
             msg(p, "shop.removed");
             return true;
         }

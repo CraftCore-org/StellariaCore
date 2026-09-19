@@ -2,7 +2,9 @@ package org.craftcore.stellaria.gui;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Material;
 import org.bukkit.Sound;
-import org.bukkit.entity.Player; import org.bukkit.event.inventory.InventoryClickEvent; import org.bukkit.inventory.*; import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.entity.Player; import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.inventory.*; import org.bukkit.inventory.meta.ItemMeta;
 import org.craftcore.stellaria.StellariaCore; import org.craftcore.stellaria.listeners.ShopListener; import org.craftcore.stellaria.utils.GuiItemUtil;
 /** /shop create で対象チェストを選んだ後の設定画面。 */
 public final class ShopCreateGui extends Gui {
@@ -31,8 +33,8 @@ public final class ShopCreateGui extends Gui {
             m.lore(GuiItemUtil.loreFromStrings(java.util.List.of("&%eクリックして持ち替え")));
             item.setItemMeta(m);
         }
-        getInventory().setItem(15,item);
-        getInventory().setItem(22,button(Material.EMERALD,"作成を確定"));
+        getInventory().setItem(18, button(Material.BARRIER, "作成をキャンセル"));
+        getInventory().setItem(22, button(Material.EMERALD, "作成を確定"));
     }
     private ItemStack button(Material m,String n){ItemStack i=GuiItemUtil.cleanIcon(m);
         ItemMeta meta=i.getItemMeta();meta.displayName(GuiItemUtil.text("&%f"+n));
@@ -56,9 +58,34 @@ public final class ShopCreateGui extends Gui {
                 listener.requestItem(p);
                 p.playSound(p, Sound.UI_BUTTON_CLICK,1,1);
             }
+            case 18 -> {
+                listener.cancelCreate(p);
+                p.closeInventory();
+                p.playSound(p, Sound.UI_BUTTON_CLICK, 1, 1);
+            }
             case 22->{
                 listener.confirmCreate(p);
 
             }
-            default->{}}}
+            default->{}
+        }
+    }
+
+    @Override
+    public void onClose(InventoryCloseEvent event) {
+        if (!(event.getPlayer() instanceof Player player)) {
+            return;
+        }
+
+        if (listener.draft(player) == null) {
+            return;
+        }
+
+        // 単価入力やアイテム設定のために意図的にGUIを閉じた場合はキャンセルしない
+        if (listener.isCreateInputPending(player)) {
+            return;
+        }
+
+        listener.cancelCreate(player);
+    }
 }

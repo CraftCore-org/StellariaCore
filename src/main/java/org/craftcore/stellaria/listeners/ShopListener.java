@@ -193,6 +193,22 @@ public final class ShopListener implements Listener {
         pending.remove(player.getUniqueId());
     }
 
+    public void cancelCreate(Player player) {
+        UUID id = player.getUniqueId();
+
+        drafts.remove(id);
+        pending.remove(id);
+        awaitingChest.remove(id);
+        awaitingItem.remove(id);
+
+        msg(player, "shop.create_cancel");
+    }
+
+    public boolean isCreateInputPending(Player player) {
+        UUID id = player.getUniqueId();
+        return pending.containsKey(id) || awaitingItem.containsKey(id);
+    }
+
     private void accept(Player p, Pending s, String v) {
         if (pending.get(p.getUniqueId()) != s) return;
         if (expired(s.expiresAt())) {
@@ -219,8 +235,16 @@ public final class ShopListener implements Listener {
         pending.remove(p.getUniqueId());
         if (s.input() == Input.PRICE) {
             if (s.shop() != null) {
-                if (plugin.getConfigManager().getInt("shop.max-price",10000000) <= n){
-                    p.sendMessage(FormatUtil.replace(plugin.getConfigManager().getMessage("shop.high_price",p),"%price%",String.valueOf(plugin.getConfigManager().getInt("shop.max-price",10000000))));
+                int maxPrice = plugin.getConfigManager().getInt("shop.max-price", 10000000);
+
+                if (n > maxPrice) {
+                    p.sendMessage(
+                            FormatUtil.replace(
+                                    plugin.getConfigManager().getMessage("shop.high_price", p),
+                                    "%price%",
+                                    String.valueOf(maxPrice)
+                            )
+                    );
                     return;
                 }
                 if (plugin.getShopManager().updateSettings(s.shop(), s.shop().mode(), n))
@@ -240,7 +264,11 @@ public final class ShopListener implements Listener {
                 msg(p, "shop.insufficient_funds");
                 return;
             }
-            plugin.getShopManager().addFunds(s.shop(), n);
+            if (!plugin.getShopManager().addFunds(s.shop(), n)) {
+                plugin.getEconomyManager().depositPlayer(p, n);
+                msg(p, "shop.settings_failed");
+                return;
+            }
             msg(p, "shop.funds_deposited", "%amount%", plugin.getEconomyManager().formatExact(n));
             return;
         }
@@ -248,8 +276,11 @@ public final class ShopListener implements Listener {
             msg(p, "shop.insufficient_pool");
             return;
         }
-        plugin.getEconomyManager().depositPlayer(p, n);
-        plugin.getShopManager().addFunds(s.shop(), -n);
+        if (!plugin.getShopManager().addFunds(s.shop(), n)) {
+            plugin.getEconomyManager().depositPlayer(p, n);
+            msg(p, "shop.settings_failed");
+            return;
+        }
         msg(p, "shop.funds_withdrawn", "%amount%", plugin.getEconomyManager().formatExact(n));
     }
 
@@ -321,11 +352,48 @@ public final class ShopListener implements Listener {
             }
     }
 
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void preventNonOwnerShopBreak(BlockBreakEvent event) {
+        ShopManager.Shop shop = plugin.getShopManager().find(event.getBlock());
+
+        if (shop == null) {
+            return;
+        }
+
+        Player player = event.getPlayer();
+
+        if (shop.owner().equals(player.getUniqueId())) {
+            return;
+        }
+
+        event.setCancelled(true);
+
+        player.sendMessage(
+                ColorUtil.component(
+                        plugin.getConfigManager().getMessage(
+                                "shop.break_not_owner",
+                                player
+                        )
+                )
+        );
+    }
+
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void destroyed(BlockBreakEvent e) {
-        ShopManager.Shop s = plugin.getShopManager().find(e.getBlock());
-        if (s != null)
-            plugin.getServer().getGlobalRegionScheduler().run(plugin, t -> plugin.getShopManager().remove(s, e.getPlayer()));
+        ShopManager.Shop shop = plugin.getShopManager().find(e.getBlock());
+
+        if (shop == null) {
+            return;
+        }
+
+        // ショップ所有者以外が壊した場合はここでは削除しない
+        if (!shop.owner().equals(e.getPlayer().getUniqueId())) {
+            return;
+        }
+
+        plugin.getServer()
+                .getGlobalRegionScheduler()
+                .run(plugin, task -> plugin.getShopManager().remove(shop));
     }
 
     private void msg(Player p, String k, String... r) {

@@ -110,18 +110,25 @@ public final class ShopManageGui extends Gui {
         depositStock(player, event.getOldCursor());
         render();
     }
-    private void withdrawStock(Player p){
-        int amount=Math.min(shop.stock(),shop.item().getMaxStackSize());
-        if(amount<1){
-            message(p,"shop.trade_not_enough_stock");
+    private void withdrawStock(Player p) {
+        int amount = Math.min(shop.stock(), shop.item().getMaxStackSize());
+
+        if (amount < 1) {
+            message(p, "shop.trade_not_enough_stock");
             return;
         }
-        ItemStack out=shop.item().clone();
-        give(p, out, amount);
-        plugin.getShopManager().addStock(shop,-amount);
-        shop=plugin.getShopManager().find(shop.key());
 
-        message(p,"shop.stock_withdrawn");
+        ItemStack out = shop.item().clone();
+
+        if (!plugin.getShopManager().addStock(shop, -amount)) {
+            message(p, "shop.trade_failed");
+            return;
+        }
+
+        give(p, out, amount);
+
+        shop = plugin.getShopManager().find(shop.key());
+        message(p, "shop.stock_withdrawn");
     }
     private static void give(Player p, ItemStack sample, int amount) {
         while (amount > 0) {

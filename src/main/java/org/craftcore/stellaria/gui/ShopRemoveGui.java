@@ -48,7 +48,7 @@ public class ShopRemoveGui extends Gui{
             player.playSound(player,Sound.UI_BUTTON_CLICK,1,1);
         }
         if (slot == 8) {
-            plugin.getShopManager().remove(shop,player);
+            plugin.getShopManager().remove(shop);
             player.closeInventory();
             message(player,"shop.removed");
             player.playSound(player,Sound.BLOCK_ANVIL_DESTROY,1,1.5f);
