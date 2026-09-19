@@ -211,8 +211,7 @@ public class LandProtectionListener implements Listener {
 
         // claim不可ワールド（land.enabled-worlds外）では土地保護のPvP制限を適用しない。
         // バニラ/他プラグインのPvP挙動にそのまま委ねる。
-        List<String> enabledWorlds = plugin.getConfigManager().getStringList("land.enabled-worlds");
-        if (!enabledWorlds.contains(victim.getWorld().getName())) {
+        if (plugin.getLandManager().isWorldDisabled(victim.getWorld().getName())) {
             return;
         }
 
