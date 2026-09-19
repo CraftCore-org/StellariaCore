@@ -2,6 +2,7 @@ package org.craftcore.stellaria.gui;
 
 import net.kyori.adventure.text.Component;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
@@ -36,6 +37,7 @@ public class MenuGui extends Gui {
 
     public MenuGui(StellariaCore plugin, Player viewer) {
         super(inventorySize(plugin), messageComponent(plugin, "menu.title", viewer));
+        viewer.playSound(viewer, Sound.BLOCK_CHEST_OPEN,0.5f,1);
         this.plugin = plugin;
         this.entriesBySlot = loadEntries(plugin);
         populate(viewer);
@@ -81,7 +83,7 @@ public class MenuGui extends Gui {
         if (entry == null) {
             return;
         }
-
+        Boolean playDefaultSound = true;
         switch (entry.action()) {
             case "profile" -> new ProfileGui(plugin, player, this).open(player);
             case "discord" -> runCommand(player, "discord");
@@ -90,6 +92,8 @@ public class MenuGui extends Gui {
             case "weathervote" -> new WeatherVoteGui(plugin, player, this).open(player);
             case "timevote" -> new TimeVoteGui(plugin, player, this).open(player);
             case "enderchest" -> {
+                playDefaultSound = false;
+                player.playSound(player, Sound.BLOCK_ENDER_CHEST_OPEN,1,1);
                 player.closeInventory();
                 player.openInventory(player.getEnderChest());
             }
@@ -102,7 +106,14 @@ public class MenuGui extends Gui {
             case "home" -> new HomeSelectGui(plugin, new HomeCommand(plugin), player, this).open(player);
             case "get-menu-item" -> MenuItemUtil.give(plugin, player);
             case "headshop" -> new HeadshopGui(plugin, player, this).open(player);
+            case "links" -> {
+                runCommand(player,"discord");
+                runCommand(player, "homepage");
+            }
             default -> plugin.getLogger().warning("menu.items に不明なactionがあります: " + entry.action());
+        }
+        if (playDefaultSound) {
+            player.playSound(player,Sound.UI_BUTTON_CLICK,1,1);
         }
     }
 

@@ -456,73 +456,61 @@ land:
     max-radius: 64
 
 menu:
-  rows: 5 # 1〜6。省略/範囲外の場合は5
+  rows: 3 # 1〜6。省略/範囲外の場合は5
   items:
     - slot: 0
-      material: BLUE_ORCHID
-      name: "&%b天気投票"
-      action: "weathervote"
-    - slot: 1
-      material: CLOCK
-      name: "&%6時間投票"
-      action: "timevote"
-    - slot: 8
-      material: DARK_OAK_DOOR
-      name: "&%9ホームページ"
-      action: "homepage"
-    - slot: 13
       material: PLAYER_HEAD
       name: "&%bプロフィール"
       action: "profile"
-    - slot: 17
-      material: SOUL_LANTERN
-      name: "&%9Discord"
-      action: "discord"
-    - slot: 18
-      material: LODESTONE
-      name: "&%3ワープ"
-      action: "warp"
-    - slot: 19
-      material: RED_BED
-      name: "&%9ホーム"
-      action: "home"
-    - slot: 21
-      material: COMPARATOR
-      name: "&%c便利機能"
-      action: "features"
-    - slot: 23
+    - slot: 8
+      material: ENDER_CHEST
+      name: "&%2エンダーチェスト"
+      action: "enderchest"
+    - slot: 9
+      material: EMERALD
+      name: "&%aサーバー投票"
+      action: "vote"
+    - slot: 11
+      material: SKELETON_SKULL
+      name: "&%dヘッドショップ"
+      action: "headshop"
+    - slot: 13
       material: PLAYER_HEAD
       custom-head: "earth"
       name: "&%eワールド移動"
       action: "world"
-    - slot: 26
+    - slot: 15
+      material: GOLDEN_PICKAXE
+      name: "&%c便利機能"
+      action: "features"
+    - slot: 17
+      material: CLOCK
+      name: "&%6時間投票"
+      action: "timevote"
+    - slot: 18
+      material: PAPER
+      name: "&%2その他のリンク"
+      action: "links"
+    - slot: 19
       material: FILLED_MAP
       name: "&%2マップ"
       action: "map"
-    - slot: 31
-      material: ENDER_CHEST
-      name: "&%2エンダーチェスト"
-      action: "enderchest"
-    - slot: 35
-      material: EMERALD
-      name: "&%aサーバー投票"
-      action: "vote"
-    - slot: 36
-      material: SOUL_TORCH
-      name: "&%a土地保護のヘルプ"
-      action: "land-help"
-    - slot: 37
-      material: COPPER_TORCH
-      name: "&%dテレポートリクエストの使い方"
-      action: "tpa-help"
-    - slot: 44
+    - slot: 21
+      material: RED_BED
+      name: "&%9ホーム"
+      action: "home"
+    - slot: 23
+      material: LODESTONE
+      name: "&%3ワープ"
+      action: "warp"
+    - slot: 25
       material: COMPASS
       name: "&%9メニューアイテムを入手"
       action: "get-menu-item"
-    - slot: 22
-      material: SKELETON_SKULL
-      name: "&%dヘッドショップ"
-      action: "headshop"
+    - slot: 26
+      material: BLUE_ORCHID
+      name: "&%b天気投票"
+      action: "weathervote"
 
 menuitem:
   cooldown-seconds: 10 # メニューアイテムの再入手クールダウン
