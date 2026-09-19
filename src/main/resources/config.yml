@@ -138,7 +138,7 @@ lobby:
 home:
   disabled-worlds: ["lobby"]
   max-per-player: 5
-  cost: 0 # /sethome 1回あたりの消費コイン数（0なら無料）
+  cost: 200 # /sethome 1回あたりの消費コイン数（0なら無料）
   teleport-effect:
     enabled: true
     particle: "DUST" # Bukkitの Particle enum名。DUSTの時だけ color/size が使われる
@@ -150,7 +150,7 @@ home:
 warp:
   disabled-worlds: ["lobby"]
   max-per-player: 5
-  cost: 0 # /setwarp 1回あたりの消費コイン数（0なら無料）
+  cost: 300 # /setwarp 1回あたりの消費コイン数（0なら無料）
   teleport-effect:
     enabled: true
     particle: "DUST" # Bukkitの Particle enum名。DUSTの時だけ color/size が使われる
@@ -189,13 +189,13 @@ adminshop:
       price: 10
       slot: 11
     - material: CARROT
-      price: 8
+      price: 10
       slot: 12
     - material: POTATO
-      price: 8
+      price: 10
       slot: 13
     - material: COOKED_BEEF
-      price: 40
+      price: 15
       slot: 14
     - material: OAK_LOG
       price: 20
@@ -338,9 +338,14 @@ broadcast:
     enabled: true
     interval-minutes: 15 # 本番は15
     messages: [
-      "&%b&l| &r&%bDiscordサーバーはこちら！\n&%b&l| &r&%bhttps://discord.gg/ssaREjBJXg",
-      "&%b&l| &r&%b荒らし、チートは禁止です！",
-      "&%b&l| &r&%bバグや不具合を見つけたらDiscordで報告できます！",
+      "&%g&l| &r&%bDiscordサーバーはこちら！\n&%b&l| &r&%bhttps://discord.gg/ssaREjBJXg",
+      "&%g&l| &r&%b荒らし、チートは禁止です！",
+      "&%g&l| &r&%bバグや不具合を見つけたらDiscordで報告できます！",
+      "&%g&l| &r&%b資源ワールドは毎週金曜日12時にリセットされます！",
+      "&%g&l| &r&%b/headshopでカスタムプレイヤーヘッドを購入できます！",
+      "&%g&l| &r&%b/menuでメニューを開けます！",
+      "&%g&l| &r&%bお金は釣り、鉱石採掘で入手できます！",
+      "&%g&l| &r&%b詳細なゲーム仕様はDiscordで確認できます！",
     ] # 空だと定期放送は開始されない（例: ["&%eルールを守って楽しく遊ぼう！"]）
 
 income:
@@ -370,7 +375,7 @@ elevator:
     IRON_BLOCK:
       max: 10
     GOLD_BLOCK:
-      max: 15
+      max: 20
     DIAMOND_BLOCK:
       max: 50
   message:
@@ -394,22 +399,22 @@ weathervote:
   disabled-worlds: ["lobby"]
   votetime: 15
   worldname: #ワールドの表示名 指定されていないワールドは投票不可能
-    world: "生活ワールド"
-    resource: "資源ワールド"
+    world: "&%a生活ワールド"
+    resource: "&%h資源ワールド"
 
 timevote:
   disabled-worlds: ["lobby"]
   votetime: 15
   worldname: #ワールドの表示名 指定されていないワールドは投票不可能
-    world: "生活ワールド"
-    resource: "資源ワールド"
+    world: "&%a生活ワールド"
+    resource: "&%g資源ワールド"
 
 
 # world-time-sync.worlds に指定するワールドでは、時間投票を無効化するため
 # disabled-worlds にも同じワールド名を追加してください。
 world-time-sync:
-  enabled: false
-  worlds: []
+  enabled: true
+  worlds: ["lobby"]
   # 対象ワールド内で /gamerule advance_time false を実行してください。
 
 kikori:
@@ -423,14 +428,14 @@ kikori:
 mine:
   disabled-worlds: ["lobby"]
   enabled: true
-  price: 3000
+  price: 2000
   timeout-seconds: 0
   max-ores: 128
 
 land:
   disabled-worlds: ["lobby"]
-  cost-per-chunk: 500
-  max-chunks-per-player: 20
+  cost-per-chunk: 50
+  max-chunks-per-player: 300
   refund-on-unclaim: true
   map-radius: 4 # /land map で表示する範囲（チャンク単位の半径）。4なら9x9マスのグリッドになる
   protect:
@@ -456,73 +461,61 @@ land:
     max-radius: 64
 
 menu:
-  rows: 5 # 1〜6。省略/範囲外の場合は5
+  rows: 3 # 1〜6。省略/範囲外の場合は5
   items:
     - slot: 0
-      material: BLUE_ORCHID
-      name: "&%b天気投票"
-      action: "weathervote"
-    - slot: 1
-      material: CLOCK
-      name: "&%6時間投票"
-      action: "timevote"
-    - slot: 8
-      material: DARK_OAK_DOOR
-      name: "&%9ホームページ"
-      action: "homepage"
-    - slot: 13
       material: PLAYER_HEAD
       name: "&%bプロフィール"
       action: "profile"
-    - slot: 17
-      material: SOUL_LANTERN
-      name: "&%9Discord"
-      action: "discord"
-    - slot: 18
-      material: LODESTONE
-      name: "&%3ワープ"
-      action: "warp"
-    - slot: 19
-      material: RED_BED
-      name: "&%9ホーム"
-      action: "home"
-    - slot: 21
-      material: COMPARATOR
-      name: "&%c便利機能"
-      action: "features"
-    - slot: 23
+    - slot: 8
+      material: ENDER_CHEST
+      name: "&%2エンダーチェスト"
+      action: "enderchest"
+    - slot: 9
+      material: EMERALD
+      name: "&%aサーバー投票"
+      action: "vote"
+    - slot: 11
+      material: SKELETON_SKULL
+      name: "&%dヘッドショップ"
+      action: "headshop"
+    - slot: 13
       material: PLAYER_HEAD
       custom-head: "earth"
       name: "&%eワールド移動"
       action: "world"
-    - slot: 26
+    - slot: 15
+      material: GOLDEN_PICKAXE
+      name: "&%c便利機能"
+      action: "features"
+    - slot: 17
+      material: CLOCK
+      name: "&%6時間投票"
+      action: "timevote"
+    - slot: 18
+      material: PAPER
+      name: "&%2その他のリンク"
+      action: "links"
+    - slot: 19
       material: FILLED_MAP
       name: "&%2マップ"
       action: "map"
-    - slot: 31
-      material: ENDER_CHEST
-      name: "&%2エンダーチェスト"
-      action: "enderchest"
-    - slot: 35
-      material: EMERALD
-      name: "&%aサーバー投票"
-      action: "vote"
-    - slot: 36
-      material: SOUL_TORCH
-      name: "&%a土地保護のヘルプ"
-      action: "land-help"
-    - slot: 37
-      material: COPPER_TORCH
-      name: "&%dテレポートリクエストの使い方"
-      action: "tpa-help"
-    - slot: 44
+    - slot: 21
+      material: RED_BED
+      name: "&%9ホーム"
+      action: "home"
+    - slot: 23
+      material: LODESTONE
+      name: "&%3ワープ"
+      action: "warp"
+    - slot: 25
       material: COMPASS
       name: "&%9メニューアイテムを入手"
       action: "get-menu-item"
-    - slot: 22
-      material: SKELETON_SKULL
-      name: "&%dヘッドショップ"
-      action: "headshop"
+    - slot: 26
+      material: BLUE_ORCHID
+      name: "&%b天気投票"
+      action: "weathervote"
 
 menuitem:
   cooldown-seconds: 10 # メニューアイテムの再入手クールダウン
@@ -554,9 +547,9 @@ lobbyprotect:
   
 world-reset:
   enabled: false
-  worlds: []
+  worlds: ["resource", "resource_nether", "resource_the_end"]
   # 退避先ワールド名。空文字ならBukkit上の最初のワールド（デフォルトのメインワールド）のスポーンへ退避する
-  evacuate-to-world: ""
+  evacuate-to-world: "lobby"
   schedule:
     type: "weekly" # "weekly" または "monthly"
     time: "12:00"            # 24時間表記、両モード共通
@@ -567,8 +560,8 @@ world-reset:
     day-of-month: 1          # 1〜31。その月に存在しない日は月末日に丸める
 
 shop:
-  max-per-player: 10
-  creation-cost: 500
+  max-per-player: 30
+  creation-cost: 200
   input-timeout-seconds: 60
   max-price: 10000000
   display:
