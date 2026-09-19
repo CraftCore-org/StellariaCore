@@ -338,14 +338,14 @@ broadcast:
     enabled: true
     interval-minutes: 15 # 本番は15
     messages: [
-      "&%g&l| &r&%bDiscordサーバーはこちら！\n&%b&l| &r&%bhttps://discord.gg/ssaREjBJXg",
-      "&%g&l| &r&%b荒らし、チートは禁止です！",
-      "&%g&l| &r&%bバグや不具合を見つけたらDiscordで報告できます！",
-      "&%g&l| &r&%b資源ワールドは毎週金曜日12時にリセットされます！",
-      "&%g&l| &r&%b/headshopでカスタムプレイヤーヘッドを購入できます！",
-      "&%g&l| &r&%b/menuでメニューを開けます！",
-      "&%g&l| &r&%bお金は釣り、鉱石採掘で入手できます！",
-      "&%g&l| &r&%b詳細なゲーム仕様はDiscordで確認できます！",
+      "&%b&l| &r&%bDiscordサーバーはこちら！\n&%b&l| &r&%bhttps://discord.gg/ssaREjBJXg",
+      "&%b&l| &r&%b荒らし、チートは禁止です！",
+      "&%b&l| &r&%bバグや不具合を見つけたらDiscordで報告できます！",
+      "&%b&l| &r&%b資源ワールドは毎週金曜日12時にリセットされます！",
+      "&%b&l| &r&%b/headshopでカスタムプレイヤーヘッドを購入できます！",
+      "&%b&l| &r&%b/menuでメニューを開けます！",
+      "&%b&l| &r&%bお金は釣り、鉱石採掘で入手できます！",
+      "&%b&l| &r&%b詳細なゲーム仕様はDiscordで確認できます！",
     ] # 空だと定期放送は開始されない（例: ["&%eルールを守って楽しく遊ぼう！"]）
 
 income:
