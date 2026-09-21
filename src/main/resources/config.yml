@@ -266,13 +266,13 @@ chat:
         - ""
   near:
     enabled: true # 先頭に ! を付けた近距離チャット機能そのもののON/OFF
-    max-viewers-shown: 7 # 見た人一覧のホバーに名前を出す最大人数（超えた分は「...他n人」）
+    max-viewers-shown: 5 # 見た人一覧のホバーに名前を出す最大人数（超えた分は「...他n人」）
     range-1: 8   # ! 1個（1段階目）の範囲（ブロック数）
     range-2: 16  # ! 2個（2段階目）の範囲（ブロック数）
     range-3: 32  # ! 3個以上（3段階目）の範囲（ブロック数）
-    format-1: "&%a[近距離] {placeholder}{sender}&%a: &%f{message}"
-    format-2: "&%e[近距離] {placeholder}{sender}&%e: &%f{message}"
-    format-3: "&%6[近距離] {placeholder}{sender}&%6: &%f{message}"
+    format-1: "&#F52765&l| &r&%f{placeholder}{sender}&#F52765: &%f{message}"
+    format-2: "&#9F27F5&l| &r&%f{placeholder}{sender}&#9F27F5: &%f{message}"
+    format-3: "&#413BF5&l| &r&%f{placeholder}{sender}&#413BF5: &%f{message}"
 
 message:
   color-codes:
