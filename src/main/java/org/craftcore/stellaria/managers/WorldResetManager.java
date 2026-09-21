@@ -67,6 +67,10 @@ public class WorldResetManager {
     // completeReset()でのhomes/warps削除に失敗したワールド。ロックは解除せず再試行する
     private final Set<String> pendingDataCleanup = new HashSet<>();
     private final Set<String> scheduledDataCleanupRetries = new HashSet<>();
+    // 退避(evacuate/evacuateRemainingPlayers)に失敗したワールド。lockoutWorldsは解除せず維持し、
+    // resetNow()/tick()どちらの経路で失敗しても同じ仕組みで自動再試行する。
+    private final Set<String> pendingEvacuationRetry = new HashSet<>();
+    private final Set<String> scheduledEvacuationRetries = new HashSet<>();
 
     public WorldResetManager(StellariaCore plugin) {
         this.plugin = plugin;
@@ -125,9 +129,11 @@ public class WorldResetManager {
         // Multiverseの再生成を始めないよう、退避完了を待ってからリセットする。
         evacuate(List.of(worldName)).thenAccept(evacuated -> {
             if (!evacuated) {
-                plugin.getLogger().warning("ワールド '" + worldName + "' の退避に失敗したため、再生成を中止しました。");
-                lockoutWorlds.remove(worldName);
+                plugin.getLogger().warning("ワールド '" + worldName + "' の退避に失敗したため、今回の再生成を見送りました。"
+                        + " ロックは維持したまま自動的に退避を再試行します。");
                 resettingWorlds.remove(worldName);
+                pendingEvacuationRetry.add(worldName);
+                scheduleEvacuationRetry(worldName);
                 return;
             }
             Bukkit.getGlobalRegionScheduler().execute(plugin, () -> performReset(List.of(worldName)));
@@ -142,6 +148,9 @@ public class WorldResetManager {
         }
         if (!pendingDataCleanup.isEmpty()) {
             retryPendingDataCleanup();
+        }
+        if (!pendingEvacuationRetry.isEmpty()) {
+            retryPendingEvacuation();
         }
         if (!enabled) {
             return;
@@ -257,14 +266,44 @@ public class WorldResetManager {
                             readyWorlds.add(entry.getKey());
                         } else {
                             plugin.getLogger().severe("ワールド '" + entry.getKey()
-                                    + "' の強制退避に失敗したため、今回の再生成をスキップしました（ロックは維持されます）。");
+                                    + "' の強制退避に失敗したため、今回の再生成をスキップしました。"
+                                    + " ロックは維持したまま自動的に退避を再試行します。");
                             resettingWorlds.remove(entry.getKey());
+                            pendingEvacuationRetry.add(entry.getKey());
+                            scheduleEvacuationRetry(entry.getKey());
                         }
                     }
                     if (!readyWorlds.isEmpty()) {
                         Bukkit.getGlobalRegionScheduler().execute(plugin, () -> regenerateWorlds(readyWorlds));
                     }
                 });
+    }
+
+    /**
+     * resetNow()の初回退避、またはperformReset()内の強制退避に失敗したワールドを、
+     * lockoutWorldsを維持したまま自動的に再試行する。他の経路(手動/worldreset now等)で
+     * 既に再生成パイプラインへ入っているワールドは、二重実行を避けるためここでは何もしない。
+     */
+    private void retryPendingEvacuation() {
+        for (String worldName : new ArrayList<>(pendingEvacuationRetry)) {
+            if (!resettingWorlds.add(worldName)) {
+                continue;
+            }
+            pendingEvacuationRetry.remove(worldName);
+            performReset(List.of(worldName));
+        }
+    }
+
+    private void scheduleEvacuationRetry(String worldName) {
+        if (!scheduledEvacuationRetries.add(worldName)) {
+            return;
+        }
+        Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> {
+            scheduledEvacuationRetries.remove(worldName);
+            if (pendingEvacuationRetry.contains(worldName)) {
+                retryPendingEvacuation();
+            }
+        }, TICK_INTERVAL_TICKS);
     }
 
     private void regenerateWorlds(List<String> worldNames) {
@@ -331,6 +370,8 @@ public class WorldResetManager {
         scheduledLockCleanupRetries.remove(worldName);
         pendingDataCleanup.remove(worldName);
         scheduledDataCleanupRetries.remove(worldName);
+        pendingEvacuationRetry.remove(worldName);
+        scheduledEvacuationRetries.remove(worldName);
         lockoutWorlds.remove(worldName);
         resettingWorlds.remove(worldName);
         plugin.getLogger().info("ワールド '" + worldName + "' を自動リセットしました。");

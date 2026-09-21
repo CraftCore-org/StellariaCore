@@ -394,35 +394,49 @@ public class LandManager {
             return UnclaimOutcome.of(ActionResult.NOT_OWNER);
         }
 
-        int affected = DatabaseManager.execute("DELETE FROM land_claims WHERE world = ? AND chunk_x = ? AND chunk_z = ?",
-                key.world(), key.chunkX(), key.chunkZ());
-        if (affected <= 0) {
-            // キャッシュ上はclaim済みだったがDB側に該当行が無かった（矛盾した状態）。
-            // 証明済みで誤りのキャッシュエントリなので、放置せずここで取り除く。
-            claimsByChunk.remove(key);
-            claimsVersion++;
-            return UnclaimOutcome.of(ActionResult.NOT_CLAIMED);
-        }
-
-        claimsByChunk.remove(key);
-        claimsVersion++;
-
         // claimed_cost列が追加される前にclaimされた行はclaimedCostがnullなので、
         // その場合だけconfigの現在価格へフォールバックする（新しい行は必ず実際の支払額を持つ）。
         double refundAmount = claim.claimedCost() != null
                 ? claim.claimedCost()
                 : plugin.getConfigManager().getDouble("land.cost-per-chunk", 500);
         boolean refundEnabled = plugin.getConfigManager().getBoolean("land.refund-on-unclaim", true) && refundAmount > 0;
-        boolean refundFailed = false;
-        if (refundEnabled) {
-            net.milkbowl.vault.economy.EconomyResponse response = plugin.getEconomyManager()
-                    .depositPlayer(Bukkit.getOfflinePlayer(claim.owner()), refundAmount);
-            if (!response.transactionSuccess()) {
-                refundFailed = true;
-                plugin.getLogger().severe("unclaim時の返金に失敗しました（claimは既に解除済みです）: "
-                        + claim.owner() + " amount=" + refundAmount + " reason=" + response.errorMessage);
+
+        java.util.concurrent.atomic.AtomicBoolean rowMissing = new java.util.concurrent.atomic.AtomicBoolean(false);
+
+        // land_claimsの削除と返金を1トランザクションにまとめる。返金が失敗した場合は
+        // claim削除もロールバックされるため、「土地は消えたのに返金だけ失われる」状態を防げる。
+        boolean ok = DatabaseManager.transaction(conn -> {
+            int affected = DatabaseManager.execute("DELETE FROM land_claims WHERE world = ? AND chunk_x = ? AND chunk_z = ?",
+                    key.world(), key.chunkX(), key.chunkZ());
+            if (affected <= 0) {
+                rowMissing.set(true);
+                throw new IllegalStateException("land_claims に該当行がありません: " + key);
             }
+            if (refundEnabled) {
+                net.milkbowl.vault.economy.EconomyResponse response = plugin.getEconomyManager()
+                        .depositPlayer(Bukkit.getOfflinePlayer(claim.owner()), refundAmount);
+                if (!response.transactionSuccess()) {
+                    throw new IllegalStateException("unclaim時の返金に失敗しました: "
+                            + claim.owner() + " amount=" + refundAmount + " reason=" + response.errorMessage);
+                }
+            }
+        });
+
+        if (!ok) {
+            if (rowMissing.get()) {
+                // キャッシュ上はclaim済みだったがDB側に該当行が無かった（矛盾した状態）。
+                // 証明済みで誤りのキャッシュエントリなので、放置せずここで取り除く。
+                claimsByChunk.remove(key);
+                claimsVersion++;
+                return UnclaimOutcome.of(ActionResult.NOT_CLAIMED);
+            }
+            // 返金失敗（またはその他のDBエラー）。claim削除もロールバックされているので、
+            // 土地は解除されておらず返金も行われていない一貫した状態のまま。
+            return new UnclaimOutcome(ActionResult.DATABASE_ERROR, 0);
         }
+
+        claimsByChunk.remove(key);
+        claimsVersion++;
 
         boolean areaStillUsed = claimsByChunk.values().stream()
                 .anyMatch(c -> c.areaId().equals(claim.areaId()));
@@ -432,11 +446,6 @@ public class LandManager {
             DatabaseManager.execute("DELETE FROM land_territories WHERE territory_id = ?", claim.areaId());
         }
 
-        // 返金に失敗した場合は「成功扱いだが実は入金されていない」を防ぐため、専用のエラーとして返す
-        // （チャンクの保護解除自体は既にDB上で確定しており、ここから取り消すことはしない）。
-        if (refundFailed) {
-            return new UnclaimOutcome(ActionResult.DATABASE_ERROR, 0);
-        }
         return new UnclaimOutcome(ActionResult.SUCCESS, refundEnabled ? refundAmount : 0);
     }
 

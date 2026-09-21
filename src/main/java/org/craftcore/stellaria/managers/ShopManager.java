@@ -228,10 +228,30 @@ public final class ShopManager {
     }
 
     public boolean remove(Shop shop) {
-        if (DatabaseManager.execute(
-                "DELETE FROM shops WHERE id = ?",
-                shop.id()
-        ) != 1) {
+        Player owner = Bukkit.getPlayer(shop.owner());
+        boolean queueOfflineStock = owner == null && shop.stock() > 0;
+
+        // shops削除と、オフライン在庫の返却キューへのINSERTを1トランザクションにまとめる。
+        // INSERTが失敗した場合はDELETEもロールバックされ、ショップが残るので在庫は消えない
+        // (呼び出し元は削除失敗として扱い、再試行できる)。
+        boolean ok = DatabaseManager.transaction(conn -> {
+            if (DatabaseManager.execute("DELETE FROM shops WHERE id = ?", shop.id()) != 1) {
+                throw new IllegalStateException("shops の削除に失敗しました (id=" + shop.id() + ")");
+            }
+            if (queueOfflineStock) {
+                Map<String, Object> values = new LinkedHashMap<>();
+                values.put("owner_uuid", shop.owner().toString());
+                values.put("item_data", serialize(shop.item()));
+                values.put("amount", shop.stock());
+                values.put("created_at", System.currentTimeMillis());
+                if (DatabaseManager.insert("shop_pending_returns", values) != 1) {
+                    throw new IllegalStateException("shop_pending_returns へのINSERTに失敗しました (owner=" + shop.owner() + ")");
+                }
+            }
+        });
+
+        if (!ok) {
+            plugin.getLogger().severe("ショップ(id=" + shop.id() + ")の削除に失敗したため処理を中断しました。ショップは残存しています。");
             return false;
         }
 
@@ -241,8 +261,6 @@ public final class ShopManager {
         plugin.getContainerLockManager()
                 .find(shop.key())
                 .ifPresent(plugin.getContainerLockManager()::unlock);
-
-        Player owner = Bukkit.getPlayer(shop.owner());
 
         if (owner != null) {
             plugin.getShopListener().removePending(owner);
@@ -260,17 +278,7 @@ public final class ShopManager {
                         shop.funds()
                 );
             }
-
-            // 在庫はオフラインだとインベントリへ直接渡せないため、
-            // 次回ログイン時に受け取れるようDBの返却キューへ積んでおく。
-            if (shop.stock() > 0) {
-                Map<String, Object> values = new LinkedHashMap<>();
-                values.put("owner_uuid", shop.owner().toString());
-                values.put("item_data", serialize(shop.item()));
-                values.put("amount", shop.stock());
-                values.put("created_at", System.currentTimeMillis());
-                DatabaseManager.insert("shop_pending_returns", values);
-            }
+            // 在庫は上のtransactionでshop_pending_returnsへ積み済み
         }
 
         return true;
@@ -278,6 +286,8 @@ public final class ShopManager {
 
     /**
      * オフライン中に削除されたショップの残り在庫を、ログイン時にまとめて渡す。
+     * 重複付与を避けるため、DELETEが成功したことを確認してからアイテムを渡す
+     * (DELETEに失敗した分は次回ログイン時に再試行される)。
      */
     public void deliverPendingReturns(Player player) {
         for (var row : DatabaseManager.query(
@@ -287,8 +297,13 @@ public final class ShopManager {
             int id = (int) row[0];
             ItemStack item = (ItemStack) row[1];
             int amount = (int) row[2];
+
+            if (DatabaseManager.execute("DELETE FROM shop_pending_returns WHERE id = ?", id) != 1) {
+                plugin.getLogger().warning("shop_pending_returns(id=" + id + ")の削除に失敗したため、今回は付与をスキップします(次回ログイン時に再試行されます)。");
+                continue;
+            }
+
             giveOrDrop(player, item, amount);
-            DatabaseManager.execute("DELETE FROM shop_pending_returns WHERE id = ?", id);
         }
     }
 
