@@ -264,6 +264,15 @@ chat:
         - "&%7プレイ時間: &%b%playtime%"
         - "&%7所持金: &%e%money%"
         - ""
+  near:
+    enabled: true # 先頭に ! を付けた近距離チャット機能そのもののON/OFF
+    max-viewers-shown: 7 # 見た人一覧のホバーに名前を出す最大人数（超えた分は「...他n人」）
+    range-1: 8   # ! 1個（1段階目）の範囲（ブロック数）
+    range-2: 16  # ! 2個（2段階目）の範囲（ブロック数）
+    range-3: 32  # ! 3個以上（3段階目）の範囲（ブロック数）
+    format-1: "&%a[近距離] {placeholder}{sender}&%a: &%f{message}"
+    format-2: "&%e[近距離] {placeholder}{sender}&%e: &%f{message}"
+    format-3: "&%6[近距離] {placeholder}{sender}&%6: &%f{message}"
 
 message:
   color-codes:

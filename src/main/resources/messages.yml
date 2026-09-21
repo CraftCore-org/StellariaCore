@@ -195,6 +195,11 @@ chat:
   sender_prefix: "&l| " # 送信者名の前に付ける区切り（ランク色で色付けされる）
   tooltip:
     rank_line: "&%7ランク: %rank%" # %rank% はランク色+表示名に置き換わる
+  near:
+    hint: "&%7先頭に&%f!&%7を付けると近距離チャットで送信されます" # 通常チャットのホバーに表示する案内
+    viewers_line: "&%7見た人: &%f%viewers%" # %viewers% は「A, B, C」のようなカンマ区切り名一覧
+    viewers_none: "&%7見た人: &%8自分だけ"
+    viewers_overflow: "&%7 …他%count%人" # viewers_line の末尾に追加される
 
 mention:
   click_hint: "&%7クリックで%player%にメッセージを送信"
