@@ -120,8 +120,8 @@ public class LandCommand implements CommandExecutor, TabCompleter {
     private void handleUnclaim(Player player) {
         UUID originalOwner = plugin.getLandManager().ownerOf(player.getLocation());
         boolean adminOverride = player.hasPermission("stellaria.land.admin");
-        LandManager.ActionResult result = plugin.getLandManager().unclaim(player, adminOverride);
-        switch (result) {
+        LandManager.UnclaimOutcome outcome = plugin.getLandManager().unclaim(player, adminOverride);
+        switch (outcome.result()) {
             case SUCCESS -> {
                 // 管理者が他人のclaimを解除した場合は、誰の土地だったかが分かる専用メッセージも出す
                 // （オーナー本人には見えない操作なので、実行者側に何をしたか明示するため）。
@@ -130,16 +130,20 @@ public class LandCommand implements CommandExecutor, TabCompleter {
                             plugin.getConfigManager().getMessage("land.unclaimed_admin_override", player),
                             "%owner%", ownerName(originalOwner)));
                 }
-                boolean refunded = plugin.getConfigManager().getBoolean("land.refund-on-unclaim", true);
+                // outcome.refundAmount()はclaim時に実際に支払った金額（または移行前の既存claimなら
+                // configのフォールバック価格）。現在のconfig価格(costText())をそのまま表示すると、
+                // claim後にconfigが変更された場合に実際の返金額と表示がズレるため使わない。
+                boolean refunded = outcome.refundAmount() > 0;
                 String key = refunded ? "land.unclaimed" : "land.unclaimed_no_refund";
                 String message = plugin.getConfigManager().getMessage(key, player);
                 if (refunded) {
-                    message = FormatUtil.replace(message, "%refund%", costText());
+                    message = FormatUtil.replace(message, "%refund%", plugin.getEconomyManager().format(outcome.refundAmount()));
                 }
                 player.sendMessage(message);
             }
             case NOT_CLAIMED -> player.sendMessage(plugin.getConfigManager().getMessage("land.not_claimed", player));
             case NOT_OWNER -> player.sendMessage(plugin.getConfigManager().getMessage("land.not_your_claim", player));
+            case DATABASE_ERROR -> player.sendMessage(plugin.getConfigManager().getMessage("land.database_error", player));
             case SELF_TARGET -> { }
         }
     }
@@ -378,6 +382,7 @@ public class LandCommand implements CommandExecutor, TabCompleter {
             case ALREADY_CLAIMED -> "land.unclaimable_claimed";
             case ALREADY_UNCLAIMABLE -> "land.unclaimable_already_enabled";
             case NOT_UNCLAIMABLE -> "land.unclaimable_already_disabled";
+            case DATABASE_ERROR -> "land.database_error";
         };
         player.sendMessage(plugin.getConfigManager().getMessage(messageKey, player));
     }
@@ -414,8 +419,12 @@ public class LandCommand implements CommandExecutor, TabCompleter {
             return;
         }
         String targetName = args[2];
-        UUID target = Bukkit.getOfflinePlayer(targetName).getUniqueId();
-        LandManager.ActionResult result = plugin.getLandManager().trust(player, target);
+        OfflinePlayer targetPlayer = Bukkit.getOfflinePlayer(targetName);
+        if (!targetPlayer.hasPlayedBefore() && !targetPlayer.isOnline()) {
+            player.sendMessage(plugin.getConfigManager().getMessage("land.player_not_found", player));
+            return;
+        }
+        LandManager.ActionResult result = plugin.getLandManager().trust(player, targetPlayer.getUniqueId());
         sendTrustResult(player, result, "land.trust_added", targetName);
     }
 

@@ -45,8 +45,12 @@ public final class SettingsGui extends Gui {
             return;
         }
 
-        hideBalance = !hideBalance;
-        plugin.getEconomyManager().setHideBalance(player, hideBalance);
+        boolean newValue = !hideBalance;
+        if (!plugin.getEconomyManager().setHideBalance(player, newValue)) {
+            player.sendMessage(plugin.getConfigManager().getMessage("settings.database_error", player));
+            return;
+        }
+        hideBalance = newValue;
         player.sendMessage(plugin.getConfigManager().getMessage(
                 hideBalance ? "settings.balance_hidden_enabled" : "settings.balance_visible_enabled", player));
         populate(player);

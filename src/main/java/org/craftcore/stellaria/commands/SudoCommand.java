@@ -48,10 +48,10 @@ public class SudoCommand implements CommandExecutor, TabCompleter {
 
         String targetCommand = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
         String rawBaseCommand = targetCommand.split("\\s+", 2)[0].toLowerCase();
-        String baseCommand = rawBaseCommand.startsWith("/") ? rawBaseCommand.substring(1) : rawBaseCommand;
+        String baseCommand = canonicalizeCommand(rawBaseCommand);
 
         List<String> blacklist = plugin.getConfigManager().getStringList("sudo.blacklist");
-        if (blacklist.stream().anyMatch(entry -> entry.equalsIgnoreCase(baseCommand))) {
+        if (blacklist.stream().map(SudoCommand::canonicalizeCommand).anyMatch(entry -> entry.equals(baseCommand))) {
             sender.sendMessage(FormatUtil.replace(
                     plugin.getConfigManager().getMessage("sudo.blacklisted", placeholderPlayer),
                     "%command%", baseCommand));
@@ -75,5 +75,14 @@ public class SudoCommand implements CommandExecutor, TabCompleter {
             return TabCompleteUtil.onlinePlayerNames(args[0]);
         }
         return List.of();
+    }
+
+    /** {@code minecraft:op} のようなnamespace接頭辞を除去してblacklist照合をすり抜けられないようにする。 */
+    private static String canonicalizeCommand(String command) {
+        String lower = command.toLowerCase();
+        if (lower.startsWith("/")) lower = lower.substring(1);
+        int colon = lower.indexOf(':');
+        if (colon >= 0) lower = lower.substring(colon + 1);
+        return lower;
     }
 }

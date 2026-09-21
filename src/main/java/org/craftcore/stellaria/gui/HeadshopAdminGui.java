@@ -65,6 +65,12 @@ public final class HeadshopAdminGui extends Gui {
         int first = page * CONTENT_SLOTS;
 
         for (int slot = 45; slot < 54; slot++) {
+            // parentあり生成時はBase Guiがslot 48に戻るボタンを既に置いているため、
+            // ここでfillerItemに上書きすると見た目はfillerなのにクリック判定は
+            // handleBackButtonのまま残る「見えない戻るボタン」になる。上書きしない。
+            if (parent != null && slot == BACK_BUTTON_SLOT) {
+                continue;
+            }
             getInventory().setItem(slot, fillerItem());
         }
 

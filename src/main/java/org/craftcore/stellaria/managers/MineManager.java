@@ -64,7 +64,7 @@ public class MineManager {
             enabledPlayers.remove(uuid);
             pendingPass.remove(uuid);
         }
-        DatabaseManager.executeAsync(
+        DatabaseManager.execute(
                 "UPDATE players SET mine_enabled = ? WHERE uuid = ?",
                 enabled ? 1 : 0, uuid.toString());
     }

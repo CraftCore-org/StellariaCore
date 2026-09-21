@@ -48,7 +48,8 @@ public class RankingCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        int pageSize = plugin.getConfigManager().getInt("ranking.page-size", 10);
+        // page-size: 0や負数の設定ミスでも total/0.0 => Infinity にならないよう、最低1にクランプする。
+        int pageSize = Math.max(1, plugin.getConfigManager().getInt("ranking.page-size", 10));
         int page = 1;
         if (args.length >= 2) {
             try {
@@ -63,7 +64,9 @@ public class RankingCommand implements CommandExecutor, TabCompleter {
                 : plugin.getPlaytimeManager().getPlayerCount();
         int maxPage = Math.max(1, (int) Math.ceil(totalPlayers / (double) pageSize));
         page = Math.min(page, maxPage);
-        int offset = (page - 1) * pageSize;
+        // (page - 1) * pageSize はint同士だとpageが極端な値のときoverflowし得るのでlongで計算する。
+        long offsetLong = (long) (page - 1) * pageSize;
+        int offset = (int) Math.min(offsetLong, Integer.MAX_VALUE);
 
         String headerKey = type.equals("money") ? "ranking.money_header" : "ranking.playtime_header";
         sender.sendMessage(plugin.getConfigManager().getMessage(headerKey, null));

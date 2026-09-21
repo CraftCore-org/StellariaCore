@@ -55,8 +55,12 @@ public class IncomeManager {
 
         if (!response.transactionSuccess()) {
             plugin.getLogger().warning(
-                    player.getName() + " への収入 " + amount + "円 の付与に失敗しました。"
+                    player.getName() + " への収入 " + amount + "円 の付与に失敗しました。再試行のためキューへ戻します。"
             );
+            pendingRewards.merge(uuid, amount, Long::sum);
+            if (scheduledPlayers.add(uuid)) {
+                player.getScheduler().run(plugin, task -> flush(player), null);
+            }
             return;
         }
 

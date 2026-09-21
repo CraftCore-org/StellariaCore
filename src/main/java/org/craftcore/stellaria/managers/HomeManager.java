@@ -85,13 +85,12 @@ public class HomeManager {
         return committed ? result.get() : SetResult.DATABASE_ERROR;
     }
 
-    /** 削除に成功したらtrue、そもそも存在しなかったらfalse。 */
+    /** 削除に成功したらtrue、存在しなかったかDB削除に失敗したらfalse。 */
     public boolean delete(UUID owner, String name) {
         if (!exists(owner, name)) {
             return false;
         }
-        DatabaseManager.execute("DELETE FROM homes WHERE uuid = ? AND name = ?", owner.toString(), name);
-        return true;
+        return DatabaseManager.execute("DELETE FROM homes WHERE uuid = ? AND name = ?", owner.toString(), name) > 0;
     }
 
     /** 無ければnull（ワールドが存在しない場合も含む）。 */

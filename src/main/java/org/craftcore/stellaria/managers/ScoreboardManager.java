@@ -3,9 +3,7 @@ package org.craftcore.stellaria.managers;
 import io.papermc.paper.scoreboard.numbers.NumberFormat;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
-import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scoreboard.Criteria;
 import org.bukkit.scoreboard.DisplaySlot;
@@ -35,13 +33,15 @@ public class ScoreboardManager {
     private static final int MAX_LINES = ChatColor.values().length;
 
     private final PlaceholderManager placeholders;
-    private final NamespacedKey hiddenKey;
 
     private volatile String titleTemplate;
     private volatile List<String> lineTemplates;
     private volatile boolean hideNumbers;
 
     private final Map<UUID, List<String>> lastRenderedLines = new ConcurrentHashMap<>();
+    // /scoreboard hide はセッション限定の仕様なので、PDC(永続化)ではなくメモリ上のSetで管理する。
+    // ログアウトすると forget() でここから取り除かれ、再ログイン時は表示状態に戻る。
+    private final Set<UUID> hiddenPlayers = ConcurrentHashMap.newKeySet();
 
     public ScoreboardManager(
             JavaPlugin plugin,
@@ -54,7 +54,6 @@ public class ScoreboardManager {
         this.titleTemplate = titleTemplate;
         this.lineTemplates = lineTemplates;
         this.hideNumbers = hideNumbers;
-        this.hiddenKey = new NamespacedKey(plugin, "scoreboard_hidden");
     }
 
     public void updateSettings(
@@ -78,21 +77,17 @@ public class ScoreboardManager {
      *  引き継いだ扱いにならずに済む（差分比較用キャッシュの掃除）。/scoreboardでの非表示指定も
      *  セッション限定なので、ここで一緒にリセットする（再ログインすると表示に戻る）。 */
     public void forget(Player player) {
-        // 描画キャッシュだけ消す
-        // hidden状態はPDCに永続保存するので消さない
+        // 描画キャッシュとhidden状態、両方セッション限定なのでここでまとめて掃除する。
         lastRenderedLines.remove(player.getUniqueId());
+        hiddenPlayers.remove(player.getUniqueId());
     }
 
     /** /scoreboard コマンドから呼ばれる。非表示にすると即座にobjectiveを消し、表示に戻すと即座に再描画する。 */
     public void setHidden(Player player, boolean hidden) {
         if (hidden) {
-            player.getPersistentDataContainer().set(
-                    hiddenKey,
-                    PersistentDataType.BYTE,
-                    (byte) 1
-            );
+            hiddenPlayers.add(player.getUniqueId());
         } else {
-            player.getPersistentDataContainer().remove(hiddenKey);
+            hiddenPlayers.remove(player.getUniqueId());
         }
 
         lastRenderedLines.remove(player.getUniqueId());
@@ -100,12 +95,7 @@ public class ScoreboardManager {
     }
 
     public boolean isHidden(Player player) {
-        Byte value = player.getPersistentDataContainer().get(
-                hiddenKey,
-                PersistentDataType.BYTE
-        );
-
-        return value != null && value == 1;
+        return hiddenPlayers.contains(player.getUniqueId());
     }
 
     private void render(Player player) {
@@ -133,12 +123,15 @@ public class ScoreboardManager {
             return;
         }
 
-        lastRenderedLines.put(player.getUniqueId(), lines);
-
         Scoreboard board = BoardUtil.ensurePersonalBoard(player);
         if (board == null) {
+            // 他プラグインにBoardを奪われている間はキャッシュを更新しない。
+            // ここでlastRenderedLinesへ記録してしまうと、後でBoardが戻ってきても
+            // 「差分なし」判定でずっと再描画されなくなるため。
             return;
         }
+
+        lastRenderedLines.put(player.getUniqueId(), lines);
 
         Objective existing = board.getObjective(OBJECTIVE_NAME);
         if (existing != null) {

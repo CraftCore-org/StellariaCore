@@ -19,6 +19,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
@@ -38,6 +39,9 @@ public class HeadshopManager {
 
     private static final int ROTATION_SIZE = 5;
     private static final long TICK_INTERVAL_TICKS = 1200L; // 1分
+    // reset-timeはJST基準の設定値として扱う。JVM/サーバーOSのタイムゾーンに依存すると
+    // reset-timeが意図しない時刻になるため、明示的にAsia/Tokyoを使う。
+    private static final ZoneId JAPAN_TIME = ZoneId.of("Asia/Tokyo");
 
     public record PoolHead(
             int id,
@@ -79,8 +83,8 @@ public class HeadshopManager {
      * キーのずれによる「reset-time前は空表示になる」不整合を防ぐ。
      */
     private LocalDate shopDate() {
-        LocalDate today = LocalDate.now();
-        return LocalTime.now().isBefore(resetTime()) ? today.minusDays(1) : today;
+        LocalDate today = LocalDate.now(JAPAN_TIME);
+        return LocalTime.now(JAPAN_TIME).isBefore(resetTime()) ? today.minusDays(1) : today;
     }
 
     private void checkRotation() {
@@ -121,7 +125,11 @@ public class HeadshopManager {
         return true;
     }
 
-    /** 現在のショップ日のローテーションを消し、現在表示中のヘッドを避けて再抽選する。 */
+    /**
+     * 現在のショップ日のローテーションを消し、現在表示中のヘッドを避けて再抽選する。
+     * DELETE→INSERTを1つのDBトランザクションにまとめ、途中のINSERT失敗で
+     * その日のHeadshopが0件のまま残らないようにする（失敗時は削除ごとロールバックされる）。
+     */
     public RotationResetResult resetTodayRotation() {
         String today = shopDate().toString();
         List<PoolHead> pool = listPool();
@@ -130,12 +138,22 @@ public class HeadshopManager {
         }
 
         Set<Integer> currentIds = rotationIds(today);
-        if (DatabaseManager.execute("DELETE FROM headshop_rotation WHERE date = ?", today) < 0) {
-            return RotationResetResult.DATABASE_ERROR;
-        }
-        return generateRotation(today, pool, currentIds)
-                ? RotationResetResult.SUCCESS
-                : RotationResetResult.DATABASE_ERROR;
+        List<PoolHead> selected = HeadshopRotationUtil.select(
+                pool, previousRotationIds(today), currentIds, ROTATION_SIZE, new Random());
+
+        boolean success = DatabaseManager.transaction(conn -> {
+            if (DatabaseManager.execute("DELETE FROM headshop_rotation WHERE date = ?", today) < 0) {
+                throw new IllegalStateException("headshop_rotationの削除に失敗しました: date=" + today);
+            }
+            for (PoolHead head : selected) {
+                if (DatabaseManager.insert("headshop_rotation", Map.of("date", today, "pool_id", head.id())) != 1) {
+                    throw new IllegalStateException(
+                            "headshop_rotationの挿入に失敗しました: date=" + today + ", pool_id=" + head.id());
+                }
+            }
+        });
+
+        return success ? RotationResetResult.SUCCESS : RotationResetResult.DATABASE_ERROR;
     }
 
     private Set<Integer> previousRotationIds(String shopDate) {

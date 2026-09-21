@@ -15,6 +15,7 @@ import org.craftcore.stellaria.utils.FormatUtil;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -145,8 +146,33 @@ public class HeadshopGui extends Gui {
         openPurchaseConfirm(player, head);
     }
 
+    /**
+     * プレイヤーのインベントリにitemが入りきるか（空きスロット、または既存スタックへの
+     * 積み増しで）を課金前に確認する。先に引き落として満杯なら返金する順序だと、
+     * 返金のdepositPlayer結果を見ていない場合にアイテムだけ失われ得るため、
+     * 先にこちらで確認してから引き落とす。
+     */
+    private boolean canFit(Player player, ItemStack item) {
+        if (player.getInventory().firstEmpty() != -1) {
+            return true;
+        }
+        return Arrays.stream(player.getInventory().getStorageContents())
+                .anyMatch(slot -> slot != null
+                        && slot.getAmount() < slot.getMaxStackSize()
+                        && slot.isSimilar(item));
+    }
+
     private void purchase(Player player, HeadshopManager.PoolHead head) {
         int price = plugin.getConfigManager().getInt("headshop.normal-price", 500);
+
+        ItemStack item = plugin.getHeadshopManager().createHeadItem(head);
+        if (!canFit(player, item)) {
+            player.sendMessage(FormatUtil.replace(
+                    plugin.getConfigManager().getMessage("headshop.inventory-full", player),
+                    "%price%", plugin.getEconomyManager().format(price)));
+            return;
+        }
+
         EconomyResponse response = plugin.getEconomyManager().withdrawPlayer(player, price);
         if (!response.transactionSuccess()) {
             player.sendMessage(FormatUtil.replace(
@@ -155,7 +181,6 @@ public class HeadshopGui extends Gui {
             return;
         }
 
-        ItemStack item = plugin.getHeadshopManager().createHeadItem(head);
         Map<Integer, ItemStack> leftover = player.getInventory().addItem(item);
         if (!leftover.isEmpty()) {
             plugin.getEconomyManager().depositPlayer(player, price);

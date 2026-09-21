@@ -57,25 +57,25 @@ public class LandManager {
      * pvpOverride等はnullなら「個別設定なし＝エリアの設定に従う」、非nullならそのチャンクだけの
      * 個別設定（/land rule）としてエリア設定を上書きする。claim直後は全てnull。
      */
-    private record Claim(UUID owner, String areaId, Boolean pvpOverride, Boolean explosionsOverride,
+    private record Claim(UUID owner, String areaId, Double claimedCost, Boolean pvpOverride, Boolean explosionsOverride,
                           Boolean doorsOverride, Boolean chestsOverride) {
 
-        static Claim newClaim(UUID owner, String areaId) {
-            return new Claim(owner, areaId, null, null, null, null);
+        static Claim newClaim(UUID owner, String areaId, double claimedCost) {
+            return new Claim(owner, areaId, claimedCost, null, null, null, null);
         }
 
         /** areaIdだけ差し替えた新しいClaimを返す（マージ時、個別設定はそのまま引き継ぐ）。 */
         Claim withAreaId(String newAreaId) {
-            return new Claim(owner, newAreaId, pvpOverride, explosionsOverride, doorsOverride, chestsOverride);
+            return new Claim(owner, newAreaId, claimedCost, pvpOverride, explosionsOverride, doorsOverride, chestsOverride);
         }
 
         /** 指定フラグの個別設定だけ差し替えた新しいClaimを返す。 */
         Claim withOverride(AreaFlag flag, Boolean value) {
             return switch (flag) {
-                case PVP -> new Claim(owner, areaId, value, explosionsOverride, doorsOverride, chestsOverride);
-                case EXPLOSIONS -> new Claim(owner, areaId, pvpOverride, value, doorsOverride, chestsOverride);
-                case DOORS -> new Claim(owner, areaId, pvpOverride, explosionsOverride, value, chestsOverride);
-                case CHESTS -> new Claim(owner, areaId, pvpOverride, explosionsOverride, doorsOverride, value);
+                case PVP -> new Claim(owner, areaId, claimedCost, value, explosionsOverride, doorsOverride, chestsOverride);
+                case EXPLOSIONS -> new Claim(owner, areaId, claimedCost, pvpOverride, value, doorsOverride, chestsOverride);
+                case DOORS -> new Claim(owner, areaId, claimedCost, pvpOverride, explosionsOverride, value, chestsOverride);
+                case CHESTS -> new Claim(owner, areaId, claimedCost, pvpOverride, explosionsOverride, doorsOverride, value);
             };
         }
 
@@ -93,7 +93,7 @@ public class LandManager {
 
     public enum ActionResult { SUCCESS, NOT_CLAIMED, NOT_OWNER, SELF_TARGET, DATABASE_ERROR }
 
-    public enum UnclaimableChunkResult { SUCCESS, ALREADY_CLAIMED, ALREADY_UNCLAIMABLE, NOT_UNCLAIMABLE }
+    public enum UnclaimableChunkResult { SUCCESS, ALREADY_CLAIMED, ALREADY_UNCLAIMABLE, NOT_UNCLAIMABLE, DATABASE_ERROR }
 
     /** エリアのトグル可能な設定項目。/land area <flag> on|off の対象を1つのメソッドにまとめるための列挙。 */
     public enum AreaFlag { PVP, EXPLOSIONS, DOORS, CHESTS }
@@ -106,6 +106,18 @@ public class LandManager {
     public record ClaimOutcome(ClaimResult result, boolean merged, boolean pvpEnabled) {
         private static ClaimOutcome of(ClaimResult result) {
             return new ClaimOutcome(result, false, false);
+        }
+    }
+
+    /**
+     * unclaim()の結果。refundAmountはSUCCESSかつ返金対象だった場合の実際の返金額
+     * （claim時に支払った金額、または移行前の既存行ならconfigのフォールバック価格）。
+     * resultがSUCCESS以外、または返金なしの場合は0。呼び出し側は必ずこの値を表示に使い、
+     * 現在のconfig価格をそのまま表示しないこと（config変更後は一致しなくなるため）。
+     */
+    public record UnclaimOutcome(ActionResult result, double refundAmount) {
+        private static UnclaimOutcome of(ActionResult result) {
+            return new UnclaimOutcome(result, 0);
         }
     }
 
@@ -122,6 +134,9 @@ public class LandManager {
 
     public LandManager(StellariaCore plugin) {
         this.plugin = plugin;
+        // NULL許容で追加する（DEFAULTを入れると、この列が無かった頃の既存claim行が
+        // 一律0円扱いになり、unclaim時にconfig価格へフォールバックできなくなるため）。
+        DatabaseManager.addColumnIfNotExists("land_claims", "claimed_cost REAL");
         loadFromDatabase();
     }
 
@@ -133,7 +148,7 @@ public class LandManager {
                             boolean doorsOpenToOthers, boolean chestsOpenToOthers) {
     }
 
-    private record ClaimRow(String world, int chunkX, int chunkZ, UUID owner, String areaId,
+    private record ClaimRow(String world, int chunkX, int chunkZ, UUID owner, String areaId, Double claimedCost,
                              Boolean pvpOverride, Boolean explosionsOverride,
                              Boolean doorsOverride, Boolean chestsOverride) {
     }
@@ -142,6 +157,12 @@ public class LandManager {
     private static Boolean readNullableBoolean(ResultSet rs, String column) throws SQLException {
         int value = rs.getInt(column);
         return rs.wasNull() ? null : value != 0;
+    }
+
+    /** SQLiteのnullable REAL列をDouble（null=未記録、claimed_cost列追加前の既存行）として読む。 */
+    private static Double readNullableDouble(ResultSet rs, String column) throws SQLException {
+        double value = rs.getDouble(column);
+        return rs.wasNull() ? null : value;
     }
 
     private record TrustRow(String areaId, UUID trustedUuid) {
@@ -158,10 +179,10 @@ public class LandManager {
         }
 
         List<ClaimRow> claimRows = DatabaseManager.query(
-                "SELECT world, chunk_x, chunk_z, owner_uuid, territory_id, "
+                "SELECT world, chunk_x, chunk_z, owner_uuid, territory_id, claimed_cost, "
                         + "pvp_override, explosions_override, doors_override, chests_override FROM land_claims",
                 rs -> new ClaimRow(rs.getString("world"), rs.getInt("chunk_x"), rs.getInt("chunk_z"),
-                        UUID.fromString(rs.getString("owner_uuid")), rs.getString("territory_id"),
+                        UUID.fromString(rs.getString("owner_uuid")), rs.getString("territory_id"), readNullableDouble(rs, "claimed_cost"),
                         readNullableBoolean(rs, "pvp_override"), readNullableBoolean(rs, "explosions_override"),
                         readNullableBoolean(rs, "doors_override"), readNullableBoolean(rs, "chests_override")));
         for (ClaimRow row : claimRows) {
@@ -169,7 +190,7 @@ public class LandManager {
             // transaction()で保護されていないための保険として）Areaを必ず用意しておく。
             areas.computeIfAbsent(row.areaId(), id -> new Area(false, false, false, false));
             claimsByChunk.put(new ChunkKey(row.world(), row.chunkX(), row.chunkZ()),
-                    new Claim(row.owner(), row.areaId(), row.pvpOverride(), row.explosionsOverride(),
+                    new Claim(row.owner(), row.areaId(), row.claimedCost(), row.pvpOverride(), row.explosionsOverride(),
                             row.doorsOverride(), row.chestsOverride()));
         }
 
@@ -254,7 +275,8 @@ public class LandManager {
                 "chunk_z", key.chunkZ(),
                 "owner_uuid", owner.toString(),
                 "territory_id", resolution.areaId(),
-                "claimed_at", System.currentTimeMillis()
+                "claimed_at", System.currentTimeMillis(),
+                "claimed_cost", cost
         ));
         if (inserted <= 0) {
             if (cost > 0) {
@@ -263,7 +285,7 @@ public class LandManager {
             plugin.getLogger().severe("land_claims へのINSERTに失敗したためclaimを中止しました: " + key);
             return ClaimOutcome.of(ClaimResult.DATABASE_ERROR);
         }
-        claimsByChunk.put(key, Claim.newClaim(owner, resolution.areaId()));
+        claimsByChunk.put(key, Claim.newClaim(owner, resolution.areaId(), cost));
         claimsVersion++;
 
         Area area = areas.get(resolution.areaId());
@@ -362,14 +384,14 @@ public class LandManager {
      * 返金は常に元のオーナーに対して行う（adminOverrideで他人のclaimを解除した場合も同じ）。
      * 解除後、そのエリアを参照するclaimが無くなったらエリア・信頼リストも削除する。
      */
-    public ActionResult unclaim(Player player, boolean adminOverride) {
+    public UnclaimOutcome unclaim(Player player, boolean adminOverride) {
         ChunkKey key = ChunkKey.of(player.getLocation());
         Claim claim = claimsByChunk.get(key);
         if (claim == null) {
-            return ActionResult.NOT_CLAIMED;
+            return UnclaimOutcome.of(ActionResult.NOT_CLAIMED);
         }
         if (!adminOverride && !claim.owner().equals(player.getUniqueId())) {
-            return ActionResult.NOT_OWNER;
+            return UnclaimOutcome.of(ActionResult.NOT_OWNER);
         }
 
         int affected = DatabaseManager.execute("DELETE FROM land_claims WHERE world = ? AND chunk_x = ? AND chunk_z = ?",
@@ -379,15 +401,27 @@ public class LandManager {
             // 証明済みで誤りのキャッシュエントリなので、放置せずここで取り除く。
             claimsByChunk.remove(key);
             claimsVersion++;
-            return ActionResult.NOT_CLAIMED;
+            return UnclaimOutcome.of(ActionResult.NOT_CLAIMED);
         }
 
         claimsByChunk.remove(key);
         claimsVersion++;
 
-        if (plugin.getConfigManager().getBoolean("land.refund-on-unclaim", true)) {
-            double cost = plugin.getConfigManager().getDouble("land.cost-per-chunk", 500);
-            plugin.getEconomyManager().depositPlayer(Bukkit.getOfflinePlayer(claim.owner()), cost);
+        // claimed_cost列が追加される前にclaimされた行はclaimedCostがnullなので、
+        // その場合だけconfigの現在価格へフォールバックする（新しい行は必ず実際の支払額を持つ）。
+        double refundAmount = claim.claimedCost() != null
+                ? claim.claimedCost()
+                : plugin.getConfigManager().getDouble("land.cost-per-chunk", 500);
+        boolean refundEnabled = plugin.getConfigManager().getBoolean("land.refund-on-unclaim", true) && refundAmount > 0;
+        boolean refundFailed = false;
+        if (refundEnabled) {
+            net.milkbowl.vault.economy.EconomyResponse response = plugin.getEconomyManager()
+                    .depositPlayer(Bukkit.getOfflinePlayer(claim.owner()), refundAmount);
+            if (!response.transactionSuccess()) {
+                refundFailed = true;
+                plugin.getLogger().severe("unclaim時の返金に失敗しました（claimは既に解除済みです）: "
+                        + claim.owner() + " amount=" + refundAmount + " reason=" + response.errorMessage);
+            }
         }
 
         boolean areaStillUsed = claimsByChunk.values().stream()
@@ -398,7 +432,12 @@ public class LandManager {
             DatabaseManager.execute("DELETE FROM land_territories WHERE territory_id = ?", claim.areaId());
         }
 
-        return ActionResult.SUCCESS;
+        // 返金に失敗した場合は「成功扱いだが実は入金されていない」を防ぐため、専用のエラーとして返す
+        // （チャンクの保護解除自体は既にDB上で確定しており、ここから取り消すことはしない）。
+        if (refundFailed) {
+            return new UnclaimOutcome(ActionResult.DATABASE_ERROR, 0);
+        }
+        return new UnclaimOutcome(ActionResult.SUCCESS, refundEnabled ? refundAmount : 0);
     }
 
     // ------------------------------------------------------------------
@@ -441,16 +480,26 @@ public class LandManager {
             if (!unclaimableChunks.mark(key)) {
                 return UnclaimableChunkResult.ALREADY_UNCLAIMABLE;
             }
-            DatabaseManager.insert("land_unclaimable_chunks", Map.of(
+            int inserted = DatabaseManager.insert("land_unclaimable_chunks", Map.of(
                     "world", key.world(), "chunk_x", key.chunkX(), "chunk_z", key.chunkZ()));
+            if (inserted <= 0) {
+                unclaimableChunks.unmark(key);
+                plugin.getLogger().severe("land_unclaimable_chunks へのINSERTに失敗しました: " + key);
+                return UnclaimableChunkResult.DATABASE_ERROR;
+            }
             return UnclaimableChunkResult.SUCCESS;
         }
 
         if (!unclaimableChunks.unmark(key)) {
             return UnclaimableChunkResult.NOT_UNCLAIMABLE;
         }
-        DatabaseManager.execute("DELETE FROM land_unclaimable_chunks WHERE world = ? AND chunk_x = ? AND chunk_z = ?",
+        int deleted = DatabaseManager.execute("DELETE FROM land_unclaimable_chunks WHERE world = ? AND chunk_x = ? AND chunk_z = ?",
                 key.world(), key.chunkX(), key.chunkZ());
+        if (deleted <= 0) {
+            unclaimableChunks.mark(key);
+            plugin.getLogger().severe("land_unclaimable_chunks からのDELETEに失敗しました: " + key);
+            return UnclaimableChunkResult.DATABASE_ERROR;
+        }
         return UnclaimableChunkResult.SUCCESS;
     }
 

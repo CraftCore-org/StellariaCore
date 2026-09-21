@@ -110,10 +110,10 @@ public class LockCommand implements CommandExecutor, TabCompleter {
             }
         }
         ContainerLockManager.CreateResult result = manager.create(player, keys);
-        if (result == ContainerLockManager.CreateResult.SUCCESS) {
-            message(player, "lock.created");
-        } else {
-            message(player, "lock.already_locked");
+        switch (result) {
+            case SUCCESS -> message(player, "lock.created");
+            case DATABASE_ERROR -> message(player, "lock.database_error");
+            default -> message(player, "lock.already_locked");
         }
     }
 
@@ -128,8 +128,10 @@ public class LockCommand implements CommandExecutor, TabCompleter {
             message(player, "lock.not_owner");
             return;
         }
-        if (manager.unlock(lock) == ContainerLockManager.RemoveResult.SUCCESS) {
-            message(player, "lock.unlocked");
+        switch (manager.unlock(lock)) {
+            case SUCCESS -> message(player, "lock.unlocked");
+            case DATABASE_ERROR -> message(player, "lock.database_error");
+            case NOT_FOUND -> message(player, "lock.not_locked");
         }
     }
 
@@ -153,14 +155,12 @@ public class LockCommand implements CommandExecutor, TabCompleter {
         ContainerLockManager.MemberResult result = add
                 ? manager.trust(lock, targetPlayer.getUniqueId())
                 : manager.untrust(lock, targetPlayer.getUniqueId());
-        if (result == ContainerLockManager.MemberResult.SUCCESS) {
-            message(player, add ? "lock.trusted" : "lock.untrusted", "%player%", targetPlayer.getName());
-        } else if (result == ContainerLockManager.MemberResult.OWNER) {
-            message(player, "lock.cannot_trust_self");
-        } else if (result == ContainerLockManager.MemberResult.ALREADY_MEMBER) {
-            message(player, "lock.already_trusted");
-        } else if (result == ContainerLockManager.MemberResult.NOT_MEMBER) {
-            message(player, "lock.not_trusted");
+        switch (result) {
+            case SUCCESS -> message(player, add ? "lock.trusted" : "lock.untrusted", "%player%", targetPlayer.getName());
+            case OWNER -> message(player, "lock.cannot_trust_self");
+            case ALREADY_MEMBER -> message(player, "lock.already_trusted");
+            case NOT_MEMBER -> message(player, "lock.not_trusted");
+            case DATABASE_ERROR -> message(player, "lock.database_error");
         }
     }
 

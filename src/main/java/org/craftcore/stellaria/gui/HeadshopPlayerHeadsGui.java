@@ -17,6 +17,7 @@ import org.craftcore.stellaria.utils.FormatUtil;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -231,9 +232,38 @@ public final class HeadshopPlayerHeadsGui extends Gui {
         ).open(player);
     }
 
+    /**
+     * プレイヤーのインベントリにitemが入りきるか（空きスロット、または既存スタックへの
+     * 積み増しで）を課金前に確認する。先に引き落として満杯なら返金する順序だと、
+     * 返金のdepositPlayer結果を見ていない場合にアイテムだけ失われ得るため、
+     * 先にこちらで確認してから引き落とす。
+     */
+    private boolean canFit(Player player, ItemStack item) {
+        if (player.getInventory().firstEmpty() != -1) {
+            return true;
+        }
+        return Arrays.stream(player.getInventory().getStorageContents())
+                .anyMatch(slot -> slot != null
+                        && slot.getAmount() < slot.getMaxStackSize()
+                        && slot.isSimilar(item));
+    }
+
     private void purchase(Player player, HeadshopManager.RecentPlayer recentPlayer) {
         int price = plugin.getConfigManager().getInt("headshop.normal-price", 500)
                 + plugin.getConfigManager().getInt("headshop.player-head-markup", 300);
+
+        ItemStack item = new ItemStack(Material.PLAYER_HEAD);
+        SkullMeta meta = (SkullMeta) item.getItemMeta();
+        meta.setOwningPlayer(Bukkit.getOfflinePlayer(recentPlayer.uuid()));
+        item.setItemMeta(meta);
+
+        if (!canFit(player, item)) {
+            player.sendMessage(FormatUtil.replace(
+                    plugin.getConfigManager().getMessage("headshop.inventory-full", player),
+                    "%price%", plugin.getEconomyManager().format(price)));
+            return;
+        }
+
         EconomyResponse response = plugin.getEconomyManager().withdrawPlayer(player, price);
         if (!response.transactionSuccess()) {
             player.sendMessage(FormatUtil.replace(
@@ -241,11 +271,6 @@ public final class HeadshopPlayerHeadsGui extends Gui {
                     "%price%", plugin.getEconomyManager().format(price)));
             return;
         }
-
-        ItemStack item = new ItemStack(Material.PLAYER_HEAD);
-        SkullMeta meta = (SkullMeta) item.getItemMeta();
-        meta.setOwningPlayer(Bukkit.getOfflinePlayer(recentPlayer.uuid()));
-        item.setItemMeta(meta);
 
         Map<Integer, ItemStack> leftover = player.getInventory().addItem(item);
         if (!leftover.isEmpty()) {

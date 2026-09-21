@@ -43,15 +43,25 @@ public class ShopRemoveGui extends Gui{
         if (!(event.getWhoClicked() instanceof Player player)) return;
         int slot = event.getRawSlot();
         shop=plugin.getShopManager().find(shop.key());
+        if (shop == null) {
+            // 確認画面を開いている間に別経路(コマンド等)で既に削除された場合のガード
+            player.closeInventory();
+            message(player, "shop.not_found");
+            return;
+        }
         if (slot == 0){
             player.closeInventory();
             player.playSound(player,Sound.UI_BUTTON_CLICK,1,1);
         }
         if (slot == 8) {
-            plugin.getShopManager().remove(shop);
+            if (plugin.getShopManager().remove(shop)) {
+                message(player,"shop.removed");
+                player.playSound(player,Sound.BLOCK_ANVIL_DESTROY,1,1.5f);
+            } else {
+                message(player, "shop.remove_failed");
+                player.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1, 1);
+            }
             player.closeInventory();
-            message(player,"shop.removed");
-            player.playSound(player,Sound.BLOCK_ANVIL_DESTROY,1,1.5f);
         }
     }
     private void message(Player p,String key){

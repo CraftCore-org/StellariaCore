@@ -167,6 +167,11 @@ permissions:
       stellaria.setname: true
       stellaria.lock.admin: true
       stellaria.userhistory: true
+      stellaria.headshop.admin: true
+      stellaria.land.admin: true
+      stellaria.worldreset: true
+      stellaria.vanish: true
+      stellaria.sudo: true
   stellaria.reload:
     default: false
   stellaria.broadcast:

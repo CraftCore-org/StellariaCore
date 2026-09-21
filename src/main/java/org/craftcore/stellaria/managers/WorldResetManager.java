@@ -27,7 +27,9 @@ import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
@@ -49,6 +51,8 @@ public class WorldResetManager {
     // 行うための基準日（この日からの経過週数がinterval-weeksの倍数になる週だけを対象にする）。
     private static final LocalDate WEEK_ANCHOR_MONDAY = LocalDate.of(2024, 1, 1);
     private static final DateTimeFormatter DISPLAY_FORMAT = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm");
+    // すてらりあはJP向け運用のため、JVMのタイムゾーン設定(ZoneId.systemDefault())に依存せず固定する
+    private static final ZoneId SCHEDULE_ZONE = ZoneId.of("Asia/Tokyo");
 
     private final StellariaCore plugin;
     private ScheduledTask task;
@@ -57,6 +61,12 @@ public class WorldResetManager {
     private final Set<String> lockoutWorlds = new HashSet<>();
     private final Set<String> pendingLockCleanup = new HashSet<>();
     private final Set<String> scheduledLockCleanupRetries = new HashSet<>();
+    // resetNow()とスケジュール実行(tick())の両方から辿り着くperformReset()が、
+    // 同じワールドを二重に処理しないよう「今まさに退避〜再生成パイプライン中」を示す
+    private final Set<String> resettingWorlds = new HashSet<>();
+    // completeReset()でのhomes/warps削除に失敗したワールド。ロックは解除せず再試行する
+    private final Set<String> pendingDataCleanup = new HashSet<>();
+    private final Set<String> scheduledDataCleanupRetries = new HashSet<>();
 
     public WorldResetManager(StellariaCore plugin) {
         this.plugin = plugin;
@@ -95,15 +105,19 @@ public class WorldResetManager {
     }
 
     public String formattedNextResetTime() {
-        return DISPLAY_FORMAT.withZone(ZoneId.systemDefault()).format(nextResetInstant());
+        return DISPLAY_FORMAT.withZone(SCHEDULE_ZONE).format(nextResetInstant());
     }
 
     /**
      * 管理者用の即時リセット。対象ワールドでなければfalseを返して何もしない。
+     * 既に退避〜再生成パイプライン中（手動連打または定期リセットと重複）ならfalseを返す。
      * 通常スケジュールの4段階告知は行わず、即座に退避させてからリセットする（短縮版）。
      */
     public boolean resetNow(String worldName) {
         if (!isResetTarget(worldName)) {
+            return false;
+        }
+        if (!resettingWorlds.add(worldName)) {
             return false;
         }
         lockoutWorlds.add(worldName);
@@ -113,6 +127,7 @@ public class WorldResetManager {
             if (!evacuated) {
                 plugin.getLogger().warning("ワールド '" + worldName + "' の退避に失敗したため、再生成を中止しました。");
                 lockoutWorlds.remove(worldName);
+                resettingWorlds.remove(worldName);
                 return;
             }
             Bukkit.getGlobalRegionScheduler().execute(plugin, () -> performReset(List.of(worldName)));
@@ -124,6 +139,9 @@ public class WorldResetManager {
         boolean enabled = plugin.getConfigManager().getBoolean("world-reset.enabled", false);
         if (shouldRetryPendingLockCleanup(enabled, !pendingLockCleanup.isEmpty())) {
             retryPendingLockCleanup();
+        }
+        if (!pendingDataCleanup.isEmpty()) {
+            retryPendingDataCleanup();
         }
         if (!enabled) {
             return;
@@ -156,7 +174,17 @@ public class WorldResetManager {
         }
 
         if (secondsUntilReset <= 0) {
-            performReset(worlds);
+            // 手動 /worldreset now と重複しているワールドは既にresettingWorldsに入っているためスキップし、
+            // 二重に退避/再生成パイプラインが走らないようにする（次サイクルで改めて対象になる）。
+            List<String> claimedWorlds = worlds.stream().filter(resettingWorlds::add).toList();
+            for (String worldName : worlds) {
+                if (!claimedWorlds.contains(worldName)) {
+                    plugin.getLogger().info("ワールド '" + worldName + "' は既に再生成処理中のため、今回の定期リセットはスキップしました。");
+                }
+            }
+            if (!claimedWorlds.isEmpty()) {
+                performReset(claimedWorlds);
+            }
             currentCycleResetAt = null;
             announcedMinutes.clear();
         }
@@ -209,19 +237,43 @@ public class WorldResetManager {
      * teleportAsync()は非同期のため、Multiverseのワールドアンロードがプレイヤー残留で
      * 失敗しないよう、全ワールド分の退避が完了してからグローバルリージョンスレッドに戻って再生成する。
      */
+    /**
+     * 呼び出し元(resetNow()またはtick())は、渡すworldNames全てを事前にresettingWorldsへ
+     * 登録済みである前提。ここでは各ワールドの強制退避が実際に成功したかを確認し、
+     * 失敗したワールドは再生成に進めずlockoutを維持したまま処理から外す。
+     */
     private void performReset(List<String> worldNames) {
         Location destination = evacuationDestination(worldNames);
-        List<CompletableFuture<Void>> evacuations = worldNames.stream()
-                .map(worldName -> evacuateRemainingPlayers(worldName, destination))
-                .toList();
-        CompletableFuture.allOf(evacuations.toArray(CompletableFuture[]::new))
-                .whenComplete((ignored, error) ->
-                        Bukkit.getGlobalRegionScheduler().execute(plugin, () -> regenerateWorlds(worldNames)));
+        Map<String, CompletableFuture<Boolean>> evacuations = new LinkedHashMap<>();
+        for (String worldName : worldNames) {
+            evacuations.put(worldName, evacuateRemainingPlayers(worldName, destination));
+        }
+        CompletableFuture.allOf(evacuations.values().toArray(CompletableFuture[]::new))
+                .whenComplete((ignored, error) -> {
+                    List<String> readyWorlds = new ArrayList<>();
+                    for (Map.Entry<String, CompletableFuture<Boolean>> entry : evacuations.entrySet()) {
+                        boolean evacuated = error == null && Boolean.TRUE.equals(entry.getValue().getNow(false));
+                        if (evacuated) {
+                            readyWorlds.add(entry.getKey());
+                        } else {
+                            plugin.getLogger().severe("ワールド '" + entry.getKey()
+                                    + "' の強制退避に失敗したため、今回の再生成をスキップしました（ロックは維持されます）。");
+                            resettingWorlds.remove(entry.getKey());
+                        }
+                    }
+                    if (!readyWorlds.isEmpty()) {
+                        Bukkit.getGlobalRegionScheduler().execute(plugin, () -> regenerateWorlds(readyWorlds));
+                    }
+                });
     }
 
     private void regenerateWorlds(List<String> worldNames) {
         for (String worldName : worldNames) {
             if (!regenerateWorld(worldName)) {
+                // 再生成自体が失敗した場合、古いワールドはそのまま残っているのでロックを解除して
+                // プレイヤーが戻れるようにする（ロックしたまま永久に入れなくなるのを防ぐ）。
+                lockoutWorlds.remove(worldName);
+                resettingWorlds.remove(worldName);
                 continue;
             }
 
@@ -259,12 +311,47 @@ public class WorldResetManager {
     }
 
     private void completeReset(String worldName) {
-        DatabaseManager.execute("DELETE FROM homes WHERE world = ?", worldName);
-        DatabaseManager.execute("DELETE FROM warps WHERE world = ?", worldName);
+        boolean dataCleanupSucceeded = DatabaseManager.transaction(conn -> {
+            if (DatabaseManager.execute("DELETE FROM homes WHERE world = ?", worldName) < 0) {
+                throw new IllegalStateException("homesの削除に失敗しました: " + worldName);
+            }
+            if (DatabaseManager.execute("DELETE FROM warps WHERE world = ?", worldName) < 0) {
+                throw new IllegalStateException("warpsの削除に失敗しました: " + worldName);
+            }
+        });
+        if (!dataCleanupSucceeded) {
+            plugin.getLogger().severe("ワールド '" + worldName
+                    + "' のhome/warp削除に失敗したため、ロックを維持したまま再試行します。"
+                    + " 古いhome/warpが残ったままプレイヤーが古い座標へテレポートできてしまうのを防ぐため。");
+            pendingDataCleanup.add(worldName);
+            scheduleDataCleanupRetry(worldName);
+            return;
+        }
         pendingLockCleanup.remove(worldName);
         scheduledLockCleanupRetries.remove(worldName);
+        pendingDataCleanup.remove(worldName);
+        scheduledDataCleanupRetries.remove(worldName);
         lockoutWorlds.remove(worldName);
+        resettingWorlds.remove(worldName);
         plugin.getLogger().info("ワールド '" + worldName + "' を自動リセットしました。");
+    }
+
+    private void retryPendingDataCleanup() {
+        for (String worldName : new ArrayList<>(pendingDataCleanup)) {
+            completeReset(worldName);
+        }
+    }
+
+    private void scheduleDataCleanupRetry(String worldName) {
+        if (!scheduledDataCleanupRetries.add(worldName)) {
+            return;
+        }
+        Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> {
+            scheduledDataCleanupRetries.remove(worldName);
+            if (pendingDataCleanup.contains(worldName)) {
+                completeReset(worldName);
+            }
+        }, TICK_INTERVAL_TICKS);
     }
 
     static boolean shouldCompleteReset(boolean lockCleanupSucceeded) {
@@ -282,7 +369,7 @@ public class WorldResetManager {
      * 退避先が決定できない場合はキックして再生成をブロックさせない。
      * 戻り値のFutureは、このワールドに残っていた全プレイヤーの退避処理が完了した時点で完了する。
      */
-    private CompletableFuture<Void> evacuateRemainingPlayers(String worldName, Location destination) {
+    private CompletableFuture<Boolean> evacuateRemainingPlayers(String worldName, Location destination) {
         String displayName = WorldNameUtil.displayName(plugin.getConfigManager(), worldName);
         List<CompletableFuture<Boolean>> teleports = new ArrayList<>();
         for (Player player : Bukkit.getOnlinePlayers()) {
@@ -295,6 +382,7 @@ public class WorldResetManager {
                 plugin.getLogger().warning("ワールド '" + worldName + "' に残っていたプレイヤー '"
                         + player.getName() + "' を再生成のため強制退避させました。");
             } else {
+                // kick済みのプレイヤーはワールドから既にいなくなっているため、退避成功として扱う
                 String message = FormatUtil.replace(
                         plugin.getConfigManager().getMessage("world-reset.kicked", player), "%world%", displayName);
                 player.kick(ColorUtil.component(message));
@@ -302,7 +390,8 @@ public class WorldResetManager {
                         + player.getName() + "' の退避先が決定できないため強制退出させました。");
             }
         }
-        return CompletableFuture.allOf(teleports.toArray(CompletableFuture[]::new));
+        return CompletableFuture.allOf(teleports.toArray(CompletableFuture[]::new))
+                .handle((ignored, error) -> error == null && teleports.stream().allMatch(future -> future.getNow(false)));
     }
 
     private boolean regenerateWorld(String worldName) {
@@ -355,7 +444,7 @@ public class WorldResetManager {
 
     private Instant nextResetInstant() {
         LocalTime time = parseScheduleTime();
-        ZoneId zone = ZoneId.systemDefault();
+        ZoneId zone = SCHEDULE_ZONE;
         LocalDateTime now = LocalDateTime.now(zone);
         String type = plugin.getConfigManager().getString("world-reset.schedule.type", "weekly");
 
@@ -388,7 +477,7 @@ public class WorldResetManager {
 
     /** dayOfMonthがその月に存在しない日（例: 31日指定で2月）の場合、その月の末日に丸める。 */
     private LocalDateTime clampedMonthlyDateTime(int year, int month, int dayOfMonth, LocalTime time) {
-        int clampedDay = Math.min(dayOfMonth, YearMonth.of(year, month).lengthOfMonth());
+        int clampedDay = Math.clamp(dayOfMonth, 1, YearMonth.of(year, month).lengthOfMonth());
         return LocalDateTime.of(year, month, clampedDay, time.getHour(), time.getMinute());
     }
 

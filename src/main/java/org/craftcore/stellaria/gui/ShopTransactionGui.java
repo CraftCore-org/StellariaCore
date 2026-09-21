@@ -22,16 +22,22 @@ public final class ShopTransactionGui extends Gui {
     private final ShopManager.Shop shop;
     private int quantity=1;
     public ShopTransactionGui(StellariaCore plugin, ShopManager.Shop shop) {
-        super(27, Component.text(Bukkit.getOfflinePlayer(shop.owner()).getName() + "のショップ"));
+        super(27, Component.text(ownerName(shop) + "のショップ"));
         this.plugin=plugin;
         this.shop=shop;
         render();
     }
+    private static String ownerName(ShopManager.Shop shop) {
+        String name = Bukkit.getOfflinePlayer(shop.owner()).getName();
+        return name != null ? name : shop.owner().toString().substring(0, 8);
+    }
     private void render(){
         getInventory().clear();
-        getInventory().setItem(9,button(Material.RED_DYE,quantity<shop.item().getMaxStackSize()?"-64個":"-4スタック"));
-        getInventory().setItem(10,button(Material.RED_DYE,quantity<shop.item().getMaxStackSize()?"-16個":"-2スタック"));
-        getInventory().setItem(11,button(Material.RED_DYE,quantity<shop.item().getMaxStackSize()?"-1個":"-1スタック"));
+        // 表示の「1スタック分を超えたら-Nスタック表記に切り替える」境界は、
+        // onClickでの実際の減算量(quantity<=max)と一致させないと表示と実減少量がズレる。
+        getInventory().setItem(9,button(Material.RED_DYE,quantity<=shop.item().getMaxStackSize()?"-64個":"-4スタック"));
+        getInventory().setItem(10,button(Material.RED_DYE,quantity<=shop.item().getMaxStackSize()?"-16個":"-2スタック"));
+        getInventory().setItem(11,button(Material.RED_DYE,quantity<=shop.item().getMaxStackSize()?"-1個":"-1スタック"));
         getInventory().setItem(15,button(Material.LIME_DYE,quantity<shop.item().getMaxStackSize()?"+1個":"+1スタック"));
         getInventory().setItem(16,button(Material.LIME_DYE,quantity<shop.item().getMaxStackSize()?"+16個":"+2スタック"));
         getInventory().setItem(17,button(Material.LIME_DYE,quantity<shop.item().getMaxStackSize()?"+64個":"+4スタック"));
@@ -95,7 +101,16 @@ public final class ShopTransactionGui extends Gui {
             player.playSound(player,Sound.UI_BUTTON_CLICK,1,1);
             render();
         } else if(slot==21){
-            ShopManager.TradeResult result=plugin.getShopManager().trade(player,plugin.getShopManager().find(shop.key()),quantity);
+            ShopManager.Shop latest = plugin.getShopManager().find(shop.key());
+            // GUIを開いた時点からmode/price/itemが変わっていたら、表示と異なる条件で
+            // 取引が確定してしまう(価格つり上げ・BUY/SELL反転など)ので一旦止める。
+            if (latest == null || latest.id() != shop.id() || latest.mode() != shop.mode() || latest.price() != shop.price() || !latest.item().isSimilar(shop.item())) {
+                player.closeInventory();
+                message(player, "shop.info_changed");
+                player.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1, 1);
+                return;
+            }
+            ShopManager.TradeResult result=plugin.getShopManager().trade(player,latest,quantity);
             if(result==ShopManager.TradeResult.SUCCESS){
                 player.closeInventory();
                 message(player,"shop.trade_success");

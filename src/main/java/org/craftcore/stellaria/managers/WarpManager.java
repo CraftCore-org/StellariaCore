@@ -98,13 +98,12 @@ public class WarpManager {
         );
     }
 
-    /** 削除に成功したらtrue、そもそも存在しなかったらfalse。権限チェックは呼び出し側(WarpCommand)の責務。 */
+    /** 削除に成功したらtrue、存在しなかったかDB削除に失敗したらfalse。権限チェックは呼び出し側(WarpCommand)の責務。 */
     public boolean delete(String name) {
         if (!exists(name)) {
             return false;
         }
-        DatabaseManager.execute("DELETE FROM warps WHERE name = ?", name);
-        return true;
+        return DatabaseManager.execute("DELETE FROM warps WHERE name = ?", name) > 0;
     }
 
     /** 無ければnull（ワールドが存在しない場合も含む）。 */

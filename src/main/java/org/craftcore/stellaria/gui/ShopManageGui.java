@@ -106,7 +106,10 @@ public final class ShopManageGui extends Gui {
         }
     }
     @Override public void onDrag(InventoryDragEvent event) { event.setCancelled(true);
-        if (!(event.getWhoClicked() instanceof Player player) || !event.getRawSlots().equals(java.util.Set.of(13))) return;
+        // 表示上の投入口はslot 11(「ここにアイテムを入れて在庫を補充」)なので、そこへのドラッグを受け付ける。
+        // slot 11には既にボタン用アイテムが乗っているため、ドラッグ計算上その1マスだけがrawSlotsに
+        // 含まれるとは限らない(範囲ドラッグだと隣接スロットも含まれ得る)ので、containsで判定する。
+        if (!(event.getWhoClicked() instanceof Player player) || !event.getRawSlots().contains(11)) return;
         depositStock(player, event.getOldCursor());
         render();
     }

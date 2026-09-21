@@ -40,12 +40,27 @@ public final class ShopManager {
     }
 
     private void loadAll() {
-        for (Shop row : DatabaseManager.query("SELECT * FROM shops", rs -> new Shop(
-                rs.getInt("id"), UUID.fromString(rs.getString("owner_uuid")),
-                new ContainerLock.BlockKey(rs.getString("world"), rs.getInt("x"), rs.getInt("y"), rs.getInt("z")),
-                Mode.valueOf(rs.getString("mode")), deserialize(rs.getString("item_data")), rs.getLong("price"),
-                rs.getInt("stock"), rs.getLong("funds"), uuid(rs.getString("display_item_uuid")), uuid(rs.getString("display_text_uuid"))))) {
-            shops.put(row.key(), row);
+        for (Shop row : DatabaseManager.query("SELECT * FROM shops", rs -> {
+            try {
+                return new Shop(
+                        rs.getInt("id"), UUID.fromString(rs.getString("owner_uuid")),
+                        new ContainerLock.BlockKey(rs.getString("world"), rs.getInt("x"), rs.getInt("y"), rs.getInt("z")),
+                        Mode.valueOf(rs.getString("mode")), deserialize(rs.getString("item_data")), rs.getLong("price"),
+                        rs.getInt("stock"), rs.getLong("funds"), uuid(rs.getString("display_item_uuid")), uuid(rs.getString("display_text_uuid")));
+            } catch (Exception e) {
+                plugin.getLogger().warning("ショップデータ(id=" + safeId(rs) + ")の読み込みに失敗したためスキップします: " + e.getMessage());
+                return null;
+            }
+        })) {
+            if (row != null) shops.put(row.key(), row);
+        }
+    }
+
+    private static int safeId(java.sql.ResultSet rs) {
+        try {
+            return rs.getInt("id");
+        } catch (Exception e) {
+            return -1;
         }
     }
 
@@ -246,22 +261,35 @@ public final class ShopManager {
                 );
             }
 
-//            在庫の処理が未実装
-//
-//            オーナーがオフライン
-//              ↓
-//            管理者が /shop remove
-//              ↓
-//            DBからショップ削除
-//              ↓
-//            資金は返却
-//              ↓
-//            在庫は消滅
-
-//            になるため、今すぐ管理者が他人のショップを削除する運用をしないなら致命傷ではないけど、未完成状態.
+            // 在庫はオフラインだとインベントリへ直接渡せないため、
+            // 次回ログイン時に受け取れるようDBの返却キューへ積んでおく。
+            if (shop.stock() > 0) {
+                Map<String, Object> values = new LinkedHashMap<>();
+                values.put("owner_uuid", shop.owner().toString());
+                values.put("item_data", serialize(shop.item()));
+                values.put("amount", shop.stock());
+                values.put("created_at", System.currentTimeMillis());
+                DatabaseManager.insert("shop_pending_returns", values);
+            }
         }
 
         return true;
+    }
+
+    /**
+     * オフライン中に削除されたショップの残り在庫を、ログイン時にまとめて渡す。
+     */
+    public void deliverPendingReturns(Player player) {
+        for (var row : DatabaseManager.query(
+                "SELECT id, item_data, amount FROM shop_pending_returns WHERE owner_uuid = ?",
+                rs -> new Object[]{rs.getInt("id"), deserialize(rs.getString("item_data")), rs.getInt("amount")},
+                player.getUniqueId().toString())) {
+            int id = (int) row[0];
+            ItemStack item = (ItemStack) row[1];
+            int amount = (int) row[2];
+            giveOrDrop(player, item, amount);
+            DatabaseManager.execute("DELETE FROM shop_pending_returns WHERE id = ?", id);
+        }
     }
 
     private Shop createDisplays(Shop shop) {
@@ -279,7 +307,13 @@ public final class ShopManager {
             e.setBillboard(Display.Billboard.CENTER);
             e.setViewRange((float) plugin.getConfigManager().getDouble("shop.display.view-range", 16));
         });
-        DatabaseManager.update("shops", Map.of("display_item_uuid", item.getUniqueId().toString(), "display_text_uuid", text.getUniqueId().toString()), "id = ?", shop.id());
+        int affected = DatabaseManager.update("shops", Map.of("display_item_uuid", item.getUniqueId().toString(), "display_text_uuid", text.getUniqueId().toString()), "id = ?", shop.id());
+        if (affected <= 0) {
+            plugin.getLogger().warning("ショップ(id=" + shop.id() + ")のdisplay UUID保存に失敗したため、生成したdisplayを破棄します。");
+            item.remove();
+            text.remove();
+            return shop;
+        }
         Shop updated = new Shop(shop.id(), shop.owner(), shop.key(), shop.mode(), shop.item(), shop.price(), shop.stock(), shop.funds(), item.getUniqueId(), text.getUniqueId());
         shops.put(updated.key(), updated);
         return updated;

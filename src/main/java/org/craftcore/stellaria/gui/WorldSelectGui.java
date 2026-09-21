@@ -290,7 +290,11 @@ public class WorldSelectGui extends Gui {
                 player.sendMessage(plugin.getConfigManager().getMessage("world.not_found", player));
                 return;
             }
-            player.teleportAsync(world.getSpawnLocation());
+            player.teleportAsync(world.getSpawnLocation()).thenAccept(success -> {
+                if (!success) {
+                    player.sendMessage(plugin.getConfigManager().getMessage("world.teleport_failed", player));
+                }
+            });
             player.closeInventory();
         }
     }

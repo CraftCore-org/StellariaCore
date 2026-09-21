@@ -3,7 +3,6 @@ package org.craftcore.stellaria.commands;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
-import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 import org.bukkit.command.Command;
@@ -21,21 +20,32 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import static org.bukkit.Bukkit.getServer;
 
+/**
+ * 時間投票（/timevote）。ワールドごとに独立して投票できるよう、
+ * ワールドUUID -> {@link VoteSession} で状態を持つ（以前はコマンドインスタンスに1セッションしか
+ * 持てず、同時に1ワールドしか投票できなかった）。
+ */
 public class TimeVoteCommand implements CommandExecutor, TabCompleter {
     private final StellariaCore plugin;
     public TimeVoteCommand(StellariaCore plugin) { this.plugin = plugin; }
 
-    private Boolean isVoting = false;
-    private Player voteStartPlayer;
-    private String votingTime;
-    private World votingWorld;
-    private int voteAccepts = 0;
-    private int voteDenys = 0;
-    private final List<Player> votedPlayers = new ArrayList<>();
+    private final Map<UUID, VoteSession> activeVotes = new HashMap<>();
+
+    private static final class VoteSession {
+        Player voteStartPlayer;
+        String votingTime;
+        World votingWorld;
+        int voteAccepts = 1;
+        int voteDenys = 0;
+        final List<Player> votedPlayers = new ArrayList<>();
+    }
 
     private Component button(String text, String command, String tooltipPath, Player viewer) {
         Component tooltip = plugin.getPlaceholderManager().resolveLines(plugin.getConfigManager().getMessageList(tooltipPath), viewer);
@@ -43,61 +53,49 @@ public class TimeVoteCommand implements CommandExecutor, TabCompleter {
         return tooltip != null ? btn.hoverEvent(HoverEvent.showText(tooltip)) : btn;
     }
 
-    private void starttimeVote(Player player, String timeType){
-        votedPlayers.clear();
-        votedPlayers.add(player);
-        votingTime = timeType;
-        votingWorld = player.getWorld();
-        voteStartPlayer = player;
-        voteAccepts = 1;
-        voteDenys = 0;
-        isVoting = true;
+    private void starttimeVote(Player player, String timeType) {
+        World world = player.getWorld();
+        VoteSession session = new VoteSession();
+        session.votedPlayers.add(player);
+        session.votingTime = timeType;
+        session.votingWorld = world;
+        session.voteStartPlayer = player;
+        activeVotes.put(world.getUID(), session);
+
         Component voteMessage = Component.text("   ")
-                .append(button(plugin.getConfigManager().getMessage("timevote.accept",player), "/tvaccept", "timevote.accept_tooltip", player))
+                .append(button(plugin.getConfigManager().getMessage("timevote.accept", player), "/tvaccept", "timevote.accept_tooltip", player))
                 .append(Component.text("   "))
-                .append(button(plugin.getConfigManager().getMessage("timevote.deny",player), "/tvdeny", "timevote.deny_tooltip", player));
-        String message = FormatUtil.replace(FormatUtil.replace(FormatUtil.replace(plugin.getConfigManager().getMessage("timevote.start_vote",player),"%world%",plugin.getConfigManager().getString("timevote.worldname." + player.getWorld().getName(),"")),"%time%",timeType),"%votetime%", String.valueOf(plugin.getConfigManager().getInt("timevote.votetime",15)));
-        for (Player player1 : Bukkit.getOnlinePlayers()){
-            player1.sendMessage(message);
-            player1.sendMessage(voteMessage);
+                .append(button(plugin.getConfigManager().getMessage("timevote.deny", player), "/tvdeny", "timevote.deny_tooltip", player));
+        String message = FormatUtil.replace(FormatUtil.replace(FormatUtil.replace(plugin.getConfigManager().getMessage("timevote.start_vote", player), "%world%", plugin.getConfigManager().getString("timevote.worldname." + world.getName(), "")), "%time%", timeType), "%votetime%", String.valueOf(plugin.getConfigManager().getInt("timevote.votetime", 15)));
+        for (Player recipient : world.getPlayers()) {
+            recipient.sendMessage(message);
+            recipient.sendMessage(voteMessage);
         }
-        getServer().getScheduler().runTaskLater(plugin, this::endtimeVote,
+        getServer().getScheduler().runTaskLater(plugin, () -> endtimeVote(world.getUID()),
                 SchedulerIntervalUtil.secondsToTicks(plugin.getConfigManager().getInt("timevote.votetime", 15)));
     }
 
-    private void endtimeVote(){
-        if (voteAccepts >= voteDenys){
-            String message = FormatUtil.replace(FormatUtil.replace(plugin.getConfigManager().getMessage("timevote.vote_end_accept",(OfflinePlayer) voteStartPlayer),"%world%",plugin.getConfigManager().getString("timevote.worldname." + votingWorld.getName(),"")),"%time%", votingTime);
-            for (Player player1 : Bukkit.getOnlinePlayers()){
-                player1.sendMessage(message);
+    private void endtimeVote(UUID worldId) {
+        VoteSession session = activeVotes.remove(worldId);
+        if (session == null) return;
+        if (session.voteAccepts >= session.voteDenys) {
+            String message = FormatUtil.replace(FormatUtil.replace(plugin.getConfigManager().getMessage("timevote.vote_end_accept", (OfflinePlayer) session.voteStartPlayer), "%world%", plugin.getConfigManager().getString("timevote.worldname." + session.votingWorld.getName(), "")), "%time%", session.votingTime);
+            for (Player recipient : session.votingWorld.getPlayers()) {
+                recipient.sendMessage(message);
             }
-            if (votingTime.equals("朝")){
-                votingWorld.setTime(0);
-            } else if (votingTime.equals("昼")){
-                votingWorld.setTime(6000);
-            } else if (votingTime.equals("夕方")){
-                votingWorld.setTime(12000);
-            } else if (votingTime.equals("夜")){
-                votingWorld.setTime(18000);
+            switch (session.votingTime) {
+                case "朝" -> session.votingWorld.setTime(0);
+                case "昼" -> session.votingWorld.setTime(6000);
+                case "夕方" -> session.votingWorld.setTime(12000);
+                case "夜" -> session.votingWorld.setTime(18000);
+                default -> { }
             }
-            resettimeVote();
         } else {
-            String message = plugin.getConfigManager().getMessage("timevote.vote_end_deny",voteStartPlayer);
-            for (Player player1 : Bukkit.getOnlinePlayers()){
-                player1.sendMessage(message);
+            String message = plugin.getConfigManager().getMessage("timevote.vote_end_deny", session.voteStartPlayer);
+            for (Player recipient : session.votingWorld.getPlayers()) {
+                recipient.sendMessage(message);
             }
-            resettimeVote();
         }
-    }
-
-    private void resettimeVote(){
-        isVoting = false;
-        voteStartPlayer = null;
-        votingTime = null;
-        votingWorld = null;
-        voteAccepts = 0;
-        voteDenys = 0;
-        votedPlayers.clear();
     }
 
     @Override
@@ -110,76 +108,62 @@ public class TimeVoteCommand implements CommandExecutor, TabCompleter {
             player.sendMessage(plugin.getConfigManager().getMessage("timevote.world_disabled", player));
             return true;
         }
-        if (command.getName().equalsIgnoreCase("timevote")){
-            if (args.length == 0){
+        UUID worldId = player.getWorld().getUID();
+        if (command.getName().equalsIgnoreCase("timevote")) {
+            if (args.length == 0) {
                 new TimeVoteGui(plugin, player).open(player);
                 return true;
             }
-            if (isVoting) {
-                player.sendMessage(FormatUtil.text((OfflinePlayer) sender, plugin.getConfigManager().getMessage("timevote.err_voting",(OfflinePlayer) sender)));
+            if (activeVotes.containsKey(worldId)) {
+                player.sendMessage(FormatUtil.text((OfflinePlayer) sender, plugin.getConfigManager().getMessage("timevote.err_voting", (OfflinePlayer) sender)));
                 return false;
             }
-            if (plugin.getConfigManager().getString("timevote.worldname." + player.getWorld().getName(), "", true).isEmpty()){
-                player.sendMessage(plugin.getConfigManager().getMessage("timevote.err_world",player));
+            if (plugin.getConfigManager().getString("timevote.worldname." + player.getWorld().getName(), "", true).isEmpty()) {
+                player.sendMessage(plugin.getConfigManager().getMessage("timevote.err_world", player));
                 return false;
             }
 
-            if (args[0].equals("朝")){
-                starttimeVote(player, args[0]);
-                return true;
-            } else if (args[0].equals("昼")){
-                starttimeVote(player, args[0]);
-                return true;
-            } else if (args[0].equals("夕方")){
-                starttimeVote(player, args[0]);
-                return true;
-            } else if (args[0].equals("夜")) {
+            if (args[0].equals("朝") || args[0].equals("昼") || args[0].equals("夕方") || args[0].equals("夜")) {
                 starttimeVote(player, args[0]);
                 return true;
             }
-            player.sendMessage(plugin.getConfigManager().getMessage("timevote.err_unknown_time",(OfflinePlayer) sender));
+            player.sendMessage(plugin.getConfigManager().getMessage("timevote.err_unknown_time", (OfflinePlayer) sender));
             return false;
         }
-        if (command.getName().equalsIgnoreCase("tvaccept")){
-            if (!isVoting){
-                player.sendMessage(plugin.getConfigManager().getMessage("timevote.err_notvoting",player));
+        if (command.getName().equalsIgnoreCase("tvaccept")) {
+            VoteSession session = activeVotes.get(worldId);
+            if (session == null) {
+                player.sendMessage(plugin.getConfigManager().getMessage("timevote.err_notvoting", player));
                 return false;
             }
-            if (!player.getWorld().equals(votingWorld)) {
-                player.sendMessage(plugin.getConfigManager().getMessage("timevote.world_disabled", player));
+            if (session.votedPlayers.contains(player)) {
+                player.sendMessage(plugin.getConfigManager().getMessage("timevote.err_voted", player));
                 return false;
             }
-            if (votedPlayers.contains(player)){
-                player.sendMessage(plugin.getConfigManager().getMessage("timevote.err_voted",player));
-                return false;
-            }
-            votedPlayers.add(player);
-            voteAccepts++;
-            player.sendMessage(plugin.getConfigManager().getMessage("timevote.vote_accept",player));
+            session.votedPlayers.add(player);
+            session.voteAccepts++;
+            player.sendMessage(plugin.getConfigManager().getMessage("timevote.vote_accept", player));
         }
-        if (command.getName().equalsIgnoreCase("tvdeny")){
-            if (!isVoting){
-                player.sendMessage(plugin.getConfigManager().getMessage("timevote.err_notvoting",player));
+        if (command.getName().equalsIgnoreCase("tvdeny")) {
+            VoteSession session = activeVotes.get(worldId);
+            if (session == null) {
+                player.sendMessage(plugin.getConfigManager().getMessage("timevote.err_notvoting", player));
                 return false;
             }
-            if (!player.getWorld().equals(votingWorld)) {
-                player.sendMessage(plugin.getConfigManager().getMessage("timevote.world_disabled", player));
+            if (session.votedPlayers.contains(player)) {
+                player.sendMessage(plugin.getConfigManager().getMessage("timevote.err_voted", player));
                 return false;
             }
-            if (votedPlayers.contains(player)){
-                player.sendMessage(plugin.getConfigManager().getMessage("timevote.err_voted",player));
-                return false;
-            }
-            votedPlayers.add(player);
-            voteDenys++;
-            player.sendMessage(plugin.getConfigManager().getMessage("timevote.vote_deny",player));
+            session.votedPlayers.add(player);
+            session.voteDenys++;
+            player.sendMessage(plugin.getConfigManager().getMessage("timevote.vote_deny", player));
         }
         return false;
     }
 
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String @NotNull [] args) {
-        if (command.getName().equalsIgnoreCase("timevote")){
+        if (command.getName().equalsIgnoreCase("timevote")) {
             List<String> completes = new ArrayList<>();
             completes.add("朝");
             completes.add("昼");

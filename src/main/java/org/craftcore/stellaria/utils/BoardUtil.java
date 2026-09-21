@@ -44,4 +44,16 @@ public final class BoardUtil {
     public static void forgetPlayer(UUID uuid) {
         STELLARIA_BOARDS.remove(uuid);
     }
+
+    /**
+     * {@code player}が現在使っているScoreboardが、StellariaCoreがこの{@link #ensurePersonalBoard}で
+     * 割り当てたもの（＝所有しているボード）かどうかを判定する。他プラグインが独自Scoreboardを
+     * viewerへセットしているタイミングでは{@code false}になるので、team unregister等の直接操作を
+     * 呼び出し側でスキップするために使う。
+     */
+    public static boolean isOwnedBoard(Player player) {
+        Scoreboard current = player.getScoreboard();
+        Scoreboard owned = STELLARIA_BOARDS.get(player.getUniqueId());
+        return owned != null && current == owned;
+    }
 }

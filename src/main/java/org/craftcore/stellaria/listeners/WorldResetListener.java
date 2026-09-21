@@ -4,6 +4,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.FormatUtil;
@@ -55,6 +56,11 @@ public class WorldResetListener implements Listener {
             message = FormatUtil.replace(message, "%next_reset%", plugin.getWorldResetManager().formattedNextResetTime());
             player.sendMessage(message);
         }
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        PENDING_CONFIRM.remove(event.getPlayer().getUniqueId());
     }
 
     @EventHandler

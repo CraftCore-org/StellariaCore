@@ -140,14 +140,14 @@ public class LandBorderParticleManager {
     }
 
     private void persist(UUID uuid, Mode mode, int radius) {
-        DatabaseManager.executeAsync(
+        DatabaseManager.execute(
                 "INSERT OR REPLACE INTO land_border_displays (uuid, mode, radius) VALUES (?, ?, ?)",
                 uuid.toString(), mode.name(), radius
         );
     }
 
     private void forget(UUID uuid) {
-        DatabaseManager.executeAsync(
+        DatabaseManager.execute(
                 "DELETE FROM land_border_displays WHERE uuid = ?",
                 uuid.toString()
         );

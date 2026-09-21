@@ -84,6 +84,9 @@ public class NametagManager {
 
     private void removeRankTeams() {
         for (Player viewer : Bukkit.getOnlinePlayers()) {
+            // 他プラグインが独自Scoreboardをviewerへセットしている間は、そのBoardのteamを
+            // 直接触らない（StellariaCoreが所有しているBoardの時だけcleanupする）。
+            if (!BoardUtil.isOwnedBoard(viewer)) continue;
             Scoreboard board = viewer.getScoreboard();
             for (Team team : board.getTeams()) {
                 if (team.getName().startsWith(TEAM_PREFIX)) {

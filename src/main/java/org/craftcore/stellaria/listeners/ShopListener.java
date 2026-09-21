@@ -27,7 +27,7 @@ public final class ShopListener implements Listener {
 
     private enum Input {PRICE, FUNDS_DEPOSIT, FUNDS_WITHDRAW}
 
-    private record Pending(Input input, ShopManager.Shop shop, long expiresAt) {
+    private record Pending(Input input, ContainerLock.BlockKey shopKey, long expiresAt) {
     }
 
     private final StellariaCore plugin;
@@ -76,7 +76,7 @@ public final class ShopListener implements Listener {
     }
 
     public void requestShopPrice(Player p, ShopManager.Shop shop) {
-        Pending state = new Pending(Input.PRICE, shop, expiresAt());
+        Pending state = new Pending(Input.PRICE, shop.key(), expiresAt());
         pending.put(p.getUniqueId(), state);
         schedulePendingTimeout(p, state);
         p.closeInventory();
@@ -234,7 +234,13 @@ public final class ShopListener implements Listener {
         }
         pending.remove(p.getUniqueId());
         if (s.input() == Input.PRICE) {
-            if (s.shop() != null) {
+            if (s.shopKey() != null) {
+                // チャット入力待ちの間に他プレイヤーが取引していても、価格変更は常に最新のShopを基準に適用する。
+                ShopManager.Shop latest = plugin.getShopManager().find(s.shopKey());
+                if (latest == null) {
+                    msg(p, "shop.settings_failed");
+                    return;
+                }
                 int maxPrice = plugin.getConfigManager().getInt("shop.max-price", 10000000);
 
                 if (n > maxPrice) {
@@ -247,7 +253,7 @@ public final class ShopListener implements Listener {
                     );
                     return;
                 }
-                if (plugin.getShopManager().updateSettings(s.shop(), s.shop().mode(), n))
+                if (plugin.getShopManager().updateSettings(latest, latest.mode(), n))
                     msg(p, "shop.settings_updated");
                 else msg(p, "shop.settings_failed");
                 return;
@@ -259,13 +265,21 @@ public final class ShopListener implements Listener {
             }
             return;
         }
+        // 資金の入出金は必ず最新のShopを取り直してから増減させる。
+        // pendingに古いShopのfunds/stockを保存していると、入力待ちの間に別プレイヤーが
+        // 取引した分がここで巻き戻ってしまう(資金の増殖/消失バグの原因だった)。
+        ShopManager.Shop latest = plugin.getShopManager().find(s.shopKey());
+        if (latest == null) {
+            msg(p, "shop.settings_failed");
+            return;
+        }
         if (s.input() == Input.FUNDS_DEPOSIT) {
             if (!plugin.getEconomyManager().withdrawPlayer(p, n).transactionSuccess()) {
                 msg(p, "shop.insufficient_funds");
                 return;
             }
 
-            if (!plugin.getShopManager().addFunds(s.shop(), n)) {
+            if (!plugin.getShopManager().addFunds(latest, n)) {
                 // ショップ資金の更新に失敗したので返金
                 plugin.getEconomyManager().depositPlayer(p, n);
 
@@ -282,21 +296,19 @@ public final class ShopListener implements Listener {
 
             return;
         }
-        if (n > s.shop().funds()) {
+        if (n > latest.funds()) {
             msg(p, "shop.insufficient_pool");
             return;
         }
-        if (!plugin.getShopManager().addFunds(s.shop(), -n)) {
+        if (!plugin.getShopManager().addFunds(latest, -n)) {
             msg(p, "shop.settings_failed");
             return;
         }
 
         if (!plugin.getEconomyManager().depositPlayer(p, n).transactionSuccess()) {
             // プレイヤーへの入金に失敗したのでショップへ戻す
-            plugin.getShopManager().addFunds(
-                    plugin.getShopManager().find(s.shop().key()),
-                    n
-            );
+            ShopManager.Shop afterWithdraw = plugin.getShopManager().find(s.shopKey());
+            if (afterWithdraw != null) plugin.getShopManager().addFunds(afterWithdraw, n);
 
             msg(p, "shop.settings_failed");
             return;
@@ -311,7 +323,7 @@ public final class ShopListener implements Listener {
     }
 
     public void requestFunds(Player p, ShopManager.Shop s, boolean deposit) {
-        Pending state = new Pending(deposit ? Input.FUNDS_DEPOSIT : Input.FUNDS_WITHDRAW, s, expiresAt());
+        Pending state = new Pending(deposit ? Input.FUNDS_DEPOSIT : Input.FUNDS_WITHDRAW, s.key(), expiresAt());
         pending.put(p.getUniqueId(), state);
         schedulePendingTimeout(p, state);
         p.closeInventory();
@@ -356,6 +368,12 @@ public final class ShopListener implements Listener {
         p.getScheduler().runDelayed(plugin, t -> {
             if (awaitingItem.remove(p.getUniqueId(), expiry)) msg(p, "shop.input_timeout");
         }, null, Math.max(1, plugin.getConfigManager().getInt("shop.input-timeout-seconds", 60) * 20L));
+    }
+
+    @EventHandler
+    public void join(PlayerJoinEvent e) {
+        // オフライン中に削除されたショップの残り在庫を、ログイン時にまとめて渡す。
+        plugin.getShopManager().deliverPendingReturns(e.getPlayer());
     }
 
     @EventHandler
@@ -419,7 +437,14 @@ public final class ShopListener implements Listener {
 
         plugin.getServer()
                 .getGlobalRegionScheduler()
-                .run(plugin, task -> plugin.getShopManager().remove(shop));
+                .run(plugin, task -> {
+                    if (!plugin.getShopManager().remove(shop)) {
+                        // DB削除に失敗すると幽霊ショップ(DB/Display/Lockが残存)になるため、
+                        // チェスト本体はすでに壊れている旨と合わせてログへ残す。
+                        plugin.getLogger().warning("ショップ(id=" + shop.id() + ")のDB削除に失敗しました。チェストは破壊済みのため、幽霊ショップが残っている可能性があります。");
+                        msg(e.getPlayer(), "shop.remove_failed");
+                    }
+                });
     }
 
     private void msg(Player p, String k, String... r) {

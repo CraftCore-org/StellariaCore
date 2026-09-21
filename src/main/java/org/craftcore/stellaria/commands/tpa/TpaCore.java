@@ -107,6 +107,33 @@ public class TpaCore implements CommandExecutor, Listener, TabCompleter {
     }
 
     /**
+     * {@code tpa.request-expire-seconds}（既定60秒）が経過しても相手が応答しなかった未処理のリクエストを
+     * 自動で取り下げる。既にaccept/deny/退出等で処理済みなら{@code requesters.remove(senderId)}が失敗して
+     * 何もしない（二重処理防止）ので、キャンセル漏れを気にせずfire-and-forgetで良い。
+     */
+    private void scheduleRequestExpiry(Map<UUID, List<UUID>> requestMap, Map<UUID, UUID> pendingSenderMap,
+                                        UUID senderId, UUID targetId,
+                                        String expiredSenderKey, String expiredReceiverKey) {
+        int expireSeconds = plugin.getConfigManager().getInt("tpa.request-expire-seconds", 60);
+        if (expireSeconds <= 0) return;
+        Bukkit.getGlobalRegionScheduler().runDelayed(plugin, scheduledTask -> {
+            List<UUID> requesters = requestMap.get(targetId);
+            if (requesters == null || !requesters.remove(senderId)) return;
+            pendingSenderMap.remove(senderId);
+            Player senderPlayer = Bukkit.getPlayer(senderId);
+            Player targetPlayer = Bukkit.getPlayer(targetId);
+            if (senderPlayer != null && targetPlayer != null) {
+                senderPlayer.sendMessage(FormatUtil.replace(
+                        plugin.getConfigManager().getMessage(expiredSenderKey, senderPlayer),
+                        "%player%", targetPlayer.getName()));
+                targetPlayer.sendMessage(FormatUtil.replace(
+                        plugin.getConfigManager().getMessage(expiredReceiverKey, targetPlayer),
+                        "%player%", senderPlayer.getName()));
+            }
+        }, expireSeconds * 20L);
+    }
+
+    /**
      * ダメージを受けたら詠唱中のテレポートをキャンセルする。
      */
     @EventHandler
@@ -282,6 +309,8 @@ public class TpaCore implements CommandExecutor, Listener, TabCompleter {
                 }
                 tpRequest.computeIfAbsent(player.getUniqueId(), k -> new ArrayList<>()).add(((Player) sender).getUniqueId());
                 tpaPendingSender.put(((Player) sender).getUniqueId(), player.getUniqueId());
+                scheduleRequestExpiry(tpRequest, tpaPendingSender, ((Player) sender).getUniqueId(), player.getUniqueId(),
+                        "tpa.tpa_expired_sender", "tpa.tpa_expired_receiver");
                 player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_FLUTE,1,0);
 
                 String tpa_accept = plugin.getConfigManager().getMessage("tpa.tpa_accept", (OfflinePlayer) sender);
@@ -372,6 +401,8 @@ public class TpaCore implements CommandExecutor, Listener, TabCompleter {
                 }
                 tpHere.computeIfAbsent(player.getUniqueId(), k -> new ArrayList<>()).add(((Player) sender).getUniqueId());
                 tpHerePendingSender.put(((Player) sender).getUniqueId(), player.getUniqueId());
+                scheduleRequestExpiry(tpHere, tpHerePendingSender, ((Player) sender).getUniqueId(), player.getUniqueId(),
+                        "tpa.tphere_expired_sender", "tpa.tphere_expired_receiver");
                 player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_FLUTE,1,0);
                 String tphere_accept = plugin.getConfigManager().getMessage("tpa.tpa_accept", (OfflinePlayer) sender);
                 String tphere_deny = plugin.getConfigManager().getMessage("tpa.tpa_deny", (OfflinePlayer) sender);

@@ -101,8 +101,9 @@ public class AdminShopGui extends Gui {
             Object slotValue = itemConfig.get("slot");
             Material material = materialValue instanceof String materialName ? Material.matchMaterial(materialName) : null;
 
-            if (material == null || !(priceValue instanceof Number number) || number.intValue() < 0) {
-                plugin.getLogger().warning("adminshop.items に無効な商品設定があります: " + itemConfig);
+            if (material == null || !(priceValue instanceof Number number) || number.doubleValue() < 0
+                    || number.doubleValue() != Math.rint(number.doubleValue())) {
+                plugin.getLogger().warning("adminshop.items に無効な商品設定があります(価格は0以上の整数である必要があります): " + itemConfig);
                 continue;
             }
 

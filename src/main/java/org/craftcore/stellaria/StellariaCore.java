@@ -243,6 +243,9 @@ public class StellariaCore extends JavaPlugin {
             "item_data TEXT NOT NULL", "price REAL NOT NULL", "stock INTEGER NOT NULL DEFAULT 0",
             "funds REAL NOT NULL DEFAULT 0", "display_item_uuid TEXT", "display_text_uuid TEXT", "created_at INTEGER NOT NULL",
             "UNIQUE (world, x, y, z)");
+        DatabaseManager.createTableIfNotExists("shop_pending_returns",
+            "id INTEGER PRIMARY KEY AUTOINCREMENT", "owner_uuid TEXT NOT NULL", "item_data TEXT NOT NULL",
+            "amount INTEGER NOT NULL", "created_at INTEGER NOT NULL");
 
         this.afkManager = new AfkManager(this);
         this.playtimeManager = new PlaytimeManager(this);

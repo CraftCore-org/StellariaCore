@@ -78,7 +78,7 @@ public class FeaturesGui extends Gui {
                 confirmText,
                 cancelText,
                 () -> purchase(player, feature),
-                null
+                () -> this.open(player)
         ).open(player);
     }
 
@@ -113,6 +113,8 @@ public class FeaturesGui extends Gui {
                     .replace("%price%", priceText(feature)));
             case DATABASE_ERROR -> player.sendMessage(message("features.buy_failed", player));
         }
+        populate(player);
+        this.open(player);
     }
 
     private String priceText(Feature feature) {

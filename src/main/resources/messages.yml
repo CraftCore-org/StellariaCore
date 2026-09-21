@@ -5,7 +5,7 @@ join-first: "&%e✳ &%f%player%&%7 さんが初めてサーバーにログイン
 quit: "&%c< &%f%player%&%7 さんがログアウトしました。"
 
 gui:
-  back: "&%7← 戻る" # TODO: 未参照。ハードコードしてる
+  back: "&%7← 戻る"
   confirm: "&%a確認"
   cancel: "&%cキャンセル"
 
@@ -56,6 +56,8 @@ tpa:
   tpa_err_notreceived: "&%c&l| &%7指定されたプレイヤーから&%gテレポートリクエスト&%7は届いていません。"
   tpa_err_self: "&%c&l| &%7自分自身に&%gテレポートリクエスト&%7を送ることはできません。"
   tpa_err_pending: "&%c&l| &%7既に&%gテレポートリクエスト&%7を送信中です。相手の返答をお待ちください。"
+  tpa_expired_sender: "&%c&l| &%7%player% &%7への&%gテレポートリクエスト&%7が時間切れになりました。"
+  tpa_expired_receiver: "&%c&l| &%7%player% &%7からの&%gテレポートリクエスト&%7が時間切れになりました。"
 
   # 承認後のテレポート詠唱（tpa/tphere共通）
   tpa_warmup: "&%e&l| &%7%seconds%秒後にテレポートします。ダメージを受けるとキャンセルされます。"
@@ -77,6 +79,8 @@ tpa:
   tphere_err_notreceived: "&%c&l| &%7指定されたプレイヤーから&%d呼び出し&%7リクエストは届いていません。"
   tphere_err_self: "&%c&l| &%7自分自身に&%d呼び出し&%7リクエストを送ることはできません。"
   tphere_err_pending: "&%c&l| &%7既に&%d呼び出し&%7リクエストを送信中です。相手の返答をお待ちください。"
+  tphere_expired_sender: "&%c&l| &%7%player% &%7への&%d呼び出し&%7リクエストが時間切れになりました。"
+  tphere_expired_receiver: "&%c&l| &%7%player% &%7からの&%d呼び出し&%7リクエストが時間切れになりました。"
 
 afk:
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
@@ -282,6 +286,7 @@ world:
   no_permission: "&%cこのコマンドを実行する権限がありません。"
   must_be_player: "&%cこのコマンドはプレイヤーのみ実行できます。"
   not_found: "&%c指定されたワールドは見つかりません。"
+  teleport_failed: "&%c移動に失敗しました。もう一度お試しください。"
 
 lobby:
   must-be-player: "&%cこのコマンドはプレイヤーのみ実行できます。"
@@ -311,6 +316,7 @@ settings:
   toggle_hint: "&%7クリックで切り替え"
   balance_visible_enabled: "&%a所持金を他のプレイヤーに公開しました。"
   balance_hidden_enabled: "&%a所持金を他のプレイヤーに非公開にしました。"
+  database_error: "&%c設定を保存できませんでした。しばらくしてからもう一度お試しください。"
 
 ranking:
   no_permission: "&%cこのコマンドを実行する権限がありません。"
@@ -533,6 +539,7 @@ land:
   not_your_claim: "&%c自分の土地ではありません。"
   not_owner_trust: "&%c所有者だけが操作できます。"
   trust_self: "&%c自分自身を信頼リストに追加することはできません。"
+  player_not_found: "&%cそのプレイヤーは見つかりませんでした。"
   limit_reached: "&%c保護できる上限（&%e%max%&%cチャンク）に達しています。"
   insufficient_funds: "&%c所持金が足りません。（必要: &%e%cost%&%c）"
   database_error: "&%c設定を保存できませんでした。しばらくしてからもう一度お試しください。"
@@ -820,3 +827,5 @@ shop:
   high_price: "&%c価格が高すぎます。アイテムの価格は&%e%price%&%c円以下である必要があります。"
   cancel: "&%c操作がキャンセルされました。"
   break_not_owner: "&%c他のプレイヤーのショップチェストは直接破壊できません。"
+  info_changed: "&%cショップ情報が変更されました。開き直してください。"
+  remove_failed: "&%cショップの削除に失敗しました。もう一度お試しください。"

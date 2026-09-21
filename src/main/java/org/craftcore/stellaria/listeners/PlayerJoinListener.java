@@ -60,6 +60,9 @@ public class PlayerJoinListener implements Listener {
         // /mineのトグルON/OFF状態はDB永続化されているため、再ログイン後に復元する。
         plugin.getMineManager().loadEnabled(player);
 
+        // オフライン中にショップが削除された場合の在庫返却キューを、オーナーの次回ログイン時に払い出す。
+        plugin.getShopManager().deliverPendingReturns(player);
+
         // 投票報酬によりログイン前からレコードがある場合でも、初回キットは配布する。
         if (!player.hasPlayedBefore()) {
             sendWelcomeMessage(player);
@@ -98,11 +101,27 @@ public class PlayerJoinListener implements Listener {
                     amount = Integer.parseInt(parts[1].trim());
                 } catch (NumberFormatException e) {
                     plugin.getLogger().warning("first-join-kit.items の \"" + entry + "\" の個数指定が不正なため、1個として扱います。");
+                    amount = 1;
                 }
             }
+            if (amount <= 0) {
+                plugin.getLogger().warning("first-join-kit.items の \"" + entry + "\" の個数が0以下のため、スキップします。");
+                continue;
+            }
+            final int maxTotalAmount = 6400;
+            if (amount > maxTotalAmount) {
+                plugin.getLogger().warning("first-join-kit.items の \"" + entry + "\" の個数が大きすぎるため、" + maxTotalAmount + "個に制限します。");
+                amount = maxTotalAmount;
+            }
 
-            Map<Integer, ItemStack> leftover = player.getInventory().addItem(new ItemStack(material, amount));
-            leftover.values().forEach(item -> player.getWorld().dropItemNaturally(player.getLocation(), item));
+            int stackSize = material.getMaxStackSize();
+            int remaining = amount;
+            while (remaining > 0) {
+                int chunk = Math.min(remaining, stackSize);
+                Map<Integer, ItemStack> leftover = player.getInventory().addItem(new ItemStack(material, chunk));
+                leftover.values().forEach(item -> player.getWorld().dropItemNaturally(player.getLocation(), item));
+                remaining -= chunk;
+            }
         }
     }
 

@@ -35,7 +35,7 @@ public class PlaytimeManager {
         UUID uuid = player.getUniqueId();
         sessionStart.put(uuid, System.currentTimeMillis());
 
-        DatabaseManager.executeAsync(
+        DatabaseManager.execute(
             "INSERT OR IGNORE INTO player_stats (uuid, last_logout, playtime_seconds) VALUES (?, 0, 0)",
             uuid.toString()
         );

@@ -277,9 +277,10 @@ public class EconomyManager extends AbstractEconomy {
         return hidden != null && hidden != 0;
     }
 
-    /** プレイヤー自身の所持金公開設定を非同期で更新する。 */
-    public void setHideBalance(Player player, boolean hidden) {
-        DatabaseManager.updateAsync("players", Map.of("hide_balance", hidden ? 1 : 0), "uuid = ?", player.getUniqueId().toString());
+    /** プレイヤー自身の所持金公開設定を更新する。連打時の順序逆転を避けるため同期で書き込み、成否を返す。 */
+    public boolean setHideBalance(Player player, boolean hidden) {
+        int affected = DatabaseManager.update("players", Map.of("hide_balance", hidden ? 1 : 0), "uuid = ?", player.getUniqueId().toString());
+        return affected > 0;
     }
 
     /**

@@ -45,7 +45,11 @@ public class WorldCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        player.teleportAsync(world.getSpawnLocation());
+        player.teleportAsync(world.getSpawnLocation()).thenAccept(success -> {
+            if (!success) {
+                player.sendMessage(plugin.getConfigManager().getMessage("world.teleport_failed", player));
+            }
+        });
         return true;
     }
 

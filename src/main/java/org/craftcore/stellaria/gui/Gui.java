@@ -1,7 +1,6 @@
 package org.craftcore.stellaria.gui;
 
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -12,6 +11,9 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.plugin.java.JavaPlugin;
+import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.utils.ColorUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -51,10 +53,24 @@ public abstract class Gui implements InventoryHolder {
         if (parent != null) {
             ItemStack item = new ItemStack(Material.ARROW);
             ItemMeta meta = item.getItemMeta();
-            meta.displayName(Component.text("← 戻る", NamedTextColor.GRAY).decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false));
+            meta.displayName(backButtonLabel().decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false));
             item.setItemMeta(meta);
             inventory.setItem(backButtonSlot, item);
         }
+    }
+
+    /** messages.yml の {@code gui.back} からラベルを取得する。ConfigManager未初期化時はハードコード文言にfallbackする。 */
+    private static Component backButtonLabel() {
+        try {
+            StellariaCore plugin = JavaPlugin.getPlugin(StellariaCore.class);
+            String raw = plugin.getConfigManager().getMessage("gui.back", null);
+            if (raw != null && !raw.isBlank()) {
+                return ColorUtil.component(raw);
+            }
+        } catch (IllegalStateException | IllegalArgumentException ignored) {
+            // プラグイン未登録（テスト環境等）はハードコードにfallback
+        }
+        return Component.text("← 戻る", net.kyori.adventure.text.format.NamedTextColor.GRAY);
     }
 
     @Override
