@@ -270,9 +270,9 @@ chat:
     range-1: 8   # ! 1個（1段階目）の範囲（ブロック数）
     range-2: 16  # ! 2個（2段階目）の範囲（ブロック数）
     range-3: 32  # ! 3個以上（3段階目）の範囲（ブロック数）
-    format-1: "&#F52765&l| &r&%f{placeholder}{sender}&#F52765: &%f{message}"
-    format-2: "&#9F27F5&l| &r&%f{placeholder}{sender}&#9F27F5: &%f{message}"
-    format-3: "&#413BF5&l| &r&%f{placeholder}{sender}&#413BF5: &%f{message}"
+    format-1: "&%f{placeholder}{sender}&#F52765: &%f{message}"
+    format-2: "&%f{placeholder}{sender}&#9F27F5: &%f{message}"
+    format-3: "&%f{placeholder}{sender}&#413BF5: &%f{message}"
 
 message:
   color-codes:

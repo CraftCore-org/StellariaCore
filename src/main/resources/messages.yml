@@ -197,9 +197,12 @@ chat:
     rank_line: "&%7ランク: %rank%" # %rank% はランク色+表示名に置き換わる
   near:
     hint: "&%7先頭に&%f!&%7を付けると近距離チャットで送信されます" # 通常チャットのホバーに表示する案内
-    viewers_line: "&%7見た人: &%f%viewers%" # %viewers% は「A, B, C」のようなカンマ区切り名一覧
-    viewers_none: "&%7見た人: &%8自分だけ"
-    viewers_overflow: "&%7 …他%count%人" # viewers_line の末尾に追加される
+    prefix-1: "&#F52765&l| &r" # 近距離チャット1段階目の左側prefix（ホバーで見た人一覧を表示）
+    prefix-2: "&#9F27F5&l| &r" # 2段階目
+    prefix-3: "&#413BF5&l| &r" # 3段階目
+    viewers_header: "&%7見た人:"
+    viewers_none: "&%8自分だけ"
+    viewers_overflow: "&%7…他%count%人" # 一覧の最後の行に追加される
 
 mention:
   click_hint: "&%7クリックで%player%にメッセージを送信"
@@ -548,7 +551,6 @@ land:
   limit_reached: "&%c保護できる上限（&%e%max%&%cチャンク）に達しています。"
   insufficient_funds: "&%c所持金が足りません。（必要: &%e%cost%&%c）"
   database_error: "&%c設定を保存できませんでした。しばらくしてからもう一度お試しください。"
-  world_disabled: "&%cこのワールドでは土地保護を利用できません。"
   info_owner: "&%b所有者&%7: &%f%owner% &%7/ PvP&%7: %pvp_state% &%7/ 爆発&%7: %explosions_state% &%7/ ドア&%7: %doors_state% &%7/ チェスト&%7: %chests_state%"
   info_unclaimed: "&%7このチャンクは誰にも保護されていません。"
   pvp_state_on: "&%a有効"

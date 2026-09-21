@@ -92,21 +92,31 @@ public class ChatListener implements Listener {
         Component message = mentionService.highlight(plainMessage, sender, colorCodesPermitted(config, sender));
         boolean clickToMessage = config.getBoolean("chat.click-to-message", true);
         RankManager.RankInfo rank = plugin.getRankManager().getRank(sender);
-        Component rankPrefix = ColorUtil.component(rank.color() + config.getRawMessage("chat.sender_prefix"));
-        Component nearViewersTooltip = nearTier > 0 ? buildNearViewersTooltip(config, sender, nearbyPlayers) : null;
+
+        // 近距離チャットではランク色の chat.sender_prefix は使わず、段階ごとの chat.near.prefix-N に差し替える。
+        // 見た人一覧のホバーをここ（名前とは別のComponent）に付けるため。
+        Component prefixComponent = nearTier > 0
+                ? ColorUtil.component(config.getRawMessage("chat.near.prefix-" + nearTier))
+                : ColorUtil.component(rank.color() + config.getRawMessage("chat.sender_prefix"));
+        if (nearTier > 0) {
+            Component nearViewersTooltip = buildNearViewersTooltip(config, sender, nearbyPlayers);
+            prefixComponent = prefixComponent.hoverEvent(HoverEvent.showText(nearViewersTooltip));
+        }
+        Component finalPrefixComponent = prefixComponent;
+        boolean isNearChat = nearTier > 0;
 
         event.renderer((source, sourceDisplayName, ignoredMessage, audience) -> {
             Player viewer = audience instanceof Player player ? player : null;
             Component placeholder = ColorUtil.component(plugin.getPlaceholderManager()
                     .resolve(placeholderTemplate, sender, viewer));
-            Component tooltip = nearViewersTooltip != null
-                    ? nearViewersTooltip
-                    : buildTooltip(config, sender, viewer, clickToMessage, rank);
-            Component nameComponent = rankPrefix.append(
-                    sourceDisplayName.decoration(TextDecoration.BOLD, false).color(NamedTextColor.WHITE));
-            nameComponent = tooltip != null
-                    ? nameComponent.hoverEvent(HoverEvent.showText(tooltip))
-                    : nameComponent;
+            // ユーザー名側は近距離チャットかどうかに関わらず、常に通常のtooltip（ランク/所持金等）を出す。
+            // 近距離チャットのメッセージ自体では「!を付けると近距離チャットになる」案内は不要なので省く。
+            Component nameTooltip = buildTooltip(config, sender, viewer, clickToMessage, rank, !isNearChat);
+            Component nameOnly = sourceDisplayName.decoration(TextDecoration.BOLD, false).color(NamedTextColor.WHITE);
+            nameOnly = nameTooltip != null
+                    ? nameOnly.hoverEvent(HoverEvent.showText(nameTooltip))
+                    : nameOnly;
+            Component nameComponent = finalPrefixComponent.append(nameOnly);
             if (clickToMessage) {
                 nameComponent = nameComponent.clickEvent(ClickEvent.suggestCommand("/msg " + sender.getName() + " "));
             }
@@ -138,12 +148,12 @@ public class ChatListener implements Listener {
     }
 
     private String defaultNearFormat(int tier) {
-        String tagColor = switch (tier) {
+        String messageColor = switch (tier) {
             case 1 -> "&%a";
             case 2 -> "&%e";
             default -> "&%6";
         };
-        return tagColor + "[近距離] {placeholder}{sender}" + tagColor + ": &%f{message}";
+        return "{placeholder}{sender}" + messageColor + ": &%f{message}";
     }
 
     /** 近距離チャットの内容と実際の受信者を、監査用にプラグインロガー（サーバーログ）へ残す。 */
@@ -171,34 +181,44 @@ public class ChatListener implements Listener {
     }
 
     /**
-     * 近距離チャットの送信者名にホバーした時に出す「見た人一覧」ツールチップ。
+     * 近距離チャットの左側prefixにホバーした時に出す「見た人一覧」ツールチップ（改行区切り）。
      * Vanish中のプレイヤーは一覧から除外する（メッセージ自体は届くが、見た人には表示しない）。
      */
     private Component buildNearViewersTooltip(ConfigManager config, Player sender, List<Player> nearbyPlayers) {
-        List<Player> visible = nearbyPlayers.stream()
+        List<Player> others = nearbyPlayers.stream()
+                .filter(player -> !player.equals(sender))
                 .filter(player -> !plugin.getVanishManager().isVanished(player.getUniqueId()))
                 .sorted(Comparator.comparing(Player::getName))
                 .toList();
 
-        if (visible.size() <= 1) {
-            return ColorUtil.component(config.getMessage("chat.near.viewers_none", sender));
+        Component header = ColorUtil.component(config.getMessage("chat.near.viewers_header", sender));
+        if (others.isEmpty()) {
+            return header.append(Component.newline())
+                    .append(ColorUtil.component(config.getMessage("chat.near.viewers_none", sender)));
         }
 
         int maxShown = config.getInt("chat.near.max-viewers-shown", 7);
-        String joined = visible.stream().map(Player::getName).limit(maxShown).reduce((a, b) -> a + ", " + b).orElse("");
-        String line = config.getMessage("chat.near.viewers_line", sender).replace("%viewers%", joined);
-        if (visible.size() > maxShown) {
-            line += config.getMessage("chat.near.viewers_overflow", sender)
-                    .replace("%count%", String.valueOf(visible.size() - maxShown));
+        Component result = header;
+        for (Player player : others.stream().limit(maxShown).toList()) {
+            result = result.append(Component.newline()).append(ColorUtil.component("&%f" + player.getName()));
         }
-        return ColorUtil.component(line);
+        if (others.size() > maxShown) {
+            result = result.append(Component.newline())
+                    .append(ColorUtil.component(config.getMessage("chat.near.viewers_overflow", sender)
+                            .replace("%count%", String.valueOf(others.size() - maxShown))));
+        }
+        return result;
     }
 
     /**
      * 送信者名にホバーした時に出すツールチップ（{@code chat.tooltip.*} + クリック案内）。
      * ツールチップもクリック案内も無ければ null。
+     *
+     * @param includeNearHint 「!を付けると近距離チャットになる」案内を含めるか
+     *                        （近距離チャット自身のメッセージでは不要なので false で呼ぶ）
      */
-    private Component buildTooltip(ConfigManager config, Player sender, Player viewer, boolean clickToMessage, RankManager.RankInfo rank) {
+    private Component buildTooltip(ConfigManager config, Player sender, Player viewer, boolean clickToMessage,
+                                    RankManager.RankInfo rank, boolean includeNearHint) {
         Component rankLine = rank.displayName().isEmpty()
                 ? null
                 : ColorUtil.component(config.getRawMessage("chat.tooltip.rank_line")
@@ -217,7 +237,7 @@ public class ChatListener implements Listener {
             combined = combined != null ? combined.append(Component.newline()).append(clickHint) : clickHint;
         }
 
-        if (config.getBoolean("chat.near.enabled", true)) {
+        if (includeNearHint && config.getBoolean("chat.near.enabled", true)) {
             Component nearHint = ColorUtil.component(config.getMessage("chat.near.hint", sender));
             combined = combined != null ? combined.append(Component.newline()).append(nearHint) : nearHint;
         }
