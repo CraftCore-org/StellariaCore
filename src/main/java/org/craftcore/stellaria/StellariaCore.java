@@ -368,6 +368,9 @@ public class StellariaCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new KikoriListener(this), this);
         getServer().getPluginManager().registerEvents(new MineListener(this), this);
         getServer().getPluginManager().registerEvents(new RailListener(this), this);
+        // 調査用の一時登録。原因が特定でき次第、RailDebugPacketListenerごと削除する。
+        com.github.retrooper.packetevents.PacketEvents.getAPI().getEventManager()
+                .registerListener(new org.craftcore.stellaria.rail.RailDebugPacketListener());
         getServer().getPluginManager().registerEvents(
                 new FishingIncomeListener(this),
                 this
