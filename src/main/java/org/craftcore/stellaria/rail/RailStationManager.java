@@ -85,7 +85,10 @@ public class RailStationManager {
         if (station == null) {
             return false;
         }
-        DatabaseManager.execute("DELETE FROM rail_stations WHERE name = ?", station.name());
+        int affected = DatabaseManager.execute("DELETE FROM rail_stations WHERE name = ?", station.name());
+        if (affected != 1) {
+            return false;
+        }
         stations.remove(name.toLowerCase());
         return true;
     }
