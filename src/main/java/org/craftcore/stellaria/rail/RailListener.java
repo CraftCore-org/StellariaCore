@@ -3,10 +3,13 @@ package org.craftcore.stellaria.rail;
 import org.bukkit.entity.Minecart;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
 import org.bukkit.event.vehicle.VehicleEntityCollisionEvent;
 import org.bukkit.event.vehicle.VehicleMoveEvent;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.commands.RailCommand;
 
 /**
  * 高速鉄道セッションの毎tick更新とライフサイクル終了のきっかけとなるBukkitイベントを拾う。
@@ -40,6 +43,17 @@ public class RailListener implements Listener {
     public void onVehicleCollide(VehicleEntityCollisionEvent event) {
         if (event.getVehicle() instanceof Minecart cart && event.getEntity() instanceof Minecart) {
             plugin.getRailManager().endSession(cart, RailManager.EndReason.COLLISION);
+        }
+    }
+
+    /** /rail station add 実行後、右クリックでレールを選択して駅の位置を確定するためのフック。 */
+    @EventHandler(ignoreCancelled = true)
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK || event.getClickedBlock() == null) {
+            return;
+        }
+        if (RailCommand.handleStationRailClick(plugin, event.getPlayer(), event.getClickedBlock())) {
+            event.setCancelled(true);
         }
     }
 }

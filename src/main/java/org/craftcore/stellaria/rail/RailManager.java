@@ -18,6 +18,8 @@ import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.FormatUtil;
 import org.craftcore.stellaria.utils.WorldBlacklistUtil;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -33,16 +35,21 @@ public class RailManager {
 
     public enum EndReason { ARRIVED, OFF_RAIL, DESTROYED, WORLD_DISABLED, ERROR, COLLISION }
 
+    /** /rail depart のバリデーション用。実際の発車判定はstartSessionが（このメソッドと独立に）改めて行う。 */
+    public enum DepartureCheck { OK, ALREADY_RAIL_MODE, NOT_ON_RAIL, NO_ROUTE, WRONG_DIRECTION }
+
     private final StellariaCore plugin;
     private final RailConfig config;
     private final RailStationManager stationManager;
+    private final RailLineManager lineManager;
     private final NamespacedKey railModeKey;
     private final Map<UUID, RailSession> sessions = new ConcurrentHashMap<>();
 
-    public RailManager(StellariaCore plugin, RailConfig config, RailStationManager stationManager) {
+    public RailManager(StellariaCore plugin, RailConfig config, RailStationManager stationManager, RailLineManager lineManager) {
         this.plugin = plugin;
         this.config = config;
         this.stationManager = stationManager;
+        this.lineManager = lineManager;
         this.railModeKey = new NamespacedKey(plugin, "rail_mode");
     }
 
@@ -50,10 +57,52 @@ public class RailManager {
         return sessions.containsKey(minecartId);
     }
 
+    /** /rail depart から呼ぶ。理由を特定したエラーメッセージを出すための事前チェック。 */
+    public DepartureCheck checkDeparture(Minecart cart, RailStationManager.Station target) {
+        if (sessions.containsKey(cart.getUniqueId())) {
+            return DepartureCheck.ALREADY_RAIL_MODE;
+        }
+        Block block = cart.getLocation().getBlock();
+        Rail.Shape shape = RailSpeedController.shapeAt(block);
+        if (shape == null || RailSpeedController.isCurve(shape)) {
+            return DepartureCheck.NOT_ON_RAIL;
+        }
+        BlockFace direction = findDepartureDirection(block, shape, target);
+        if (direction == null) {
+            return DepartureCheck.NO_ROUTE;
+        }
+        if (!isDirectionAllowed(block, direction, target)) {
+            return DepartureCheck.WRONG_DIRECTION;
+        }
+        return DepartureCheck.OK;
+    }
+
+    /**
+     * cartの現在位置から実際にレールをたどって発車できる駅の一覧を返す（RailDepartGui専用）。
+     * 登録駅の数だけ経路探索を行うため、コマンドのタブ補完（毎キー入力で呼ばれる）では使わず、
+     * GUIを開く瞬間だけ呼ぶこと。カーブ上や未接続なら空リストを返す。
+     */
+    public List<RailStationManager.Station> findReachableStations(Minecart cart) {
+        Block block = cart.getLocation().getBlock();
+        Rail.Shape shape = RailSpeedController.shapeAt(block);
+        if (shape == null || RailSpeedController.isCurve(shape)) {
+            return List.of();
+        }
+        List<RailStationManager.Station> reachable = new ArrayList<>();
+        for (RailStationManager.Station station : stationManager.listAll()) {
+            BlockFace direction = findDepartureDirection(block, shape, station);
+            if (direction != null && isDirectionAllowed(block, direction, station)) {
+                reachable.add(station);
+            }
+        }
+        return reachable;
+    }
+
     /**
      * targetへ向けて高速モードを開始する。cartが現在乗っている直線レールから、targetまで実際に
      * たどり着ける方向（左右どちらか）を経路探索で決める。カーブ上からの発車、レールが無い、
-     * targetへの経路が見つからない場合はfalseを返す（呼び出し側がエラーメッセージを出す）。
+     * targetへの経路が見つからない、一方通行路線を逆走する場合はfalseを返す
+     * （呼び出し側がcheckDepartureで理由を特定してエラーメッセージを出す想定）。
      */
     public boolean startSession(Minecart cart, RailStationManager.Station target) {
         if (sessions.containsKey(cart.getUniqueId())) {
@@ -71,6 +120,9 @@ public class RailManager {
         }
         BlockFace direction = findDepartureDirection(block, shape, target);
         if (direction == null) {
+            return false;
+        }
+        if (!isDirectionAllowed(block, direction, target)) {
             return false;
         }
 
@@ -94,7 +146,19 @@ public class RailManager {
                 20L, 20L
         );
         session.setWatchdogTask(watchdogTask);
+        notifyStart(cart, target);
         return true;
+    }
+
+    /** 発車時、乗客のアクションバーに常設の「〇〇駅へ移動中」表示を出す（セッション終了時にnotifyEndでクリアされる）。 */
+    private void notifyStart(Minecart cart, RailStationManager.Station target) {
+        for (Entity passenger : cart.getPassengers()) {
+            if (passenger instanceof Player player) {
+                String message = FormatUtil.replace(
+                        plugin.getConfigManager().getMessage("rail.moving_to_actionbar", player), "%name%", target.name());
+                plugin.getActionBarManager().setChannel(player, "rail", FormatUtil.component(message));
+            }
+        }
     }
 
     public void endSession(Minecart cart, EndReason reason) {
@@ -129,6 +193,11 @@ public class RailManager {
             case COLLISION -> "rail.collision_cancelled";
             default -> null; // DESTROYED/WORLD_DISABLED/ERRORは無言で終了する
         };
+        for (Entity passenger : cart.getPassengers()) {
+            if (passenger instanceof Player player) {
+                plugin.getActionBarManager().clearChannel(player, "rail");
+            }
+        }
         if (key == null) {
             return;
         }
@@ -320,6 +389,62 @@ public class RailManager {
             scanDirection = nextDirection;
         }
         return false;
+    }
+
+    /**
+     * targetが一方通行路線に属する場合、chosenDirection側への発車が路線の正順序（駅の登録順）と
+     * 一致しているかを検証する。両方通行の路線、またはtargetがどの路線にも属していなければ常にtrue。
+     * 起点の背後（chosenDirectionの逆側）で最初に見つかる同路線の駅とtargetの順序を比較する
+     * （背後に同路線の駅が見つからなければ、起点は路線の端にいるとみなして許可する）。
+     */
+    private boolean isDirectionAllowed(Block originBlock, BlockFace chosenDirection, RailStationManager.Station target) {
+        RailLineManager.RailLine line = lineManager.findLineForStation(target.name());
+        if (line == null || !line.oneWay()) {
+            return true;
+        }
+        int targetSequence = line.sequenceOf(target.name());
+        double arrivalRadiusSq = config.getStationArrivalRadius() * config.getStationArrivalRadius();
+        RailStationManager.Station behindStation = findNearestLineStation(
+                originBlock, chosenDirection.getOppositeFace(), line, target.name(), arrivalRadiusSq);
+        if (behindStation == null) {
+            return true;
+        }
+        int behindSequence = line.sequenceOf(behindStation.name());
+        return behindSequence < targetSequence;
+    }
+
+    /** originBlockからdirection方向へレールをたどり、lineに属する駅（excludeStationNameを除く）のうち
+     *  最初に見つかったものを返す。config.getPathSearchMaxBlocks() を上限に打ち切る。 */
+    private RailStationManager.Station findNearestLineStation(
+            Block originBlock, BlockFace direction, RailLineManager.RailLine line, String excludeStationName, double arrivalRadiusSq) {
+        Block scanBlock = originBlock;
+        BlockFace scanDirection = direction;
+        int maxBlocks = config.getPathSearchMaxBlocks();
+        for (int i = 0; i < maxBlocks; i++) {
+            Rail.Shape shape = RailSpeedController.shapeAt(scanBlock);
+            if (shape == null) {
+                return null;
+            }
+            Location blockCenter = scanBlock.getLocation().add(0.5, 0.5, 0.5);
+            for (String stationName : line.stationNamesInOrder()) {
+                if (stationName.equalsIgnoreCase(excludeStationName)) {
+                    continue;
+                }
+                RailStationManager.Station station = stationManager.get(stationName);
+                Location stationLocation = station != null ? station.resolveLocation() : null;
+                if (stationLocation != null && stationLocation.getWorld().equals(blockCenter.getWorld())
+                        && stationLocation.distanceSquared(blockCenter) <= arrivalRadiusSq) {
+                    return station;
+                }
+            }
+            BlockFace nextDirection = RailSpeedController.nextDirection(shape, scanDirection);
+            if (nextDirection == null) {
+                return null;
+            }
+            scanBlock = scanBlock.getRelative(scanDirection);
+            scanDirection = nextDirection;
+        }
+        return null;
     }
 
     private void applyVelocity(Minecart cart, RailSession session, double speedBps) {

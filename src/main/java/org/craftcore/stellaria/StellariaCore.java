@@ -13,6 +13,7 @@ import org.craftcore.stellaria.commands.MineCommand;
 import org.craftcore.stellaria.commands.LandCommand;
 import org.craftcore.stellaria.commands.RailCommand;
 import org.craftcore.stellaria.rail.RailConfig;
+import org.craftcore.stellaria.rail.RailLineManager;
 import org.craftcore.stellaria.rail.RailListener;
 import org.craftcore.stellaria.rail.RailManager;
 import org.craftcore.stellaria.rail.RailStationManager;
@@ -95,6 +96,7 @@ public class StellariaCore extends JavaPlugin {
     private WorldResetManager worldResetManager;
     private RailConfig railConfig;
     private RailStationManager railStationManager;
+    private RailLineManager railLineManager;
     private RailManager railManager;
     private JapanTimeSyncManager japanTimeSyncManager;
     private ShopManager shopManager;
@@ -182,6 +184,17 @@ public class StellariaCore extends JavaPlugin {
             "x REAL NOT NULL", "y REAL NOT NULL", "z REAL NOT NULL",
             "direction TEXT NOT NULL",
             "created_at INTEGER NOT NULL"
+        );
+        DatabaseManager.createTableIfNotExists("rail_lines",
+            "name TEXT PRIMARY KEY",
+            "one_way INTEGER NOT NULL DEFAULT 0",
+            "created_at INTEGER NOT NULL"
+        );
+        DatabaseManager.createTableIfNotExists("rail_line_stations",
+            "line_name TEXT NOT NULL",
+            "station_name TEXT NOT NULL",
+            "sequence INTEGER NOT NULL",
+            "PRIMARY KEY (line_name, station_name)"
         );
 
         DatabaseManager.addColumnIfNotExists("players", "kikori_unlocked INTEGER NOT NULL DEFAULT 0");
@@ -276,7 +289,9 @@ public class StellariaCore extends JavaPlugin {
         this.railConfig = new RailConfig(this);
         this.railStationManager = new RailStationManager(this);
         this.railStationManager.loadAll();
-        this.railManager = new RailManager(this, railConfig, railStationManager);
+        this.railLineManager = new RailLineManager(this, railStationManager);
+        this.railLineManager.loadAll();
+        this.railManager = new RailManager(this, railConfig, railStationManager, railLineManager);
         this.mineManager = new MineManager(this);
         this.lobbyManager = new LobbyManager(this);
         this.features = List.of(new KikoriFeature(kikoriManager), new MineFeature(mineManager));
@@ -708,6 +723,10 @@ public class StellariaCore extends JavaPlugin {
 
     public RailStationManager getRailStationManager() {
         return this.railStationManager;
+    }
+
+    public RailLineManager getRailLineManager() {
+        return this.railLineManager;
     }
 
     public RailConfig getRailConfig() {
