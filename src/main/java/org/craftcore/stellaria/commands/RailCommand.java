@@ -151,9 +151,22 @@ public class RailCommand implements CommandExecutor, TabCompleter {
             return;
         }
         String name = args[2];
-        boolean removed = plugin.getRailStationManager().remove(name);
-        String key = removed ? "rail.station_removed" : "rail.station_not_found";
-        player.sendMessage(FormatUtil.replace(plugin.getConfigManager().getMessage(key, player), "%name%", name));
+        RailStationManager.RemoveResult result = plugin.getRailStationManager().remove(name);
+        switch (result) {
+            case SUCCESS -> player.sendMessage(FormatUtil.replace(
+                    plugin.getConfigManager().getMessage("rail.station_removed", player), "%name%", name));
+            case NOT_FOUND -> player.sendMessage(FormatUtil.replace(
+                    plugin.getConfigManager().getMessage("rail.station_not_found", player), "%name%", name));
+            case BELONGS_TO_LINE -> {
+                RailLineManager.RailLine line = plugin.getRailLineManager().findLineForStation(name);
+                String message = plugin.getConfigManager().getMessage("rail.station_remove_belongs_to_line", player);
+                message = FormatUtil.replace(message, "%name%", name);
+                message = FormatUtil.replace(message, "%line%", line != null ? line.name() : "?");
+                player.sendMessage(message);
+            }
+            case DATABASE_ERROR -> player.sendMessage(
+                    plugin.getConfigManager().getMessage("rail.database_error", player));
+        }
     }
 
     private void handleStationList(Player player) {

@@ -34,7 +34,7 @@ import java.util.logging.Level;
  */
 public class RailManager {
 
-    public enum EndReason { ARRIVED, OFF_RAIL, DESTROYED, WORLD_DISABLED, ERROR, COLLISION }
+    public enum EndReason { ARRIVED, OFF_RAIL, DESTROYED, WORLD_DISABLED, ERROR, COLLISION, DISMOUNTED }
 
     /** /rail depart のバリデーション用。実際の発車判定はstartSessionが（このメソッドと独立に）改めて行う。 */
     public enum DepartureCheck { OK, ALREADY_RAIL_MODE, NOT_ON_RAIL, NO_ROUTE, WRONG_DIRECTION }
@@ -78,25 +78,92 @@ public class RailManager {
         return DepartureCheck.OK;
     }
 
+    /** GUI表示用の1件。approxDistanceBlocksは経路探索で辿った実測ブロック数（直線距離ではない）。 */
+    public record ReachableStation(RailStationManager.Station station, BlockFace direction, int approxDistanceBlocks) {
+    }
+
     /**
      * cartの現在位置から実際にレールをたどって発車できる駅の一覧を返す（RailDepartGui専用）。
-     * 登録駅の数だけ経路探索を行うため、コマンドのタブ補完（毎キー入力で呼ばれる）では使わず、
+     * originBlockの2つの端点方向をそれぞれ1回だけ歩き、その1回の経路上で見つかった駅をまとめて
+     * 拾う（旧実装は「登録駅の数 × 経路探索」を毎回フルで行っていたため、駅・路線が増えるほど
+     * GUIを開くたびに重くなっていた）。コマンドのタブ補完（毎キー入力で呼ばれる）では使わず、
      * GUIを開く瞬間だけ呼ぶこと。カーブ上や未接続なら空リストを返す。
      */
-    public List<RailStationManager.Station> findReachableStations(Minecart cart) {
+    public List<ReachableStation> findReachableStations(Minecart cart) {
         Block block = cart.getLocation().getBlock();
         Rail.Shape shape = RailSpeedController.shapeAt(block);
         if (shape == null || RailSpeedController.isCurve(shape)) {
             return List.of();
         }
-        List<RailStationManager.Station> reachable = new ArrayList<>();
-        for (RailStationManager.Station station : stationManager.listAll()) {
-            BlockFace direction = findDepartureDirection(block, shape, station);
-            if (direction != null && isDirectionAllowed(block, direction, station)) {
-                reachable.add(station);
-            }
+        BlockFace[] endpoints = RailSpeedController.endpointsOf(shape);
+        if (endpoints == null) {
+            return List.of();
+        }
+        List<ReachableStation> reachable = new ArrayList<>();
+        for (BlockFace candidate : endpoints) {
+            walkForReachableStations(block, candidate, reachable);
         }
         return reachable;
+    }
+
+    /**
+     * originBlockからdirectionへレールを1回だけ歩き、到達できる駅（一方通行の逆走なし）を
+     * resultに積む。isDirectionAllowedと同じ「一方通行路線の駅の並び順が単調増加か」ロジックを
+     * 使うが、駅ごとに歩き直さず、この1回の経路上でまとめて判定する点が異なる。
+     */
+    private void walkForReachableStations(Block originBlock, BlockFace direction, List<ReachableStation> result) {
+        List<RailLineManager.RailLine> oneWayLines = lineManager.listAll().stream()
+                .filter(RailLineManager.RailLine::oneWay)
+                .toList();
+        double arrivalRadiusSq = config.getStationArrivalRadius() * config.getStationArrivalRadius();
+        Map<String, Integer> lastSequenceByLine = new HashMap<>();
+        if (!oneWayLines.isEmpty()) {
+            collectNearestSequencePerLine(originBlock, direction.getOppositeFace(), oneWayLines, arrivalRadiusSq, lastSequenceByLine);
+        }
+
+        Block scanBlock = originBlock;
+        BlockFace scanDirection = direction;
+        int maxBlocks = config.getPathSearchMaxBlocks();
+        for (int i = 0; i < maxBlocks; i++) {
+            Location blockCenter = scanBlock.getLocation().add(0.5, 0.5, 0.5);
+            for (RailLineManager.RailLine line : oneWayLines) {
+                RailStationManager.Station lineStation = stationOnLineAt(line, blockCenter, arrivalRadiusSq);
+                if (lineStation == null) {
+                    continue;
+                }
+                int sequence = line.sequenceOf(lineStation.name());
+                Integer previous = lastSequenceByLine.get(line.name());
+                if (previous != null && sequence < previous) {
+                    return; // ここから先は一方通行の逆走になるため、この方向の探索を打ち切る
+                }
+                lastSequenceByLine.put(line.name(), sequence);
+            }
+            for (RailStationManager.Station station : stationManager.listAll()) {
+                if (containsStation(result, station)) {
+                    continue;
+                }
+                Location stationLocation = station.resolveLocation();
+                if (stationLocation != null && stationLocation.getWorld().equals(blockCenter.getWorld())
+                        && stationLocation.distanceSquared(blockCenter) <= arrivalRadiusSq) {
+                    result.add(new ReachableStation(station, direction, i));
+                }
+            }
+            RailStep step = stepAlongRail(scanBlock, scanDirection);
+            if (step == null) {
+                return;
+            }
+            scanBlock = step.block();
+            scanDirection = step.direction();
+        }
+    }
+
+    private static boolean containsStation(List<ReachableStation> result, RailStationManager.Station station) {
+        for (ReachableStation entry : result) {
+            if (entry.station().name().equalsIgnoreCase(station.name())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -192,7 +259,7 @@ public class RailManager {
             case ARRIVED -> "rail.arrived";
             case OFF_RAIL -> "rail.off_rail_cancelled";
             case COLLISION -> "rail.collision_cancelled";
-            default -> null; // DESTROYED/WORLD_DISABLED/ERRORは無言で終了する
+            default -> null; // DESTROYED/WORLD_DISABLED/ERROR/DISMOUNTEDは無言で終了する
         };
         for (Entity passenger : cart.getPassengers()) {
             if (passenger instanceof Player player) {
@@ -234,6 +301,7 @@ public class RailManager {
         }
         session.markOnRailNow();
 
+        boolean directionChanged = false;
         if (session.hasEnteredBlock(currentBlock.getX(), currentBlock.getY(), currentBlock.getZ())) {
             BlockFace nextDirection = RailSpeedController.nextDirection(shape, session.direction());
             if (nextDirection == null) {
@@ -241,8 +309,17 @@ public class RailManager {
                 endSession(cart, EndReason.OFF_RAIL);
                 return;
             }
+            directionChanged = nextDirection != session.direction();
             session.setDirection(nextDirection);
             session.rememberBlock(currentBlock.getX(), currentBlock.getY(), currentBlock.getZ());
+        }
+
+        RailStationManager.Station target = stationManager.get(session.targetStationName());
+        if (target == null) {
+            // 走行中に管理者が目的駅を削除した場合。目的地判定が失われて走り続けてしまうため、
+            // 安全側に倒してここで解除する（無言。既にプレイヤーの操作で消えたものではないため）。
+            endSession(cart, EndReason.ERROR);
+            return;
         }
 
         double targetSpeed = computeTargetSpeed(currentBlock, shape, session);
@@ -250,8 +327,7 @@ public class RailManager {
                 session.currentSpeedBps(), targetSpeed, config.getAccelerationBps2(), config.getDecelerationBps2());
         session.setCurrentSpeedBps(newSpeed);
 
-        RailStationManager.Station target = stationManager.get(session.targetStationName());
-        Location targetLocation = target != null ? target.resolveLocation() : null;
+        Location targetLocation = target.resolveLocation();
         boolean atTarget = targetLocation != null
                 && targetLocation.getWorld().equals(cart.getWorld())
                 && targetLocation.distanceSquared(cart.getLocation()) <= config.getStationArrivalRadius() * config.getStationArrivalRadius();
@@ -264,7 +340,7 @@ public class RailManager {
         if (!sessions.containsKey(cart.getUniqueId())) {
             return; // applyVelocity内でNaN検知によりERROR終了した場合、破棄済みセッションでチャンク先読みを行わない
         }
-        updateChunkPreload(cart, session);
+        updateChunkPreload(cart, session, directionChanged);
     }
 
     /** 20tick(1秒)ごとにcart.getScheduler()から呼ばれる。VehicleMoveEventが発火しない（停止・詰まった）場合でも
@@ -374,14 +450,25 @@ public class RailManager {
      * 全く無い隙間があった場合は、直進方向にもう1マス先を試す（バニラの「一方通行同士なら
      * 勢いで交差点を直進突破できる」平面交差点トリックに対応するため）。それでも進めなければnull。
      * 坂道の高い側へ抜ける場合はY方向にも+1する（水平移動だけだとレールが途切れている扱いになる）。
+     * 次ブロックの水平方向はカーブで曲がった後のnextDirection側（進行方向）を使う。曲がる前の
+     * directionのまま隣を見てしまうと、カーブでは実際に接続していない側を見ることになる。
      */
     private RailStep stepAlongRail(Block fromBlock, BlockFace direction) {
         Rail.Shape shape = RailSpeedController.shapeAt(fromBlock);
         if (shape != null) {
             BlockFace nextDirection = RailSpeedController.nextDirection(shape, direction);
             if (nextDirection != null) {
-                Block nextBlock = fromBlock.getRelative(
-                        direction.getModX(), RailSpeedController.verticalOffset(shape, nextDirection), direction.getModZ());
+                int verticalOffset = RailSpeedController.verticalOffset(shape, nextDirection);
+                Block nextBlock = fromBlock.getRelative(nextDirection.getModX(), verticalOffset, nextDirection.getModZ());
+                if (verticalOffset == 0 && RailSpeedController.shapeAt(nextBlock) == null) {
+                    // 平坦レール→1段下にある坂道の高い側入口、という接続を試す
+                    // （verticalOffsetはfromBlock自身が坂道から抜ける時しか+1にならず、平坦区間から
+                    // 坂道へ下りて入る時のオフセットまでは分からないため、ここで補う）。
+                    Block loweredBlock = fromBlock.getRelative(nextDirection.getModX(), -1, nextDirection.getModZ());
+                    if (RailSpeedController.shapeAt(loweredBlock) != null) {
+                        nextBlock = loweredBlock;
+                    }
+                }
                 return new RailStep(nextBlock, nextDirection);
             }
         }
@@ -532,13 +619,18 @@ public class RailManager {
         cart.setVelocity(velocity);
     }
 
-    /** チャンクをまたいだ時だけ、進行方向側のチャンクにチケットを張り替える。 */
-    private void updateChunkPreload(Minecart cart, RailSession session) {
+    /**
+     * チャンクをまたいだ時、またはこのtickでカーブに入って進行方向が変わった時にチケットを張り替える。
+     * 方向転換をチャンク跨ぎ以外でも見るのは、チャンクの真ん中で90度曲がった場合に古い方向のチャンクを
+     * 保持したまま先読みが更新されず、曲がった先が未ロードで引っかかる可能性があるため。
+     */
+    private void updateChunkPreload(Minecart cart, RailSession session, boolean directionChanged) {
         if (!config.isChunkPreloadEnabled()) {
             return;
         }
         Chunk currentChunk = cart.getLocation().getChunk();
-        if (!session.hasEnteredChunk(currentChunk.getX(), currentChunk.getZ())) {
+        boolean enteredNewChunk = session.hasEnteredChunk(currentChunk.getX(), currentChunk.getZ());
+        if (!enteredNewChunk && !directionChanged) {
             return;
         }
         releaseChunkTickets(session);

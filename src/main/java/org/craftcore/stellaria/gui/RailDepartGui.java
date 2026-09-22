@@ -3,6 +3,7 @@ package org.craftcore.stellaria.gui;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Minecart;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -10,28 +11,31 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.commands.RailCommand;
-import org.craftcore.stellaria.rail.RailStationManager;
+import org.craftcore.stellaria.rail.RailLineManager;
+import org.craftcore.stellaria.rail.RailManager;
 import org.craftcore.stellaria.utils.FormatUtil;
 
 import java.util.List;
 
 /**
- * /rail depart gui で開く目的地選択画面。表示するのは今乗っているトロッコの位置から実際に
- * レールをたどって発車できる駅だけ（一方通行で逆走になる駅は除外済み）。
+ * /rail depart gui、またはレール上のトロッコに乗車した瞬間（RailListener#onVehicleEnter）に開く
+ * 目的地選択画面。表示するのは今乗っているトロッコの位置から実際にレールをたどって発車できる駅だけ
+ * （一方通行で逆走になる駅は除外済み）。所属路線・方向・おおよその距離をLoreに出し、
+ * 路線・駅が増えても「どれがどこ？」にならないようにする。
  * 実際の発車処理はRailCommand#departToStationに委譲する（/rail depart <駅名>と同じ経路）。
  */
 public final class RailDepartGui extends Gui {
 
-    private static final int CONTENT_SLOTS = 45;
-    private static final int PREVIOUS_SLOT = 45;
-    private static final int PAGE_SLOT = 49;
-    private static final int NEXT_SLOT = 53;
-    private static final int BACK_BUTTON_SLOT = 48;
+    private static final int CONTENT_SLOTS = 27;
+    private static final int PREVIOUS_SLOT = 27;
+    private static final int PAGE_SLOT = 31;
+    private static final int NEXT_SLOT = 35;
+    private static final int BACK_BUTTON_SLOT = 30;
 
     private final StellariaCore plugin;
     private final RailCommand railCommand;
     private final Minecart cart;
-    private final List<RailStationManager.Station> stations;
+    private final List<RailManager.ReachableStation> stations;
     private final int page;
     private final int maxPage;
 
@@ -39,8 +43,8 @@ public final class RailDepartGui extends Gui {
         this(plugin, railCommand, cart, plugin.getRailManager().findReachableStations(cart), 0);
     }
 
-    private RailDepartGui(StellariaCore plugin, RailCommand railCommand, Minecart cart, List<RailStationManager.Station> stations, int page) {
-        super(54, title(plugin), null, BACK_BUTTON_SLOT);
+    private RailDepartGui(StellariaCore plugin, RailCommand railCommand, Minecart cart, List<RailManager.ReachableStation> stations, int page) {
+        super(36, title(plugin), null, BACK_BUTTON_SLOT);
         this.plugin = plugin;
         this.railCommand = railCommand;
         this.cart = cart;
@@ -57,9 +61,12 @@ public final class RailDepartGui extends Gui {
     private void populate() {
         int first = page * CONTENT_SLOTS;
         for (int slot = 0; slot < CONTENT_SLOTS && first + slot < stations.size(); slot++) {
-            RailStationManager.Station station = stations.get(first + slot);
-            getInventory().setItem(slot, item(Material.MINECART, Component.text(station.name(), NamedTextColor.WHITE), List.of(
-                    message("rail.gui_entry_lore", "%name%", station.name())
+            RailManager.ReachableStation entry = stations.get(first + slot);
+            getInventory().setItem(slot, item(Material.MINECART, Component.text(entry.station().name(), NamedTextColor.WHITE), List.of(
+                    lineLore(entry.station().name()),
+                    message("rail.gui_entry_direction", "%direction%", directionLabel(entry.direction())),
+                    message("rail.gui_entry_distance", "%distance%", String.valueOf(entry.approxDistanceBlocks())),
+                    message("rail.gui_entry_lore", "%name%", entry.station().name())
             )));
         }
 
@@ -78,10 +85,31 @@ public final class RailDepartGui extends Gui {
         }
     }
 
+    private Component lineLore(String stationName) {
+        RailLineManager.RailLine line = plugin.getRailLineManager().findLineForStation(stationName);
+        if (line == null) {
+            return message("rail.gui_entry_no_line");
+        }
+        return message("rail.gui_entry_line", "%line%", line.name());
+    }
+
+    private static String directionLabel(BlockFace direction) {
+        return switch (direction) {
+            case NORTH -> "北";
+            case SOUTH -> "南";
+            case EAST -> "東";
+            case WEST -> "西";
+            default -> direction.name();
+        };
+    }
+
     @Override
     public void onClick(InventoryClickEvent event) {
         event.setCancelled(true);
         if (!(event.getWhoClicked() instanceof Player player) || event.getRawSlot() < 0 || event.getRawSlot() >= getInventory().getSize()) {
+            return;
+        }
+        if (handleBackButton(event, player)) {
             return;
         }
 
@@ -98,7 +126,7 @@ public final class RailDepartGui extends Gui {
             int index = page * CONTENT_SLOTS + slot;
             if (index < stations.size()) {
                 player.closeInventory();
-                railCommand.departToStation(player, cart, stations.get(index));
+                railCommand.departToStation(player, cart, stations.get(index).station());
             }
         }
     }

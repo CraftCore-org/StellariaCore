@@ -461,6 +461,8 @@ rail:
     max-path-search-blocks: 3000 # /rail depart 実行時、目的駅への経路をレール沿いに探索する最大距離 (blocks)
   fare:
     enabled: false # 将来の有料化用。現状は未使用（常に無料）
+  gui:
+    auto-open-on-mount: true # レール上で高速モード対象外のトロッコに乗車した瞬間、発車可能な駅があれば自動で行き先GUIを開く
 
 land:
   disabled-worlds: ["lobby"]

@@ -37,11 +37,22 @@ public class RailStationManager {
 
     public enum CreateResult { SUCCESS, NAME_TAKEN, DATABASE_ERROR }
 
+    /** /rail station remove・RailStationAdminGuiの削除結果。BELONGS_TO_LINEは幽霊駅防止のための拒否。 */
+    public enum RemoveResult { SUCCESS, NOT_FOUND, BELONGS_TO_LINE, DATABASE_ERROR }
+
     private final StellariaCore plugin;
     private final Map<String, Station> stations = new ConcurrentHashMap<>();
+    /** remove()で所属路線をチェックするために使う。RailLineManagerがRailStationManagerに依存するため
+     *  コンストラクタでは受け取れず、onEnableでRailLineManager構築後にbindLineManagerで後から渡す。 */
+    private RailLineManager lineManager;
 
     public RailStationManager(StellariaCore plugin) {
         this.plugin = plugin;
+    }
+
+    /** onEnableで、RailLineManager構築直後に1回呼ぶ。 */
+    public void bindLineManager(RailLineManager lineManager) {
+        this.lineManager = lineManager;
     }
 
     /** onEnableで1回呼ぶ。rail_stationsの全行をメモリに読み込む。 */
@@ -87,17 +98,29 @@ public class RailStationManager {
         return CreateResult.SUCCESS;
     }
 
-    /** /rail station remove から呼ぶ。存在しなければfalse。 */
-    public boolean remove(String name) {
+    /**
+     * /rail station remove・RailStationAdminGuiから呼ぶ。路線に属している駅はBELONGS_TO_LINEを返して
+     * 拒否する（rail_line_stations/RailLineManager.stationToLineが更新されず幽霊駅が残るのを防ぐため）。
+     * 削除するには先に /rail line remove でその路線ごと解除する必要がある。
+     * ワールドリセットによる強制削除は removeAllInWorld（こちらは路線からも自動で外す）を使うこと。
+     */
+    public RemoveResult remove(String name) {
         Station station = stations.get(name.toLowerCase());
         if (station == null) {
-            return false;
+            return RemoveResult.NOT_FOUND;
         }
+        if (lineManager != null && lineManager.findLineForStation(station.name()) != null) {
+            return RemoveResult.BELONGS_TO_LINE;
+        }
+        return removeInternal(station) ? RemoveResult.SUCCESS : RemoveResult.DATABASE_ERROR;
+    }
+
+    private boolean removeInternal(Station station) {
         int affected = DatabaseManager.execute("DELETE FROM rail_stations WHERE name = ?", station.name());
         if (affected != 1) {
             return false;
         }
-        stations.remove(name.toLowerCase());
+        stations.remove(station.name().toLowerCase());
         return true;
     }
 
@@ -112,14 +135,20 @@ public class RailStationManager {
                 .toList();
     }
 
-    /** ワールドリセット時に呼ぶ。指定ワールドに属する駅をDBとキャッシュの両方から削除する（homes/warpsと同様の後始末）。 */
+    /**
+     * ワールドリセット時に呼ぶ。指定ワールドに属する駅をDBとキャッシュの両方から削除する（homes/warpsと同様の後始末）。
+     * 通常のremove()と違い路線所属を理由に拒否しない（ワールド自体が消えるため確認しようがない）。
+     * 代わりに所属路線があればRailLineManager#detachStationで先に安全に外してから削除する。
+     */
     public void removeAllInWorld(String worldName) {
-        List<String> namesToRemove = stations.values().stream()
+        List<Station> toRemove = stations.values().stream()
                 .filter(station -> station.world().equalsIgnoreCase(worldName))
-                .map(Station::name)
                 .toList();
-        for (String name : namesToRemove) {
-            remove(name);
+        for (Station station : toRemove) {
+            if (lineManager != null) {
+                lineManager.detachStation(station.name());
+            }
+            removeInternal(station);
         }
     }
 }

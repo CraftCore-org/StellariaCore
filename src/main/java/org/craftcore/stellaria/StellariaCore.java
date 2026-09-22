@@ -98,6 +98,7 @@ public class StellariaCore extends JavaPlugin {
     private RailStationManager railStationManager;
     private RailLineManager railLineManager;
     private RailManager railManager;
+    private RailCommand railCommand;
     private JapanTimeSyncManager japanTimeSyncManager;
     private ShopManager shopManager;
     private ShopListener shopListener;
@@ -291,6 +292,7 @@ public class StellariaCore extends JavaPlugin {
         this.railStationManager.loadAll();
         this.railLineManager = new RailLineManager(this, railStationManager);
         this.railLineManager.loadAll();
+        this.railStationManager.bindLineManager(railLineManager);
         this.railManager = new RailManager(this, railConfig, railStationManager, railLineManager);
         this.mineManager = new MineManager(this);
         this.lobbyManager = new LobbyManager(this);
@@ -543,7 +545,7 @@ public class StellariaCore extends JavaPlugin {
         getCommand("mine").setExecutor(mineCommand);
         getCommand("mine").setTabCompleter(mineCommand);
 
-        RailCommand railCommand = new RailCommand(this);
+        this.railCommand = new RailCommand(this);
         getCommand("rail").setExecutor(railCommand);
         getCommand("rail").setTabCompleter(railCommand);
 
@@ -731,6 +733,10 @@ public class StellariaCore extends JavaPlugin {
 
     public RailConfig getRailConfig() {
         return this.railConfig;
+    }
+
+    public RailCommand getRailCommand() {
+        return this.railCommand;
     }
 
     public List<Feature> getFeatures() {

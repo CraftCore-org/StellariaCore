@@ -131,6 +131,40 @@ public class RailLineManager {
         return true;
     }
 
+    /**
+     * ワールドリセット等、駅自体が消える時にRailStationManagerから呼ぶ。所属路線があれば安全に外す
+     * （残り駅が1つ以下になる場合は幽霊路線を残さないよう路線ごと解散する）。
+     * 所属していなければ何もせずfalseを返す。通常の削除コマンド/GUIはこちらを経由せず、
+     * 事前にfindLineForStationで所属を検出して削除自体を拒否する（RailStationManager#remove参照）。
+     */
+    public boolean detachStation(String stationName) {
+        RailLine line = findLineForStation(stationName);
+        if (line == null) {
+            return false;
+        }
+        List<String> remaining = new ArrayList<>(line.stationNamesInOrder());
+        remaining.removeIf(name -> name.equalsIgnoreCase(stationName));
+        if (remaining.size() < 2) {
+            remove(line.name());
+            return true;
+        }
+        boolean committed = DatabaseManager.transaction(connection -> {
+            DatabaseManager.execute("DELETE FROM rail_line_stations WHERE line_name = ? AND station_name = ?",
+                    line.name(), stationName);
+            for (int i = 0; i < remaining.size(); i++) {
+                DatabaseManager.execute(
+                        "UPDATE rail_line_stations SET sequence = ? WHERE line_name = ? AND station_name = ?",
+                        i, line.name(), remaining.get(i));
+            }
+        });
+        if (!committed) {
+            return false;
+        }
+        registerInCache(new RailLine(line.name(), line.oneWay(), remaining));
+        stationToLine.remove(stationName.toLowerCase(Locale.ROOT));
+        return true;
+    }
+
     /** 無ければnull。 */
     public RailLine get(String name) {
         return lines.get(name.toLowerCase(Locale.ROOT));

@@ -20,10 +20,10 @@ import java.util.List;
  */
 public final class RailLineAdminGui extends Gui {
 
-    private static final int CONTENT_SLOTS = 45;
-    private static final int PREVIOUS_SLOT = 45;
-    private static final int PAGE_SLOT = 49;
-    private static final int NEXT_SLOT = 53;
+    private static final int CONTENT_SLOTS = 27;
+    private static final int PREVIOUS_SLOT = 27;
+    private static final int PAGE_SLOT = 31;
+    private static final int NEXT_SLOT = 35;
 
     private final StellariaCore plugin;
     private final List<RailLineManager.RailLine> lines;
@@ -35,7 +35,7 @@ public final class RailLineAdminGui extends Gui {
     }
 
     private RailLineAdminGui(StellariaCore plugin, List<RailLineManager.RailLine> lines, int page) {
-        super(54, title(plugin));
+        super(36, title(plugin));
         this.plugin = plugin;
         this.lines = lines;
         this.maxPage = Math.max(0, (lines.size() - 1) / CONTENT_SLOTS);

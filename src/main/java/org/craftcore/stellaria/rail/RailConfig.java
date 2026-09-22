@@ -28,6 +28,7 @@ public final class RailConfig {
     private volatile double slowDownMargin;
     private volatile int pathSearchMaxBlocks;
     private volatile List<String> disabledWorlds;
+    private volatile boolean autoGuiOnMountEnabled;
 
     public RailConfig(StellariaCore plugin) {
         this.plugin = plugin;
@@ -50,6 +51,7 @@ public final class RailConfig {
         slowDownMargin = Math.max(1.0, cfg.getDouble("rail.station.slow-down-margin", 1.3));
         pathSearchMaxBlocks = Math.max(16, cfg.getInt("rail.station.max-path-search-blocks", 3000));
         disabledWorlds = cfg.getStringList("rail.disabled-worlds");
+        autoGuiOnMountEnabled = cfg.getBoolean("rail.gui.auto-open-on-mount", true);
     }
 
     public double getStraightSpeedBps() { return straightSpeedBps; }
@@ -66,4 +68,5 @@ public final class RailConfig {
     public double getSlowDownMargin() { return slowDownMargin; }
     public int getPathSearchMaxBlocks() { return pathSearchMaxBlocks; }
     public List<String> getDisabledWorlds() { return disabledWorlds; }
+    public boolean isAutoGuiOnMountEnabled() { return autoGuiOnMountEnabled; }
 }

@@ -8,6 +8,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.rail.RailLineManager;
 import org.craftcore.stellaria.rail.RailStationManager;
 import org.craftcore.stellaria.utils.FormatUtil;
 
@@ -16,10 +17,10 @@ import java.util.List;
 /** /rail station gui で開く、駅一覧・削除画面（stellaria.rail.admin）。 */
 public final class RailStationAdminGui extends Gui {
 
-    private static final int CONTENT_SLOTS = 45;
-    private static final int PREVIOUS_SLOT = 45;
-    private static final int PAGE_SLOT = 49;
-    private static final int NEXT_SLOT = 53;
+    private static final int CONTENT_SLOTS = 27;
+    private static final int PREVIOUS_SLOT = 27;
+    private static final int PAGE_SLOT = 31;
+    private static final int NEXT_SLOT = 35;
 
     private final StellariaCore plugin;
     private final List<RailStationManager.Station> stations;
@@ -31,7 +32,7 @@ public final class RailStationAdminGui extends Gui {
     }
 
     private RailStationAdminGui(StellariaCore plugin, List<RailStationManager.Station> stations, int page) {
-        super(54, title(plugin));
+        super(36, title(plugin));
         this.plugin = plugin;
         this.stations = stations;
         this.maxPage = Math.max(0, (stations.size() - 1) / CONTENT_SLOTS);
@@ -47,9 +48,13 @@ public final class RailStationAdminGui extends Gui {
         int first = page * CONTENT_SLOTS;
         for (int slot = 0; slot < CONTENT_SLOTS && first + slot < stations.size(); slot++) {
             RailStationManager.Station station = stations.get(first + slot);
+            RailLineManager.RailLine line = plugin.getRailLineManager().findLineForStation(station.name());
             getInventory().setItem(slot, item(Material.RAIL, Component.text(station.name(), NamedTextColor.WHITE), List.of(
                     message("rail.station_gui_entry_world", "%world%", station.world()),
-                    message("rail.station_gui_entry_delete")
+                    line != null
+                            ? message("rail.station_gui_entry_line", "%line%", line.name())
+                            : message("rail.station_gui_entry_no_line"),
+                    line != null ? message("rail.station_gui_entry_delete_blocked") : message("rail.station_gui_entry_delete")
             )));
         }
 
@@ -87,9 +92,23 @@ public final class RailStationAdminGui extends Gui {
         if (slot < CONTENT_SLOTS) {
             int index = page * CONTENT_SLOTS + slot;
             if (index < stations.size()) {
-                confirmDelete(player, stations.get(index));
+                requestDelete(player, stations.get(index));
             }
         }
+    }
+
+    /** 所属路線があれば削除確認すら出さず拒否する（幽霊駅防止。RailStationManager#removeの拒否と対になる）。 */
+    private void requestDelete(Player player, RailStationManager.Station station) {
+        RailLineManager.RailLine line = plugin.getRailLineManager().findLineForStation(station.name());
+        if (line != null) {
+            player.closeInventory();
+            String message = plugin.getConfigManager().getMessage("rail.station_remove_belongs_to_line", player);
+            message = FormatUtil.replace(message, "%name%", station.name());
+            message = FormatUtil.replace(message, "%line%", line.name());
+            player.sendMessage(message);
+            return;
+        }
+        confirmDelete(player, station);
     }
 
     private void confirmDelete(Player player, RailStationManager.Station station) {
