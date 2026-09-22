@@ -103,6 +103,7 @@ commands:
   worldreset:
     permission: stellaria.worldreset
   shop:
+  rail:
 
 permissions:
   stellaria.msg:
@@ -133,6 +134,10 @@ permissions:
     default: true
   stellaria.mine:
     default: true
+  stellaria.rail:
+    default: true
+  stellaria.rail.admin:
+    default: op
   stellaria.land.admin:
     default: op
   stellaria.headshop:
@@ -169,6 +174,7 @@ permissions:
       stellaria.userhistory: true
       stellaria.headshop.admin: true
       stellaria.land.admin: true
+      stellaria.rail.admin: true
       stellaria.worldreset: true
       stellaria.vanish: true
       stellaria.sudo: true

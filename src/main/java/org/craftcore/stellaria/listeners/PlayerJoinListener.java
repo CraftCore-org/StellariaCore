@@ -53,6 +53,7 @@ public class PlayerJoinListener implements Listener {
         playJoinEffect(player);
         plugin.getPlaytimeManager().onJoin(player);
         plugin.getLandBorderParticleManager().restoreOnJoin(player);
+        plugin.getRailStationParticleManager().restoreOnJoin(player);
 
         // INSERT OR IGNOREで同期的に確保するため、参加直後の経済操作も必ず行を更新できる。
         plugin.getEconomyManager().ensurePlayerRecord(player);

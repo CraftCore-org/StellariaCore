@@ -10,6 +10,7 @@ import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.commands.tpa.TpaCore;
 import org.craftcore.stellaria.commands.HomeCommand;
+import org.craftcore.stellaria.commands.RailCommand;
 import org.craftcore.stellaria.commands.WarpCommand;
 import org.craftcore.stellaria.managers.ElevatorManager;
 import org.craftcore.stellaria.utils.MenuItemUtil;
@@ -32,6 +33,7 @@ public class PlayerListener implements Listener {
         TpaCore.resetPlayerTeleportRequests(event.getPlayer(), plugin);
         HomeCommand.clearPendingConfirm(event.getPlayer().getUniqueId());
         WarpCommand.clearPendingConfirm(event.getPlayer().getUniqueId());
+        RailCommand.clearPendingStationCreation(event.getPlayer().getUniqueId());
         plugin.getPrivateMessageManager().removePlayer(event.getPlayer().getUniqueId());
         MenuItemUtil.removePlayer(event.getPlayer().getUniqueId());
         BoardUtil.forgetPlayer(event.getPlayer().getUniqueId());
