@@ -15,7 +15,6 @@ import org.bukkit.event.vehicle.VehicleMoveEvent;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.commands.RailCommand;
 import org.craftcore.stellaria.gui.RailDepartGui;
-import org.craftcore.stellaria.utils.FormatUtil;
 import org.craftcore.stellaria.utils.WorldBlacklistUtil;
 
 import java.util.List;
@@ -99,8 +98,10 @@ public class RailListener implements Listener {
     }
 
     /**
-     * トロッコに乗った瞬間、GUIそのものは開かずヒントだけ出す。乗車直後はバニラの「シフトで降車」
-     * ヒントが表示されるため、1tick遅らせてから出す（同tickで送ると上書き/被って見えにくくなるため）。
+     * トロッコに乗った瞬間、GUIそのものは開かずヒントだけ出す。乗車直後数tickはバニラの
+     * 「シフトで降車」ヒントがアクションバーを占有し続けるため、アクションバーだと表示してもすぐ
+     * 上書きされて消えてしまう。チャットに送る（1tick遅らせるのは、乗車確定前の一部Paperバージョンで
+     * getVehicle()がまだ古い値を返すことがあるための保険）。
      */
     @EventHandler(ignoreCancelled = true)
     public void onVehicleEnter(VehicleEnterEvent event) {
@@ -114,8 +115,7 @@ public class RailListener implements Listener {
             if (!canUseRail(player, cart) || plugin.getRailManager().findReachableStations(cart).isEmpty()) {
                 return;
             }
-            plugin.getActionBarManager().flash(player, "rail-hint",
-                    FormatUtil.component(plugin.getConfigManager().getMessage("rail.ride_hint_actionbar", player)), 60L);
+            player.sendMessage(plugin.getConfigManager().getMessage("rail.ride_hint_chat", player));
         }, null, 1L);
     }
 

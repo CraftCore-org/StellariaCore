@@ -545,7 +545,7 @@ rail:
   gui_previous_page: "&%e前のページ"
   gui_next_page: "&%e次のページ"
   gui_page: "&%7ページ %page%/%max_page%"
-  ride_hint_actionbar: "&%bレールを右クリックして行き先を選択"
+  ride_hint_chat: "&%bレールを右クリックして行き先を選択してください。"
   station_gui_title: "&%9駅一覧（管理）"
   station_gui_entry_world: "&%7ワールド: &%f%world%"
   station_gui_entry_line: "&%7所属路線: &%f%line%"
