@@ -6,7 +6,7 @@
 
 **Architecture:** 新規パッケージ `org.craftcore.stellaria.rail` に、駅データ(DB永続化)を管理する `RailStationManager`、レール形状→速度の純粋なジオメトリ計算を行う `RailSpeedController`、高速モード中のトロッコ1台分の状態を持つ `RailSession`、セッションのライフサイクルと毎tickの速度更新・チャンク先読みを行う `RailManager`、Bukkitイベントとの橋渡しをする `RailListener` を置く。config値は `RailConfig` にキャッシュして毎tickのホットパスから `ConfigManager` への文字列引きを避ける。`/rail` コマンド (`commands/RailCommand.java`、既存の `HomeCommand`/`WarpCommand` と同じ置き場所) で駅の登録・削除・一覧と `/rail depart` (MVPでの発車トリガー) を提供する。状態の真実源はメモリ上の `Map<UUID, RailSession>` (KikoriManager/TpaCoreと同じ「インメモリのみ・サーバー再起動でリセット」方式)。`PersistentDataContainer` の `stellaria:rail_mode` タグは外部から見て分かるようにするための付随マーカーであり、判定ロジックはセッションMapの有無で行う。
 
-**Tech Stack:** Java 21 / PaperMC 1.21.11 API (`org.bukkit.block.data.Rail`, `VehicleMoveEvent`, `Minecart#setMaxSpeed`, `World#addPluginChunkTicket`)。このリポジトリに自動テストは無い (`src/test` 無し、テストタスク未設定) ため、各タスクの検証は「`./gradlew build` でコンパイルが通ること」+「`./gradlew runServer` で実機確認」に統一する。
+**Tech Stack:** Java 21 / PaperMC 1.21.11 API (`org.bukkit.block.data.Rail`, `VehicleMoveEvent`, `Minecart#setMaxSpeed`, `World#addPluginChunkTicket`)。**訂正:** 当初このPlanは「このリポジトリに自動テストは無い」という前提（CLAUDE.mdの記述）で書いたが、worktree作成後にベースライン確認で `src/test/java` 配下にJUnit 5のテストが28ファイル実在し、`build.gradle.kts` に `tasks.test { useJUnitPlatform() }` が設定済み、`./gradlew test` が通ることを確認した（CLAUDE.md側が古い）。既存テストはBukkitランタイムに依存しない純粋ロジック（`utils/`の関数、マネージャー内のstatic/package-privateなロジック）だけを対象にしており、Mockito等のモックライブラリは使っていない。このPlanでもその方針を踏襲する: **`RailSpeedController`（Task 4）のようにBukkitランタイムなしでテスト可能な純粋ロジックには実際にJUnitテストを書く**。`RailManager`/`RailStationManager`/`RailListener`/`RailCommand`のようにBlock/World/Player/DBといった実サーバー・DB状態に依存するクラスは、既存の`KikoriManager`/`WarpManager`等と同様に自動テスト対象外とし、`./gradlew build`でのコンパイル確認 + `./gradlew runServer`での実機確認に頼る。
 
 **Spec:** 本Planはユーザーが別セッションのClaudeと合意した設計書（会話内で共有された「Stellaria 高速トロッコシステム 設計書」、以下「元設計書」）を元にしている。元設計書はこのファイルに添付されていないため、対応関係は各タスクの冒頭に元設計書のどの章を実装するかを明記する形で示す。
 
@@ -403,12 +403,102 @@ git commit -m "feat(rail): add RailConfig cache for rail.* settings"
 
 **Files:**
 - Create: `src/main/java/org/craftcore/stellaria/rail/RailSpeedController.java`
+- Test: `src/test/java/org/craftcore/stellaria/rail/RailSpeedControllerTest.java`
 
 **Interfaces:**
 - Consumes: `RailConfig`（Task 3で定義したgetter群）
 - Produces: `shapeAt(Block): Rail.Shape`(nullable), `endpointsOf(Rail.Shape): BlockFace[]`(nullable), `isCurve/isSlope(Rail.Shape): boolean`, `maxSpeedFor(Rail.Shape, RailConfig): double`, `nextDirection(Rail.Shape, BlockFace incomingDirection): BlockFace`(nullable), `brakingDistance(double speedBps, double decelBps2): double`, `nextSpeed(double current, double target, double accel, double decel): double` — これらは Task 5 の `RailManager` から呼ばれる。
 
-- [ ] **Step 1: `RailSpeedController` を作成する**
+`shapeAt`/`maxSpeedFor` は `Block`/`RailConfig`（実サーバー・実プラグインインスタンスが必要）に依存するためユニットテスト対象外。それ以外（`endpointsOf`/`isCurve`/`isSlope`/`nextDirection`/`brakingDistance`/`nextSpeed`）は `Rail.Shape`/`BlockFace` という純粋なenumだけで完結するため、このリポジトリの既存テスト（`WorldBlacklistUtilTest`等）と同じ方針でJUnit 5テストを書く。
+
+- [ ] **Step 1: 失敗するテストを書く**
+
+`src/test/java/org/craftcore/stellaria/rail/RailSpeedControllerTest.java` を作成する:
+
+```java
+package org.craftcore.stellaria.rail;
+
+import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.Rail;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class RailSpeedControllerTest {
+
+    @Test
+    void classifiesCurveAndSlopeShapes() {
+        assertTrue(RailSpeedController.isCurve(Rail.Shape.NORTH_EAST));
+        assertTrue(RailSpeedController.isCurve(Rail.Shape.SOUTH_WEST));
+        assertFalse(RailSpeedController.isCurve(Rail.Shape.NORTH_SOUTH));
+        assertFalse(RailSpeedController.isCurve(Rail.Shape.ASCENDING_NORTH));
+
+        assertTrue(RailSpeedController.isSlope(Rail.Shape.ASCENDING_EAST));
+        assertFalse(RailSpeedController.isSlope(Rail.Shape.EAST_WEST));
+        assertFalse(RailSpeedController.isSlope(Rail.Shape.NORTH_EAST));
+    }
+
+    @Test
+    void endpointsOfReturnsTheTwoConnectedDirections() {
+        assertArrayEquals(new BlockFace[]{BlockFace.NORTH, BlockFace.SOUTH},
+                RailSpeedController.endpointsOf(Rail.Shape.NORTH_SOUTH));
+        assertArrayEquals(new BlockFace[]{BlockFace.SOUTH, BlockFace.EAST},
+                RailSpeedController.endpointsOf(Rail.Shape.SOUTH_EAST));
+    }
+
+    @Test
+    void nextDirectionContinuesStraightThroughAStraightRail() {
+        // 北向きに走行中、直線区間(NORTH_SOUTH)を通過しても北向きのまま。
+        assertEquals(BlockFace.NORTH,
+                RailSpeedController.nextDirection(Rail.Shape.NORTH_SOUTH, BlockFace.NORTH));
+    }
+
+    @Test
+    void nextDirectionTurnsThroughACurve() {
+        // SOUTH_EASTは南隣・東隣を接続するカーブ。北向きに進入(=南側から入る)すると東向きに曲がる。
+        assertEquals(BlockFace.EAST,
+                RailSpeedController.nextDirection(Rail.Shape.SOUTH_EAST, BlockFace.NORTH));
+        // 西向きに進入(=東側から入る)すると南向きに曲がる。
+        assertEquals(BlockFace.SOUTH,
+                RailSpeedController.nextDirection(Rail.Shape.SOUTH_EAST, BlockFace.WEST));
+    }
+
+    @Test
+    void nextDirectionReturnsNullWhenConnectionIsBroken() {
+        // NORTH_SOUTHの直線区間に東向きで進入するのは接続不整合（脱線扱い）
+        assertNull(RailSpeedController.nextDirection(Rail.Shape.NORTH_SOUTH, BlockFace.EAST));
+    }
+
+    @Test
+    void brakingDistanceUsesKinematicFormula() {
+        // v=20bps, a=10bps^2 -> 20^2/(2*10) = 20 blocks
+        assertEquals(20.0, RailSpeedController.brakingDistance(20.0, 10.0), 1e-9);
+        assertEquals(Double.MAX_VALUE, RailSpeedController.brakingDistance(20.0, 0.0));
+    }
+
+    @Test
+    void nextSpeedRampsTowardTargetWithoutOvershooting() {
+        // 加速: 1tickあたりaccel/20 = 4.0/20 = 0.2 bps ずつ増える。目標を超えない。
+        assertEquals(0.2, RailSpeedController.nextSpeed(0.0, 40.0, 4.0, 8.0), 1e-9);
+        assertEquals(5.0, RailSpeedController.nextSpeed(4.9, 5.0, 4.0, 8.0), 1e-9);
+
+        // 減速: 1tickあたりdecel/20 = 8.0/20 = 0.4 bps ずつ減る。目標を下回らない。
+        assertEquals(9.6, RailSpeedController.nextSpeed(10.0, 0.0, 4.0, 8.0), 1e-9);
+        assertEquals(0.0, RailSpeedController.nextSpeed(0.3, 0.0, 4.0, 8.0), 1e-9);
+    }
+}
+```
+
+- [ ] **Step 2: テストを実行し、失敗することを確認する**
+
+Run: `./gradlew test --tests "org.craftcore.stellaria.rail.RailSpeedControllerTest"`
+Expected: FAIL（`RailSpeedController` クラスが存在しないためコンパイルエラー）
+
+- [ ] **Step 3: `RailSpeedController` を実装する**
 
 ```java
 package org.craftcore.stellaria.rail;
@@ -530,16 +620,21 @@ public final class RailSpeedController {
 }
 ```
 
-- [ ] **Step 2: コンパイル確認**
+- [ ] **Step 4: テストを実行し、成功することを確認する**
 
-Run: `./gradlew compileJava`
+Run: `./gradlew test --tests "org.craftcore.stellaria.rail.RailSpeedControllerTest"`
+Expected: BUILD SUCCESSFUL（7テスト全て成功）
+
+- [ ] **Step 5: フルビルド確認**
+
+Run: `./gradlew build`
 Expected: BUILD SUCCESSFUL
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/main/java/org/craftcore/stellaria/rail/RailSpeedController.java
-git commit -m "feat(rail): add RailSpeedController geometry and speed math"
+git add src/main/java/org/craftcore/stellaria/rail/RailSpeedController.java src/test/java/org/craftcore/stellaria/rail/RailSpeedControllerTest.java
+git commit -m "feat(rail): add RailSpeedController geometry and speed math with tests"
 ```
 
 ---
