@@ -83,6 +83,12 @@ public class RailManager {
         cart.getPersistentDataContainer().set(railModeKey, PersistentDataType.BOOLEAN, true);
         cart.setMaxSpeed(config.getMaxVelocityClampBpt());
 
+        // 静止したトロッコにはVehicleMoveEventが一切発火しないため、tickMovementの物理演算ループが
+        // 永遠に始動しない（ウォッチドッグが「レールに乗っていない」と誤判定して即解除する原因になる）。
+        // ここで最低速度ぶんの初速を直接与えて、最初のVehicleMoveEventを確実に発生させる。
+        double initialBlocksPerTick = config.getMinSpeedBps() / 20.0;
+        cart.setVelocity(new Vector(direction.getModX(), 0, direction.getModZ()).multiply(initialBlocksPerTick));
+
         UUID minecartId = cart.getUniqueId();
         ScheduledTask watchdogTask = cart.getScheduler().runAtFixedRate(
                 plugin,
