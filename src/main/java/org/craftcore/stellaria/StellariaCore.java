@@ -328,6 +328,7 @@ public class StellariaCore extends JavaPlugin {
         );
         getServer().getPluginManager().registerEvents(new LandProtectionListener(this), this);
         getServer().getPluginManager().registerEvents(new ContainerLockListener(this), this);
+        getServer().getPluginManager().registerEvents(new ExplosionProtectionListener(this), this);
         this.shopListener = new ShopListener(this);
         getServer().getPluginManager().registerEvents(shopListener, this);
         getServer().getPluginManager().registerEvents(new LandAreaStatusListener(this), this);
