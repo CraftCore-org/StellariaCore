@@ -73,6 +73,12 @@ public class ChatListener implements Listener {
                 ? Math.min(countLeadingNearMarkers(rawPlainMessage), 3)
                 : 0;
         String plainMessage = nearTier > 0 ? stripNearMarkers(rawPlainMessage) : rawPlainMessage;
+        // !（！）だけ送信するとstrip後が空文字になる。近距離チャットとして空メッセージを成立させず、
+        // 元のテキストのまま通常チャットとして扱う。
+        if (nearTier > 0 && plainMessage.isEmpty()) {
+            nearTier = 0;
+            plainMessage = rawPlainMessage;
+        }
 
         List<Player> nearbyPlayers = null;
         if (nearTier > 0) {
@@ -124,16 +130,20 @@ public class ChatListener implements Listener {
         });
     }
 
-    /** メッセージ先頭に連続する {@code !} の数（近距離チャットの段階トリガー）を数える。 */
+    /** メッセージ先頭に連続する {@code !}（半角/全角どちらも可）の数（近距離チャットの段階トリガー）を数える。 */
     private int countLeadingNearMarkers(String text) {
         int count = 0;
-        while (count < text.length() && text.charAt(count) == '!') {
+        while (count < text.length() && isNearMarker(text.charAt(count))) {
             count++;
         }
         return count;
     }
 
-    /** 先頭の {@code !} 群（と、その直後に1つだけあるスペース）を取り除く。 */
+    private boolean isNearMarker(char c) {
+        return c == '!' || c == '！';
+    }
+
+    /** 先頭の {@code !}/{@code ！} 群（と、その直後に1つだけあるスペース）を取り除く。 */
     private String stripNearMarkers(String text) {
         String stripped = text.substring(countLeadingNearMarkers(text));
         return stripped.startsWith(" ") ? stripped.substring(1) : stripped;
