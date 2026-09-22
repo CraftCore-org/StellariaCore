@@ -11,6 +11,11 @@ import org.craftcore.stellaria.commands.WarpCommand;
 import org.craftcore.stellaria.commands.KikoriCommand;
 import org.craftcore.stellaria.commands.MineCommand;
 import org.craftcore.stellaria.commands.LandCommand;
+import org.craftcore.stellaria.commands.RailCommand;
+import org.craftcore.stellaria.rail.RailConfig;
+import org.craftcore.stellaria.rail.RailListener;
+import org.craftcore.stellaria.rail.RailManager;
+import org.craftcore.stellaria.rail.RailStationManager;
 import org.craftcore.stellaria.listeners.*;
 import org.craftcore.stellaria.managers.*;
 import org.craftcore.stellaria.gui.GuiListener;
@@ -88,6 +93,9 @@ public class StellariaCore extends JavaPlugin {
     private LandBorderParticleManager landBorderParticleManager;
     private LobbyManager lobbyManager;
     private WorldResetManager worldResetManager;
+    private RailConfig railConfig;
+    private RailStationManager railStationManager;
+    private RailManager railManager;
     private JapanTimeSyncManager japanTimeSyncManager;
     private ShopManager shopManager;
     private ShopListener shopListener;
@@ -265,6 +273,10 @@ public class StellariaCore extends JavaPlugin {
         this.headshopManager = new HeadshopManager(this);
         this.vanishManager = new VanishManager(this);
         this.kikoriManager = new KikoriManager(this);
+        this.railConfig = new RailConfig(this);
+        this.railStationManager = new RailStationManager(this);
+        this.railStationManager.loadAll();
+        this.railManager = new RailManager(this, railConfig, railStationManager);
         this.mineManager = new MineManager(this);
         this.lobbyManager = new LobbyManager(this);
         this.features = List.of(new KikoriFeature(kikoriManager), new MineFeature(mineManager));
@@ -330,6 +342,7 @@ public class StellariaCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PlayerListener(this, elevatorManager), this);
         getServer().getPluginManager().registerEvents(new KikoriListener(this), this);
         getServer().getPluginManager().registerEvents(new MineListener(this), this);
+        getServer().getPluginManager().registerEvents(new RailListener(this), this);
         getServer().getPluginManager().registerEvents(
                 new FishingIncomeListener(this),
                 this
@@ -515,6 +528,10 @@ public class StellariaCore extends JavaPlugin {
         getCommand("mine").setExecutor(mineCommand);
         getCommand("mine").setTabCompleter(mineCommand);
 
+        RailCommand railCommand = new RailCommand(this);
+        getCommand("rail").setExecutor(railCommand);
+        getCommand("rail").setTabCompleter(railCommand);
+
         FeaturesCommand featuresCommand = new FeaturesCommand(this, features);
         getCommand("features").setExecutor(featuresCommand);
         getCommand("features").setTabCompleter(featuresCommand);
@@ -583,6 +600,7 @@ public class StellariaCore extends JavaPlugin {
             discordBotManager.stop();
         }
         playtimeManager.flushAll();
+        railManager.shutdown();
         // プラグイン停止時は Vault から自動解除されるため、DB切断だけでOK
         DatabaseManager.disconnect();
         ConsoleUtil.printDisabledMessage();
@@ -684,6 +702,18 @@ public class StellariaCore extends JavaPlugin {
         return this.mineManager;
     }
 
+    public RailManager getRailManager() {
+        return this.railManager;
+    }
+
+    public RailStationManager getRailStationManager() {
+        return this.railStationManager;
+    }
+
+    public RailConfig getRailConfig() {
+        return this.railConfig;
+    }
+
     public List<Feature> getFeatures() {
         return this.features;
     }
@@ -749,6 +779,7 @@ public class StellariaCore extends JavaPlugin {
         japanTimeSyncManager.restart();
         headshopManager.start();
         rankManager.reload();
+        railConfig.reload();
         restartConfigScheduledTasks();
         discordBotManager.restartAfterConfigReload();
     }
