@@ -168,6 +168,14 @@ public class StellariaCore extends JavaPlugin {
             "yaw REAL", "pitch REAL"
         );
 
+        DatabaseManager.createTableIfNotExists("rail_stations",
+            "name TEXT PRIMARY KEY",
+            "world TEXT NOT NULL",
+            "x REAL NOT NULL", "y REAL NOT NULL", "z REAL NOT NULL",
+            "direction TEXT NOT NULL",
+            "created_at INTEGER NOT NULL"
+        );
+
         DatabaseManager.addColumnIfNotExists("players", "kikori_unlocked INTEGER NOT NULL DEFAULT 0");
         DatabaseManager.addColumnIfNotExists("players", "hide_balance INTEGER NOT NULL DEFAULT 0");
         DatabaseManager.addColumnIfNotExists("players", "mine_unlocked INTEGER NOT NULL DEFAULT 0");
