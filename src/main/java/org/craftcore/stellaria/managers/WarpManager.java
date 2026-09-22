@@ -1,5 +1,6 @@
 package org.craftcore.stellaria.managers;
 
+import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -98,12 +99,45 @@ public class WarpManager {
         );
     }
 
-    /** 削除に成功したらtrue、存在しなかったかDB削除に失敗したらfalse。権限チェックは呼び出し側(WarpCommand)の責務。 */
-    public boolean delete(String name) {
-        if (!exists(name)) {
-            return false;
+    /** delete()の結果。refundAmountは返金が有効だった場合の実際の返金額（無効/0なら0）。 */
+    public record DeleteResult(boolean deleted, double refundAmount) {
+        public static final DeleteResult NOT_FOUND = new DeleteResult(false, 0);
+    }
+
+    /**
+     * warp削除。権限チェックは呼び出し側(WarpCommand)の責務。存在すれば削除し、
+     * warp.delete-refund-rateが0より大きければwarp.costにその割合を掛けた額を「所有者」に返金する
+     * （代理削除でも返金先は所有者。削除と返金は1トランザクションにまとめ、返金失敗時は削除ごとロールバックする）。
+     */
+    public DeleteResult delete(String name) {
+        UUID owner = getOwner(name);
+        if (owner == null) {
+            return DeleteResult.NOT_FOUND;
         }
-        return DatabaseManager.execute("DELETE FROM warps WHERE name = ?", name) > 0;
+        double cost = plugin.getConfigManager().getDouble("warp.cost", 0);
+        double rate = plugin.getConfigManager().getDouble("warp.delete-refund-rate", 0);
+        double refundAmount = cost > 0 && rate > 0 ? Math.round(cost * rate) : 0;
+        boolean refundEnabled = refundAmount > 0;
+
+        AtomicReference<Boolean> deleted = new AtomicReference<>(false);
+        boolean committed = DatabaseManager.transaction(connection -> {
+            int affected = DatabaseManager.execute("DELETE FROM warps WHERE name = ?", name);
+            if (affected <= 0) {
+                return;
+            }
+            deleted.set(true);
+            if (refundEnabled) {
+                EconomyResponse response = plugin.getEconomyManager().depositPlayer(Bukkit.getOfflinePlayer(owner), refundAmount);
+                if (!response.transactionSuccess()) {
+                    throw new IllegalStateException("warp削除時の返金に失敗しました: " + owner + " amount=" + refundAmount);
+                }
+            }
+        });
+
+        if (!committed || !deleted.get()) {
+            return DeleteResult.NOT_FOUND;
+        }
+        return new DeleteResult(true, refundEnabled ? refundAmount : 0);
     }
 
     /** 無ければnull（ワールドが存在しない場合も含む）。 */

@@ -1,5 +1,6 @@
 package org.craftcore.stellaria.managers;
 
+import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -85,12 +86,44 @@ public class HomeManager {
         return committed ? result.get() : SetResult.DATABASE_ERROR;
     }
 
-    /** 削除に成功したらtrue、存在しなかったかDB削除に失敗したらfalse。 */
-    public boolean delete(UUID owner, String name) {
+    /** delete()の結果。refundAmountは返金が有効だった場合の実際の返金額（無効/0なら0）。 */
+    public record DeleteResult(boolean deleted, double refundAmount) {
+        public static final DeleteResult NOT_FOUND = new DeleteResult(false, 0);
+    }
+
+    /**
+     * home削除。存在すれば削除し、home.delete-refund-rateが0より大きければhome.costにその割合を
+     * 掛けた額を返金する（LandManager#unclaimと同じく、削除と返金を1トランザクションにまとめ、
+     * 返金失敗時は削除ごとロールバックする）。
+     */
+    public DeleteResult delete(UUID owner, String name) {
         if (!exists(owner, name)) {
-            return false;
+            return DeleteResult.NOT_FOUND;
         }
-        return DatabaseManager.execute("DELETE FROM homes WHERE uuid = ? AND name = ?", owner.toString(), name) > 0;
+        double cost = plugin.getConfigManager().getDouble("home.cost", 0);
+        double rate = plugin.getConfigManager().getDouble("home.delete-refund-rate", 0);
+        double refundAmount = cost > 0 && rate > 0 ? Math.round(cost * rate) : 0;
+        boolean refundEnabled = refundAmount > 0;
+
+        AtomicReference<Boolean> deleted = new AtomicReference<>(false);
+        boolean committed = DatabaseManager.transaction(connection -> {
+            int affected = DatabaseManager.execute("DELETE FROM homes WHERE uuid = ? AND name = ?", owner.toString(), name);
+            if (affected <= 0) {
+                return;
+            }
+            deleted.set(true);
+            if (refundEnabled) {
+                EconomyResponse response = plugin.getEconomyManager().depositPlayer(Bukkit.getOfflinePlayer(owner), refundAmount);
+                if (!response.transactionSuccess()) {
+                    throw new IllegalStateException("home削除時の返金に失敗しました: " + owner + " amount=" + refundAmount);
+                }
+            }
+        });
+
+        if (!committed || !deleted.get()) {
+            return DeleteResult.NOT_FOUND;
+        }
+        return new DeleteResult(true, refundEnabled ? refundAmount : 0);
     }
 
     /** 無ければnull（ワールドが存在しない場合も含む）。 */

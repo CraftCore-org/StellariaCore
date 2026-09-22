@@ -139,6 +139,7 @@ home:
   disabled-worlds: ["lobby"]
   max-per-player: 5
   cost: 200 # /sethome 1回あたりの消費コイン数（0なら無料）
+  delete-refund-rate: 0.5 # /delhome時にcostのこの割合を返金（0で返金なし、1で全額）
   teleport-effect:
     enabled: true
     particle: "DUST" # Bukkitの Particle enum名。DUSTの時だけ color/size が使われる
@@ -151,6 +152,7 @@ warp:
   disabled-worlds: ["lobby"]
   max-per-player: 5
   cost: 300 # /setwarp 1回あたりの消費コイン数（0なら無料）
+  delete-refund-rate: 0.5 # /delwarp時にcostのこの割合を所有者へ返金（0で返金なし、1で全額）
   teleport-effect:
     enabled: true
     particle: "DUST" # Bukkitの Particle enum名。DUSTの時だけ color/size が使われる

@@ -152,9 +152,18 @@ public class HomeCommand implements CommandExecutor, TabCompleter {
             return;
         }
         String name = args[0];
-        boolean deleted = plugin.getHomeManager().delete(player.getUniqueId(), name);
-        String key = deleted ? "home.deleted" : "home.not_found";
-        player.sendMessage(FormatUtil.replace(plugin.getConfigManager().getMessage(key, player), "%name%", name));
+        HomeManager.DeleteResult result = plugin.getHomeManager().delete(player.getUniqueId(), name);
+        if (!result.deleted()) {
+            player.sendMessage(FormatUtil.replace(
+                    plugin.getConfigManager().getMessage("home.not_found", player), "%name%", name));
+            return;
+        }
+        String key = result.refundAmount() > 0 ? "home.deleted" : "home.deleted_no_refund";
+        String message = FormatUtil.replace(plugin.getConfigManager().getMessage(key, player), "%name%", name);
+        if (result.refundAmount() > 0) {
+            message = FormatUtil.replace(message, "%refund%", plugin.getEconomyManager().format(result.refundAmount()));
+        }
+        player.sendMessage(message);
     }
 
     private void handleHomes(Player player, String[] args) {

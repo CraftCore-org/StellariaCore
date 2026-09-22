@@ -163,9 +163,18 @@ public class WarpCommand implements CommandExecutor, TabCompleter {
             player.sendMessage(plugin.getConfigManager().getMessage("warp.delete_no_permission_others", player));
             return;
         }
-        plugin.getWarpManager().delete(name);
-        player.sendMessage(FormatUtil.replace(
-                plugin.getConfigManager().getMessage("warp.deleted", player), "%name%", name));
+        WarpManager.DeleteResult result = plugin.getWarpManager().delete(name);
+        if (!result.deleted()) {
+            player.sendMessage(FormatUtil.replace(
+                    plugin.getConfigManager().getMessage("warp.not_found", player), "%name%", name));
+            return;
+        }
+        String key = result.refundAmount() > 0 ? "warp.deleted" : "warp.deleted_no_refund";
+        String message = FormatUtil.replace(plugin.getConfigManager().getMessage(key, player), "%name%", name);
+        if (result.refundAmount() > 0) {
+            message = FormatUtil.replace(message, "%refund%", plugin.getEconomyManager().format(result.refundAmount()));
+        }
+        player.sendMessage(message);
     }
 
     private void handleWarps(Player player, String[] args) {
