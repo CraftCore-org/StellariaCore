@@ -1,7 +1,6 @@
 package org.craftcore.stellaria.commands;
 
 import org.bukkit.Location;
-import org.bukkit.block.BlockFace;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -9,6 +8,7 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Minecart;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.rail.RailSpeedController;
 import org.craftcore.stellaria.rail.RailStationManager;
 import org.craftcore.stellaria.utils.FormatUtil;
 import org.craftcore.stellaria.utils.TabCompleteUtil;
@@ -19,10 +19,9 @@ import java.util.List;
 
 /**
  * /rail station add|remove|list（駅の管理。stellaria.rail.admin）と
- * /rail depart <駅名>（高速モードの発車。stellaria.rail）をまとめて処理するExecutor。
- * 駅または専用の発車地点から開始したトロッコだけを高速化するという元設計書の方針に沿い、
- * 「駅の登録地点から一定距離以内で、既に何かのトロッコに乗っている」ことを起動条件にする
- * （サイン/ボタン等の将来的なトリガーは元設計書でも初期実装の対象外とされている）。
+ * /rail depart <目的の駅名>（高速モードの発車。stellaria.rail）をまとめて処理するExecutor。
+ * 駅は「向き」を持たず、発車方向はRailManagerがレールを実際にたどって目的駅への経路を
+ * 探索して決める（駅から一定距離以内にいる必要はなく、同じ直線でつながっていればどこからでも発車できる）。
  */
 public class RailCommand implements CommandExecutor, TabCompleter {
 
@@ -73,8 +72,7 @@ public class RailCommand implements CommandExecutor, TabCompleter {
             return;
         }
         String name = args[2];
-        BlockFace direction = yawToBlockFace(player.getLocation().getYaw());
-        RailStationManager.CreateResult result = plugin.getRailStationManager().create(name, player.getLocation(), direction);
+        RailStationManager.CreateResult result = plugin.getRailStationManager().create(name, player.getLocation());
         switch (result) {
             case SUCCESS -> player.sendMessage(FormatUtil.replace(
                     plugin.getConfigManager().getMessage("rail.station_created", player), "%name%", name));
@@ -130,39 +128,35 @@ public class RailCommand implements CommandExecutor, TabCompleter {
             return;
         }
         String stationName = args[1];
-        RailStationManager.Station station = plugin.getRailStationManager().get(stationName);
-        if (station == null) {
+        RailStationManager.Station target = plugin.getRailStationManager().get(stationName);
+        if (target == null) {
             player.sendMessage(FormatUtil.replace(
                     plugin.getConfigManager().getMessage("rail.station_not_found", player), "%name%", stationName));
             return;
         }
-        double activationRadius = plugin.getRailConfig().getStationActivationRadius();
-        Location stationLocation = station.resolveLocation();
-        if (stationLocation == null
-                || !stationLocation.getWorld().equals(cart.getWorld())
-                || stationLocation.distanceSquared(cart.getLocation()) > activationRadius * activationRadius) {
+        if (RailSpeedController.shapeAt(cart.getLocation().getBlock()) == null) {
+            player.sendMessage(plugin.getConfigManager().getMessage("rail.not_on_rail", player));
+            return;
+        }
+        double arrivalRadius = plugin.getRailConfig().getStationArrivalRadius();
+        Location targetLocation = target.resolveLocation();
+        if (targetLocation != null && targetLocation.getWorld().equals(cart.getWorld())
+                && targetLocation.distanceSquared(cart.getLocation()) <= arrivalRadius * arrivalRadius) {
             player.sendMessage(FormatUtil.replace(
-                    plugin.getConfigManager().getMessage("rail.too_far_from_station", player), "%name%", stationName));
+                    plugin.getConfigManager().getMessage("rail.already_at_station", player), "%name%", stationName));
             return;
         }
         if (plugin.getRailManager().isRailMode(cart.getUniqueId())) {
             player.sendMessage(plugin.getConfigManager().getMessage("rail.already_rail_mode", player));
             return;
         }
-        if (!plugin.getRailManager().startSession(cart, station)) {
-            player.sendMessage(plugin.getConfigManager().getMessage("rail.not_on_rail", player));
+        if (!plugin.getRailManager().startSession(cart, target)) {
+            player.sendMessage(FormatUtil.replace(
+                    plugin.getConfigManager().getMessage("rail.no_route_to_station", player), "%name%", stationName));
             return;
         }
-        player.sendMessage(plugin.getConfigManager().getMessage("rail.departed", player));
-    }
-
-    /** プレイヤーの向き(yaw)を東西南北4方向にスナップする。Bukkit標準のLocation#getFacing()と同じ境界。 */
-    private static BlockFace yawToBlockFace(float yaw) {
-        float normalized = (yaw % 360 + 360) % 360;
-        if (normalized >= 45 && normalized < 135) return BlockFace.WEST;
-        if (normalized >= 135 && normalized < 225) return BlockFace.NORTH;
-        if (normalized >= 225 && normalized < 315) return BlockFace.EAST;
-        return BlockFace.SOUTH;
+        player.sendMessage(FormatUtil.replace(
+                plugin.getConfigManager().getMessage("rail.departed", player), "%name%", stationName));
     }
 
     @Override

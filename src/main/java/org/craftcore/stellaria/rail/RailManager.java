@@ -31,7 +31,7 @@ import java.util.logging.Level;
  */
 public class RailManager {
 
-    public enum EndReason { ARRIVED, OFF_RAIL, DESTROYED, WORLD_DISABLED, ERROR }
+    public enum EndReason { ARRIVED, OFF_RAIL, DESTROYED, WORLD_DISABLED, ERROR, COLLISION }
 
     private final StellariaCore plugin;
     private final RailConfig config;
@@ -51,10 +51,11 @@ public class RailManager {
     }
 
     /**
-     * 駅originから高速モードを開始する。cartが現在乗っているレールの形状から初期進行方向を決める。
-     * レールが無い、または端点が判別できない場合はfalseを返す（呼び出し側がエラーメッセージを出す）。
+     * targetへ向けて高速モードを開始する。cartが現在乗っている直線レールから、targetまで実際に
+     * たどり着ける方向（左右どちらか）を経路探索で決める。カーブ上からの発車、レールが無い、
+     * targetへの経路が見つからない場合はfalseを返す（呼び出し側がエラーメッセージを出す）。
      */
-    public boolean startSession(Minecart cart, RailStationManager.Station origin) {
+    public boolean startSession(Minecart cart, RailStationManager.Station target) {
         if (sessions.containsKey(cart.getUniqueId())) {
             return false;
         }
@@ -68,17 +69,13 @@ public class RailManager {
             // 1tick目で即脱線扱いになるため許可しない（駅は直線区間に置く運用とする）
             return false;
         }
-        BlockFace[] endpoints = RailSpeedController.endpointsOf(shape);
-        if (endpoints == null) {
+        BlockFace direction = findDepartureDirection(block, shape, target);
+        if (direction == null) {
             return false;
         }
-        // 駅の登録時の向きがこの区間の端点に一致すればそちらを初期進行方向にする。
-        // 一致しなければ（プラットフォームの向きと実際のレールが斜めにずれている等）endpoints[0]にフォールバック。
-        BlockFace direction = (endpoints[0] == origin.direction() || endpoints[1] == origin.direction())
-                ? origin.direction() : endpoints[0];
 
         double originalMaxSpeed = cart.getMaxSpeed();
-        RailSession session = new RailSession(cart.getUniqueId(), origin.name(), direction, config.getMinSpeedBps(), originalMaxSpeed);
+        RailSession session = new RailSession(cart.getUniqueId(), target.name(), direction, config.getMinSpeedBps(), originalMaxSpeed);
         sessions.put(cart.getUniqueId(), session);
         cart.getPersistentDataContainer().set(railModeKey, PersistentDataType.BOOLEAN, true);
         cart.setMaxSpeed(config.getMaxVelocityClampBpt());
@@ -129,6 +126,7 @@ public class RailManager {
         String key = switch (reason) {
             case ARRIVED -> "rail.arrived";
             case OFF_RAIL -> "rail.off_rail_cancelled";
+            case COLLISION -> "rail.collision_cancelled";
             default -> null; // DESTROYED/WORLD_DISABLED/ERRORは無言で終了する
         };
         if (key == null) {
@@ -166,18 +164,6 @@ public class RailManager {
         }
         session.markOnRailNow();
 
-        if (!session.hasDepartedOrigin()) {
-            RailStationManager.Station origin = stationManager.get(session.originStationName());
-            Location originLocation = origin != null ? origin.resolveLocation() : null;
-            double clearRadius = config.getStationActivationRadius();
-            boolean stillNearOrigin = originLocation != null
-                    && originLocation.getWorld().equals(cart.getWorld())
-                    && originLocation.distanceSquared(cart.getLocation()) <= clearRadius * clearRadius;
-            if (!stillNearOrigin) {
-                session.markDepartedOrigin();
-            }
-        }
-
         if (session.hasEnteredBlock(currentBlock.getX(), currentBlock.getY(), currentBlock.getZ())) {
             BlockFace nextDirection = RailSpeedController.nextDirection(shape, session.direction());
             if (nextDirection == null) {
@@ -194,11 +180,13 @@ public class RailManager {
                 session.currentSpeedBps(), targetSpeed, config.getAccelerationBps2(), config.getDecelerationBps2());
         session.setCurrentSpeedBps(newSpeed);
 
-        RailStationManager.Station nearStation = stationManager.findWithin(cart.getLocation(), config.getStationArrivalRadius());
-        boolean eligibleForArrival = nearStation != null
-                && (session.hasDepartedOrigin() || !nearStation.name().equalsIgnoreCase(session.originStationName()));
-        if (eligibleForArrival && newSpeed <= config.getMinSpeedBps()) {
-            endSession(cart, EndReason.ARRIVED, nearStation.name());
+        RailStationManager.Station target = stationManager.get(session.targetStationName());
+        Location targetLocation = target != null ? target.resolveLocation() : null;
+        boolean atTarget = targetLocation != null
+                && targetLocation.getWorld().equals(cart.getWorld())
+                && targetLocation.distanceSquared(cart.getLocation()) <= config.getStationArrivalRadius() * config.getStationArrivalRadius();
+        if (atTarget && newSpeed <= config.getMinSpeedBps()) {
+            endSession(cart, EndReason.ARRIVED, target.name());
             return;
         }
 
@@ -231,8 +219,9 @@ public class RailManager {
     }
 
     /**
-     * 現在ブロックから進行方向へ辿りながら、制動距離内に迫っているカーブ/坂道/駅の制限速度を
+     * 現在ブロックから進行方向へ辿りながら、制動距離内に迫っているカーブ/坂道/目的駅の制限速度を
      * 反映した今tickの目標速度を返す（元設計書「カーブ進入前に減速する」を満たすための先読み）。
+     * 目的駅以外の駅は通過する（急行運転）ため速度に影響しない。
      * 制動距離ぶん先まで見れば十分なので、それを超えて延々と辿ることはしない。
      */
     private double computeTargetSpeed(Block currentBlock, Rail.Shape currentShape, RailSession session) {
@@ -241,18 +230,21 @@ public class RailManager {
                 * config.getSlowDownMargin();
         double maxLookahead = Math.max(brakingNeeded, 1.0) + 2.0;
 
+        RailStationManager.Station target = stationManager.get(session.targetStationName());
+        Location targetLocation = target != null ? target.resolveLocation() : null;
+        double arrivalRadiusSq = config.getStationArrivalRadius() * config.getStationArrivalRadius();
+
         Block scanBlock = currentBlock;
         BlockFace scanDirection = session.direction();
         double distance = 0.0;
         World world = currentBlock.getWorld();
 
         while (distance < maxLookahead) {
-            RailStationManager.Station station = stationManager.findWithin(
-                    scanBlock.getLocation().add(0.5, 0.5, 0.5), config.getStationArrivalRadius());
-            boolean stationApplies = station != null
-                    && (session.hasDepartedOrigin() || !station.name().equalsIgnoreCase(session.originStationName()));
-            if (stationApplies && distance <= brakingNeeded) {
-                return 0.0;
+            if (targetLocation != null && world.equals(targetLocation.getWorld())) {
+                Location blockCenter = scanBlock.getLocation().add(0.5, 0.5, 0.5);
+                if (blockCenter.distanceSquared(targetLocation) <= arrivalRadiusSq && distance <= brakingNeeded) {
+                    return 0.0;
+                }
             }
 
             Block nextBlock = scanBlock.getRelative(scanDirection);
@@ -276,6 +268,58 @@ public class RailManager {
             distance += 1.0;
         }
         return limit;
+    }
+
+    /**
+     * originBlockの直線区間が持つ2つの進行方向のうち、実際にレールをたどってtargetへ到達できる方を返す。
+     * どちらの方向でも到達できなければnull（呼び出し側は「経路が見つからない」として扱う）。
+     * 駅の「向き」設定は廃止したため、発車方向はここで実際のレール接続を歩いて確定する
+     * （分岐点はバニラのRail.Shapeが常に単一の接続を持つため、特別な分岐処理なしで自然に追従できる）。
+     */
+    private BlockFace findDepartureDirection(Block originBlock, Rail.Shape originShape, RailStationManager.Station target) {
+        Location targetLocation = target.resolveLocation();
+        if (targetLocation == null) {
+            return null;
+        }
+        BlockFace[] endpoints = RailSpeedController.endpointsOf(originShape);
+        if (endpoints == null) {
+            return null;
+        }
+        double arrivalRadiusSq = config.getStationArrivalRadius() * config.getStationArrivalRadius();
+        for (BlockFace candidate : endpoints) {
+            if (pathReachesStation(originBlock, candidate, targetLocation, arrivalRadiusSq)) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    /** originBlockからcandidateDirection方向へレールをたどり、targetLocationの到着範囲内に入れるか調べる。
+     *  config.getPathSearchMaxBlocks() を上限に、行き止まり・接続不整合でも探索を打ち切る。
+     *  毎tick走る先読み(computeTargetSpeed)と違い、この探索はコマンド実行時に1回だけ動くため、
+     *  未ロードチャンクを踏んでも強制ロードのガードは入れない（起きても一度きりの軽いヒッチで済む）。 */
+    private boolean pathReachesStation(Block originBlock, BlockFace candidateDirection, Location targetLocation, double arrivalRadiusSq) {
+        Block scanBlock = originBlock;
+        BlockFace scanDirection = candidateDirection;
+        int maxBlocks = config.getPathSearchMaxBlocks();
+        for (int i = 0; i < maxBlocks; i++) {
+            Rail.Shape shape = RailSpeedController.shapeAt(scanBlock);
+            if (shape == null) {
+                return false;
+            }
+            Location blockCenter = scanBlock.getLocation().add(0.5, 0.5, 0.5);
+            if (blockCenter.getWorld().equals(targetLocation.getWorld())
+                    && blockCenter.distanceSquared(targetLocation) <= arrivalRadiusSq) {
+                return true;
+            }
+            BlockFace nextDirection = RailSpeedController.nextDirection(shape, scanDirection);
+            if (nextDirection == null) {
+                return false;
+            }
+            scanBlock = scanBlock.getRelative(scanDirection);
+            scanDirection = nextDirection;
+        }
+        return false;
     }
 
     private void applyVelocity(Minecart cart, RailSession session, double speedBps) {

@@ -456,9 +456,9 @@ rail:
     enabled: true
     distance: 2  # 進行方向に事前ロードするチャンク数
   station:
-    activation-radius: 5.0  # /rail depart を実行できる、駅からの距離 (blocks)
     arrival-radius: 2.5     # この距離以内かつ速度が min-speed 以下になったら「到着」とみなす (blocks)
     slow-down-margin: 1.3   # 制動距離の計算に掛ける安全マージン（大きいほど早めに減速し始める）
+    max-path-search-blocks: 3000 # /rail depart 実行時、目的駅への経路をレール沿いに探索する最大距離 (blocks)
   fare:
     enabled: false # 将来の有料化用。現状は未使用（常に無料）
 

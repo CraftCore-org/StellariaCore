@@ -4,6 +4,7 @@ import org.bukkit.entity.Minecart;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
+import org.bukkit.event.vehicle.VehicleEntityCollisionEvent;
 import org.bukkit.event.vehicle.VehicleMoveEvent;
 import org.craftcore.stellaria.StellariaCore;
 
@@ -31,6 +32,14 @@ public class RailListener implements Listener {
     public void onVehicleDestroy(VehicleDestroyEvent event) {
         if (event.getVehicle() instanceof Minecart cart) {
             plugin.getRailManager().endSession(cart, RailManager.EndReason.DESTROYED);
+        }
+    }
+
+    /** 高速モード中のトロッコが別のトロッコと衝突したら、バニラの押し合いに任せず即座に高速モードを解除する。 */
+    @EventHandler
+    public void onVehicleCollide(VehicleEntityCollisionEvent event) {
+        if (event.getVehicle() instanceof Minecart cart && event.getEntity() instanceof Minecart) {
+            plugin.getRailManager().endSession(cart, RailManager.EndReason.COLLISION);
         }
     }
 }

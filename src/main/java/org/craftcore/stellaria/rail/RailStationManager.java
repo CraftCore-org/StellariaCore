@@ -3,7 +3,6 @@ package org.craftcore.stellaria.rail;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.block.BlockFace;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.managers.DatabaseManager;
 
@@ -21,7 +20,11 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class RailStationManager {
 
-    public record Station(String name, String world, double x, double y, double z, BlockFace direction) {
+    /** DB列 direction は既存スキーマ互換のため残しているが、駅自体はもう「向き」を持たない
+     *  （/rail depart 側でレールをたどって発車方向を自動判定するため）。常にこの値を書き込み、読み込み時は無視する。 */
+    private static final String UNUSED_DIRECTION_PLACEHOLDER = "NORTH";
+
+    public record Station(String name, String world, double x, double y, double z) {
         /** 現在ロードされているワールドに解決したLocationを返す。ワールドが存在しない（未ロード/削除済み）場合はnull。 */
         public Location resolveLocation() {
             World resolvedWorld = Bukkit.getWorld(world);
@@ -58,13 +61,12 @@ public class RailStationManager {
     private static Station mapStation(ResultSet rs) throws SQLException {
         return new Station(
                 rs.getString("name"), rs.getString("world"),
-                rs.getDouble("x"), rs.getDouble("y"), rs.getDouble("z"),
-                BlockFace.valueOf(rs.getString("direction"))
+                rs.getDouble("x"), rs.getDouble("y"), rs.getDouble("z")
         );
     }
 
     /** /rail station add から呼ぶ。名前はサーバー全体でユニーク（大文字小文字区別なし）。 */
-    public CreateResult create(String name, Location location, BlockFace direction) {
+    public CreateResult create(String name, Location location) {
         String key = name.toLowerCase();
         if (stations.containsKey(key)) {
             return CreateResult.NAME_TAKEN;
@@ -76,12 +78,12 @@ public class RailStationManager {
         int affected = DatabaseManager.insert("rail_stations", Map.of(
                 "name", name, "world", world.getName(),
                 "x", location.getX(), "y", location.getY(), "z", location.getZ(),
-                "direction", direction.name(), "created_at", System.currentTimeMillis()
+                "direction", UNUSED_DIRECTION_PLACEHOLDER, "created_at", System.currentTimeMillis()
         ));
         if (affected != 1) {
             return CreateResult.DATABASE_ERROR;
         }
-        stations.put(key, new Station(name, world.getName(), location.getX(), location.getY(), location.getZ(), direction));
+        stations.put(key, new Station(name, world.getName(), location.getX(), location.getY(), location.getZ()));
         return CreateResult.SUCCESS;
     }
 
@@ -108,28 +110,6 @@ public class RailStationManager {
         return stations.values().stream()
                 .sorted(Comparator.comparing(Station::name, String.CASE_INSENSITIVE_ORDER))
                 .toList();
-    }
-
-    /**
-     * point から radius 以内にある駅のうち最も近いものを返す（複数該当時は最短距離を優先）。
-     * RailManagerが毎tick呼ぶ想定なので、DBには触れずキャッシュだけを線形走査する
-     * （駅数は多くても数十件想定のため性能上問題ない）。
-     */
-    public Station findWithin(Location point, double radius) {
-        Station nearest = null;
-        double nearestDistSq = radius * radius;
-        for (Station station : stations.values()) {
-            Location stationLocation = station.resolveLocation();
-            if (stationLocation == null || !stationLocation.getWorld().equals(point.getWorld())) {
-                continue;
-            }
-            double distSq = stationLocation.distanceSquared(point);
-            if (distSq <= nearestDistSq) {
-                nearest = station;
-                nearestDistSq = distSq;
-            }
-        }
-        return nearest;
     }
 
     /** ワールドリセット時に呼ぶ。指定ワールドに属する駅をDBとキャッシュの両方から削除する（homes/warpsと同様の後始末）。 */

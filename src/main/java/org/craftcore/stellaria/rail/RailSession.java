@@ -15,7 +15,7 @@ import java.util.UUID;
 public final class RailSession {
 
     private final UUID minecartId;
-    private final String originStationName;
+    private final String targetStationName;
 
     private double currentSpeedBps;
     private BlockFace direction;
@@ -27,13 +27,12 @@ public final class RailSession {
     private int lastBlockZ = Integer.MIN_VALUE;
     private ScheduledTask watchdogTask;
     private final Set<Long> heldChunkTickets = new HashSet<>();
-    private boolean departedOrigin;
     private double originalMaxSpeed;
     private World ticketWorld;
 
-    public RailSession(UUID minecartId, String originStationName, BlockFace direction, double initialSpeedBps, double originalMaxSpeed) {
+    public RailSession(UUID minecartId, String targetStationName, BlockFace direction, double initialSpeedBps, double originalMaxSpeed) {
         this.minecartId = minecartId;
-        this.originStationName = originStationName;
+        this.targetStationName = targetStationName;
         this.direction = direction;
         this.currentSpeedBps = initialSpeedBps;
         this.originalMaxSpeed = originalMaxSpeed;
@@ -42,7 +41,7 @@ public final class RailSession {
 
     public UUID minecartId() { return minecartId; }
 
-    public String originStationName() { return originStationName; }
+    public String targetStationName() { return targetStationName; }
 
     public double currentSpeedBps() { return currentSpeedBps; }
 
@@ -84,10 +83,6 @@ public final class RailSession {
     public Set<Long> heldChunkTickets() { return heldChunkTickets; }
 
     public double originalMaxSpeed() { return originalMaxSpeed; }
-
-    public boolean hasDepartedOrigin() { return departedOrigin; }
-
-    public void markDepartedOrigin() { this.departedOrigin = true; }
 
     public World ticketWorld() { return ticketWorld; }
 

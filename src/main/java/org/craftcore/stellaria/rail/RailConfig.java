@@ -24,9 +24,9 @@ public final class RailConfig {
     private volatile long offRailGraceMillis;
     private volatile boolean chunkPreloadEnabled;
     private volatile int chunkPreloadDistance;
-    private volatile double stationActivationRadius;
     private volatile double stationArrivalRadius;
     private volatile double slowDownMargin;
+    private volatile int pathSearchMaxBlocks;
     private volatile List<String> disabledWorlds;
 
     public RailConfig(StellariaCore plugin) {
@@ -46,9 +46,9 @@ public final class RailConfig {
         offRailGraceMillis = (long) (Math.max(0.0, cfg.getDouble("rail.off-rail-grace-seconds", 2.0)) * 1000L);
         chunkPreloadEnabled = cfg.getBoolean("rail.chunk-preload.enabled", true);
         chunkPreloadDistance = Math.max(0, cfg.getInt("rail.chunk-preload.distance", 2));
-        stationActivationRadius = Math.max(0.5, cfg.getDouble("rail.station.activation-radius", 5.0));
         stationArrivalRadius = Math.max(0.5, cfg.getDouble("rail.station.arrival-radius", 2.5));
         slowDownMargin = Math.max(1.0, cfg.getDouble("rail.station.slow-down-margin", 1.3));
+        pathSearchMaxBlocks = Math.max(16, cfg.getInt("rail.station.max-path-search-blocks", 3000));
         disabledWorlds = cfg.getStringList("rail.disabled-worlds");
     }
 
@@ -62,8 +62,8 @@ public final class RailConfig {
     public long getOffRailGraceMillis() { return offRailGraceMillis; }
     public boolean isChunkPreloadEnabled() { return chunkPreloadEnabled; }
     public int getChunkPreloadDistance() { return chunkPreloadDistance; }
-    public double getStationActivationRadius() { return stationActivationRadius; }
     public double getStationArrivalRadius() { return stationArrivalRadius; }
     public double getSlowDownMargin() { return slowDownMargin; }
+    public int getPathSearchMaxBlocks() { return pathSearchMaxBlocks; }
     public List<String> getDisabledWorlds() { return disabledWorlds; }
 }
