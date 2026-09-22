@@ -147,8 +147,12 @@ public class RailManager {
         session.markOnRailNow();
 
         if (!session.hasDepartedOrigin()) {
-            RailStationManager.Station atOrigin = stationManager.findWithin(cart.getLocation(), config.getStationArrivalRadius());
-            if (atOrigin == null || !atOrigin.name().equalsIgnoreCase(session.originStationName())) {
+            RailStationManager.Station origin = stationManager.get(session.originStationName());
+            double clearRadius = config.getStationActivationRadius();
+            boolean stillNearOrigin = origin != null
+                    && origin.location().getWorld().equals(cart.getWorld())
+                    && origin.location().distanceSquared(cart.getLocation()) <= clearRadius * clearRadius;
+            if (!stillNearOrigin) {
                 session.markDepartedOrigin();
             }
         }
