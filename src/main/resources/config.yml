@@ -441,6 +441,27 @@ mine:
   timeout-seconds: 0
   max-ores: 128
 
+rail:
+  disabled-worlds: ["lobby"]
+  speed:
+    straight: 40.0  # 直線での最大速度 (blocks/s)
+    curve: 12.0     # カーブでの最大速度 (blocks/s)
+    slope: 20.0     # 坂道（上り/下り共通）での最大速度 (blocks/s)
+  acceleration: 4.0       # 加速度 (blocks/s^2)
+  deceleration: 8.0       # 減速度 (blocks/s^2)。カーブ・坂道・駅侵入前の制動に使う
+  min-speed: 2.0          # 発車直後の初速、および「停止とみなす」しきい値 (blocks/s)
+  max-velocity-clamp: 3.0 # 安全装置。1tickあたりの移動量の絶対上限 (blocks/tick)。Minecart#setMaxSpeedにも使う
+  off-rail-grace-seconds: 2.0 # レールを外れてからこの秒数を超えたら高速モードを強制解除する
+  chunk-preload:
+    enabled: true
+    distance: 2  # 進行方向に事前ロードするチャンク数
+  station:
+    activation-radius: 5.0  # /rail depart を実行できる、駅からの距離 (blocks)
+    arrival-radius: 2.5     # この距離以内かつ速度が min-speed 以下になったら「到着」とみなす (blocks)
+    slow-down-margin: 1.3   # 制動距離の計算に掛ける安全マージン（大きいほど早めに減速し始める）
+  fare:
+    enabled: false # 将来の有料化用。現状は未使用（常に無料）
+
 land:
   disabled-worlds: ["lobby"]
   cost-per-chunk: 50
