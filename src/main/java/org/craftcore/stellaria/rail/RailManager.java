@@ -388,7 +388,8 @@ public class RailManager {
             }
             // カーブブロックを通過した後は、曲がる前のscanDirectionではなく曲がった後のnextDirection側の
             // ブロックへ進む（直線だとnextDirection==scanDirectionで区別が付かず、カーブでだけ表面化するバグだった）。
-            scanBlock = scanBlock.getRelative(nextDirection);
+            // 坂道の高い側へ抜ける場合はY方向にも+1する（水平移動だけだとレールが途切れている扱いになる）。
+            scanBlock = scanBlock.getRelative(nextDirection.getModX(), RailSpeedController.verticalOffset(shape, nextDirection), nextDirection.getModZ());
             scanDirection = nextDirection;
         }
         return false;
@@ -443,7 +444,7 @@ public class RailManager {
             if (nextDirection == null) {
                 return true;
             }
-            scanBlock = scanBlock.getRelative(nextDirection);
+            scanBlock = scanBlock.getRelative(nextDirection.getModX(), RailSpeedController.verticalOffset(shape, nextDirection), nextDirection.getModZ());
             scanDirection = nextDirection;
         }
         return true;
@@ -476,7 +477,7 @@ public class RailManager {
             if (nextDirection == null) {
                 return;
             }
-            scanBlock = scanBlock.getRelative(nextDirection);
+            scanBlock = scanBlock.getRelative(nextDirection.getModX(), RailSpeedController.verticalOffset(shape, nextDirection), nextDirection.getModZ());
             scanDirection = nextDirection;
         }
     }

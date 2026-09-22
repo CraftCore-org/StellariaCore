@@ -93,6 +93,21 @@ public final class RailSpeedController {
         return null;
     }
 
+    /**
+     * shapeの区間をexitDirection側へ抜ける時のYオフセット（+1 or 0）。
+     * 坂道（ASCENDING_*）の「高い側」への出口なら+1（そちら側の隣接ブロックは1つ上にある）、
+     * それ以外（平坦区間・カーブ・坂道の「低い側」への出口）は常に0。
+     * 経路探索でブロックをたどる際、水平方向のgetRelative()だけでは坂道の途中で
+     * レールが途切れている扱いになってしまう（隣は同じ高さの空気ブロック）ため、この補正が必要。
+     */
+    public static int verticalOffset(Rail.Shape shape, BlockFace exitDirection) {
+        if (shape == Rail.Shape.ASCENDING_NORTH && exitDirection == BlockFace.NORTH) return 1;
+        if (shape == Rail.Shape.ASCENDING_SOUTH && exitDirection == BlockFace.SOUTH) return 1;
+        if (shape == Rail.Shape.ASCENDING_EAST && exitDirection == BlockFace.EAST) return 1;
+        if (shape == Rail.Shape.ASCENDING_WEST && exitDirection == BlockFace.WEST) return 1;
+        return 0;
+    }
+
     /** 等加速度運動の制動距離 (v^2 / 2a)。blocks単位。decelerationBps2が0以下ならMAX_VALUE。 */
     public static double brakingDistance(double speedBps, double decelerationBps2) {
         if (decelerationBps2 <= 0) {

@@ -56,6 +56,20 @@ class RailSpeedControllerTest {
     }
 
     @Test
+    void verticalOffsetIsOneOnlyForTheHighSideExit() {
+        // ASCENDING_NORTHは北側が高い端。北へ抜ける(=登る)時だけ+1、南へ抜ける(=低い側)時は0。
+        assertEquals(1, RailSpeedController.verticalOffset(Rail.Shape.ASCENDING_NORTH, BlockFace.NORTH));
+        assertEquals(0, RailSpeedController.verticalOffset(Rail.Shape.ASCENDING_NORTH, BlockFace.SOUTH));
+
+        assertEquals(1, RailSpeedController.verticalOffset(Rail.Shape.ASCENDING_EAST, BlockFace.EAST));
+        assertEquals(0, RailSpeedController.verticalOffset(Rail.Shape.ASCENDING_EAST, BlockFace.WEST));
+
+        // 平坦区間・カーブは坂道ではないので常に0。
+        assertEquals(0, RailSpeedController.verticalOffset(Rail.Shape.NORTH_SOUTH, BlockFace.NORTH));
+        assertEquals(0, RailSpeedController.verticalOffset(Rail.Shape.SOUTH_EAST, BlockFace.EAST));
+    }
+
+    @Test
     void brakingDistanceUsesKinematicFormula() {
         // v=20bps, a=10bps^2 -> 20^2/(2*10) = 20 blocks
         assertEquals(20.0, RailSpeedController.brakingDistance(20.0, 10.0), 1e-9);
