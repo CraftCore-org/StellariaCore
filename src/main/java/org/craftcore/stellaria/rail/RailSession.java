@@ -1,5 +1,6 @@
 package org.craftcore.stellaria.rail;
 
+import org.bukkit.World;
 import org.bukkit.block.BlockFace;
 
 import java.util.HashSet;
@@ -21,12 +22,16 @@ public final class RailSession {
     private int lastChunkX = Integer.MIN_VALUE;
     private int lastChunkZ = Integer.MIN_VALUE;
     private final Set<Long> heldChunkTickets = new HashSet<>();
+    private boolean departedOrigin;
+    private double originalMaxSpeed;
+    private World ticketWorld;
 
-    public RailSession(UUID minecartId, String originStationName, BlockFace direction, double initialSpeedBps) {
+    public RailSession(UUID minecartId, String originStationName, BlockFace direction, double initialSpeedBps, double originalMaxSpeed) {
         this.minecartId = minecartId;
         this.originStationName = originStationName;
         this.direction = direction;
         this.currentSpeedBps = initialSpeedBps;
+        this.originalMaxSpeed = originalMaxSpeed;
         this.lastOnRailMillis = System.currentTimeMillis();
     }
 
@@ -57,4 +62,14 @@ public final class RailSession {
     }
 
     public Set<Long> heldChunkTickets() { return heldChunkTickets; }
+
+    public double originalMaxSpeed() { return originalMaxSpeed; }
+
+    public boolean hasDepartedOrigin() { return departedOrigin; }
+
+    public void markDepartedOrigin() { this.departedOrigin = true; }
+
+    public World ticketWorld() { return ticketWorld; }
+
+    public void setTicketWorld(World world) { this.ticketWorld = world; }
 }
