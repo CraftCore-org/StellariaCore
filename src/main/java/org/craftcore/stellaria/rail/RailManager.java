@@ -364,6 +364,41 @@ public class RailManager {
         return null;
     }
 
+    /** レールに沿って1マス進んだ結果（次のブロックと、そこから続ける進行方向）。 */
+    private record RailStep(Block block, BlockFace direction) {
+    }
+
+    /**
+     * fromBlockからdirection方向へ1マス進んだ結果を返す。通常はfromBlockの形状に従って辿るが、
+     * fromBlockに互換性の無いレール（平面交差点で別路線が直交して使っている等）や、レールが
+     * 全く無い隙間があった場合は、直進方向にもう1マス先を試す（バニラの「一方通行同士なら
+     * 勢いで交差点を直進突破できる」平面交差点トリックに対応するため）。それでも進めなければnull。
+     * 坂道の高い側へ抜ける場合はY方向にも+1する（水平移動だけだとレールが途切れている扱いになる）。
+     */
+    private RailStep stepAlongRail(Block fromBlock, BlockFace direction) {
+        Rail.Shape shape = RailSpeedController.shapeAt(fromBlock);
+        if (shape != null) {
+            BlockFace nextDirection = RailSpeedController.nextDirection(shape, direction);
+            if (nextDirection != null) {
+                Block nextBlock = fromBlock.getRelative(
+                        direction.getModX(), RailSpeedController.verticalOffset(shape, nextDirection), direction.getModZ());
+                return new RailStep(nextBlock, nextDirection);
+            }
+        }
+        // fromBlockのレールが無い、または直進方向と互換性が無い（別路線が直交している平面交差点）。
+        // 直進方向にもう1マス先（交差点の反対側）を試す。
+        Block hopBlock = fromBlock.getRelative(direction);
+        Rail.Shape hopShape = RailSpeedController.shapeAt(hopBlock);
+        if (hopShape == null) {
+            return null;
+        }
+        BlockFace hopNextDirection = RailSpeedController.nextDirection(hopShape, direction);
+        if (hopNextDirection == null) {
+            return null;
+        }
+        return new RailStep(hopBlock, hopNextDirection);
+    }
+
     /** originBlockからcandidateDirection方向へレールをたどり、targetLocationの到着範囲内に入れるか調べる。
      *  config.getPathSearchMaxBlocks() を上限に、行き止まり・接続不整合でも探索を打ち切る。
      *  毎tick走る先読み(computeTargetSpeed)と違い、この探索はコマンド実行時に1回だけ動くため、
@@ -373,24 +408,17 @@ public class RailManager {
         BlockFace scanDirection = candidateDirection;
         int maxBlocks = config.getPathSearchMaxBlocks();
         for (int i = 0; i < maxBlocks; i++) {
-            Rail.Shape shape = RailSpeedController.shapeAt(scanBlock);
-            if (shape == null) {
-                return false;
-            }
             Location blockCenter = scanBlock.getLocation().add(0.5, 0.5, 0.5);
             if (blockCenter.getWorld().equals(targetLocation.getWorld())
                     && blockCenter.distanceSquared(targetLocation) <= arrivalRadiusSq) {
                 return true;
             }
-            BlockFace nextDirection = RailSpeedController.nextDirection(shape, scanDirection);
-            if (nextDirection == null) {
+            RailStep step = stepAlongRail(scanBlock, scanDirection);
+            if (step == null) {
                 return false;
             }
-            // カーブブロックを通過した後は、曲がる前のscanDirectionではなく曲がった後のnextDirection側の
-            // ブロックへ進む（直線だとnextDirection==scanDirectionで区別が付かず、カーブでだけ表面化するバグだった）。
-            // 坂道の高い側へ抜ける場合はY方向にも+1する（水平移動だけだとレールが途切れている扱いになる）。
-            scanBlock = scanBlock.getRelative(nextDirection.getModX(), RailSpeedController.verticalOffset(shape, nextDirection), nextDirection.getModZ());
-            scanDirection = nextDirection;
+            scanBlock = step.block();
+            scanDirection = step.direction();
         }
         return false;
     }
@@ -419,10 +447,6 @@ public class RailManager {
         BlockFace scanDirection = chosenDirection;
         int maxBlocks = config.getPathSearchMaxBlocks();
         for (int i = 0; i < maxBlocks; i++) {
-            Rail.Shape shape = RailSpeedController.shapeAt(scanBlock);
-            if (shape == null) {
-                return true; // これ以上レールが無い。ここまでの範囲で逆順は無かったので許可する
-            }
             Location blockCenter = scanBlock.getLocation().add(0.5, 0.5, 0.5);
             for (RailLineManager.RailLine line : oneWayLines) {
                 RailStationManager.Station station = stationOnLineAt(line, blockCenter, arrivalRadiusSq);
@@ -440,12 +464,12 @@ public class RailManager {
                     && blockCenter.distanceSquared(targetLocation) <= arrivalRadiusSq) {
                 return true; // 目的地に到達。ここまで逆順は無かった
             }
-            BlockFace nextDirection = RailSpeedController.nextDirection(shape, scanDirection);
-            if (nextDirection == null) {
-                return true;
+            RailStep step = stepAlongRail(scanBlock, scanDirection);
+            if (step == null) {
+                return true; // これ以上進めない。ここまでの範囲で逆順は無かったので許可する
             }
-            scanBlock = scanBlock.getRelative(nextDirection.getModX(), RailSpeedController.verticalOffset(shape, nextDirection), nextDirection.getModZ());
-            scanDirection = nextDirection;
+            scanBlock = step.block();
+            scanDirection = step.direction();
         }
         return true;
     }
@@ -459,10 +483,6 @@ public class RailManager {
         BlockFace scanDirection = direction;
         int maxBlocks = config.getPathSearchMaxBlocks();
         for (int i = 0; i < maxBlocks && result.size() < oneWayLines.size(); i++) {
-            Rail.Shape shape = RailSpeedController.shapeAt(scanBlock);
-            if (shape == null) {
-                return;
-            }
             Location blockCenter = scanBlock.getLocation().add(0.5, 0.5, 0.5);
             for (RailLineManager.RailLine line : oneWayLines) {
                 if (result.containsKey(line.name())) {
@@ -473,12 +493,12 @@ public class RailManager {
                     result.put(line.name(), line.sequenceOf(station.name()));
                 }
             }
-            BlockFace nextDirection = RailSpeedController.nextDirection(shape, scanDirection);
-            if (nextDirection == null) {
+            RailStep step = stepAlongRail(scanBlock, scanDirection);
+            if (step == null) {
                 return;
             }
-            scanBlock = scanBlock.getRelative(nextDirection.getModX(), RailSpeedController.verticalOffset(shape, nextDirection), nextDirection.getModZ());
-            scanDirection = nextDirection;
+            scanBlock = step.block();
+            scanDirection = step.direction();
         }
     }
 
