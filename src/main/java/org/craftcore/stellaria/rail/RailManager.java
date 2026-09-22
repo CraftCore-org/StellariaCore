@@ -45,6 +45,14 @@ public class RailManager {
     private final RailLineManager lineManager;
     private final NamespacedKey railModeKey;
     private final Map<UUID, RailSession> sessions = new ConcurrentHashMap<>();
+    /** チャンク先読みチケットの参照カウント。addPluginChunkTicket/removePluginChunkTicketは
+     *  (チャンク, plugin)単位でしか管理できず、セッション単位の区別が無い。複数のトロッコが
+     *  同じチャンクを先読みしている時、片方が単純にremoveすると、まだそのチャンクを必要としている
+     *  もう片方の先読みまで巻き添えで消えてしまうため、ここで参照カウントして最後の1件まで実削除しない。 */
+    private final Map<ChunkKey, Integer> chunkTicketRefCounts = new ConcurrentHashMap<>();
+
+    private record ChunkKey(World world, int x, int z) {
+    }
 
     public RailManager(StellariaCore plugin, RailConfig config, RailStationManager stationManager, RailLineManager lineManager) {
         this.plugin = plugin;
@@ -68,14 +76,13 @@ public class RailManager {
         if (shape == null || RailSpeedController.isCurve(shape)) {
             return DepartureCheck.NOT_ON_RAIL;
         }
-        BlockFace direction = findDepartureDirection(block, shape, target);
-        if (direction == null) {
-            return DepartureCheck.NO_ROUTE;
+        if (findDepartureDirection(block, shape, target) != null) {
+            return DepartureCheck.OK;
         }
-        if (!isDirectionAllowed(block, direction, target)) {
-            return DepartureCheck.WRONG_DIRECTION;
-        }
-        return DepartureCheck.OK;
+        // findDepartureDirectionは「到達可能かつ一方通行に従う」方向しか返さないため、nullだけでは
+        // 経路が無いのか一方通行で弾かれたのか分からない。メッセージを分けるため、一方通行を無視した
+        // 純粋な到達可能性を別途調べる。
+        return isReachableIgnoringOneWay(block, shape, target) ? DepartureCheck.WRONG_DIRECTION : DepartureCheck.NO_ROUTE;
     }
 
     /** GUI表示用の1件。approxDistanceBlocksは経路探索で辿った実測ブロック数（直線距離ではない）。 */
@@ -186,11 +193,10 @@ public class RailManager {
             // 1tick目で即脱線扱いになるため許可しない（駅は直線区間に置く運用とする）
             return false;
         }
+        // findDepartureDirectionは「到達可能かつ一方通行に従う」方向しか返さないため、
+        // 追加のisDirectionAllowedチェックは不要（環状線で片方の候補が逆走になるケースの対応）。
         BlockFace direction = findDepartureDirection(block, shape, target);
         if (direction == null) {
-            return false;
-        }
-        if (!isDirectionAllowed(block, direction, target)) {
             return false;
         }
 
@@ -476,10 +482,14 @@ public class RailManager {
     }
 
     /**
-     * originBlockの直線区間が持つ2つの進行方向のうち、実際にレールをたどってtargetへ到達できる方を返す。
-     * どちらの方向でも到達できなければnull（呼び出し側は「経路が見つからない」として扱う）。
-     * 駅の「向き」設定は廃止したため、発車方向はここで実際のレール接続を歩いて確定する
-     * （分岐点はバニラのRail.Shapeが常に単一の接続を持つため、特別な分岐処理なしで自然に追従できる）。
+     * originBlockの直線区間が持つ2つの進行方向のうち、実際にレールをたどってtargetへ到達でき、
+     * かつ一方通行にも従っている方を返す。駅の「向き」設定は廃止したため、発車方向はここで実際の
+     * レール接続を歩いて確定する（分岐点はバニラのRail.Shapeが常に単一の接続を持つため、特別な
+     * 分岐処理なしで自然に追従できる）。
+     * 「到達可能」と「一方通行に従う」は別々にではなく候補ごとにまとめて判定する — 環状線では
+     * 片方の候補が到達可能でも逆走になり、もう片方の候補（同じく到達可能）が正しい向き、という
+     * ケースがあるため（先に見つかった到達可能な候補を即returnすると、後者を試す前に
+     * WRONG_DIRECTION扱いで弾いてしまっていた）。
      */
     private BlockFace findDepartureDirection(Block originBlock, Rail.Shape originShape, RailStationManager.Station target) {
         Location targetLocation = target.resolveLocation();
@@ -492,11 +502,35 @@ public class RailManager {
         }
         double arrivalRadiusSq = config.getStationArrivalRadius() * config.getStationArrivalRadius();
         for (BlockFace candidate : endpoints) {
-            if (pathReachesStation(originBlock, candidate, targetLocation, arrivalRadiusSq)) {
+            if (pathReachesStation(originBlock, candidate, targetLocation, arrivalRadiusSq)
+                    && isDirectionAllowed(originBlock, candidate, target)) {
                 return candidate;
             }
         }
         return null;
+    }
+
+    /**
+     * 一方通行を無視して、targetへ到達できる方向がそもそも存在するかどうかだけを調べる。
+     * checkDepartureでNO_ROUTE（経路自体が無い）とWRONG_DIRECTION（経路はあるが逆走になる）を
+     * 分けたメッセージにするためだけに使う診断用メソッド。
+     */
+    private boolean isReachableIgnoringOneWay(Block originBlock, Rail.Shape originShape, RailStationManager.Station target) {
+        Location targetLocation = target.resolveLocation();
+        if (targetLocation == null) {
+            return false;
+        }
+        BlockFace[] endpoints = RailSpeedController.endpointsOf(originShape);
+        if (endpoints == null) {
+            return false;
+        }
+        double arrivalRadiusSq = config.getStationArrivalRadius() * config.getStationArrivalRadius();
+        for (BlockFace candidate : endpoints) {
+            if (pathReachesStation(originBlock, candidate, targetLocation, arrivalRadiusSq)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** レールに沿って1マス進んだ結果（次のブロックと、そこから続ける進行方向）。 */
@@ -718,7 +752,7 @@ public class RailManager {
         for (int i = 1; i <= config.getChunkPreloadDistance(); i++) {
             int cx = currentChunk.getX() + chunkDx * i;
             int cz = currentChunk.getZ() + chunkDz * i;
-            world.addPluginChunkTicket(cx, cz, plugin);
+            acquireChunkTicket(world, cx, cz);
             session.heldChunkTickets().add(packChunk(cx, cz));
         }
         session.rememberChunk(currentChunk.getX(), currentChunk.getZ());
@@ -728,11 +762,30 @@ public class RailManager {
         World ticketWorld = session.ticketWorld();
         if (ticketWorld != null) {
             for (long packed : session.heldChunkTickets()) {
-                ticketWorld.removePluginChunkTicket((int) (packed >> 32), (int) packed, plugin);
+                releaseChunkTicket(ticketWorld, (int) (packed >> 32), (int) packed);
             }
         }
         session.heldChunkTickets().clear();
         session.setTicketWorld(null);
+    }
+
+    private void acquireChunkTicket(World world, int x, int z) {
+        ChunkKey key = new ChunkKey(world, x, z);
+        int count = chunkTicketRefCounts.merge(key, 1, Integer::sum);
+        if (count == 1) {
+            world.addPluginChunkTicket(x, z, plugin);
+        }
+    }
+
+    private void releaseChunkTicket(World world, int x, int z) {
+        ChunkKey key = new ChunkKey(world, x, z);
+        chunkTicketRefCounts.computeIfPresent(key, (k, count) -> {
+            if (count <= 1) {
+                world.removePluginChunkTicket(x, z, plugin);
+                return null;
+            }
+            return count - 1;
+        });
     }
 
     private static long packChunk(int x, int z) {

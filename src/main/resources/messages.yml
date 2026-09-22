@@ -520,6 +520,7 @@ rail:
   line_too_few_stations: "&%c路線には駅を2つ以上指定してください。"
   line_station_not_found: "&%c指定した駅が見つかりません。"
   line_station_already_on_line: "&%c指定した駅は既に別の路線に属しています。"
+  line_duplicate_station: "&%c同じ駅を複数回指定することはできません。"
   line_removed: "&%a路線「%name%」を削除しました。"
   line_not_found: "&%c路線「%name%」が見つかりません。"
   line_list_header: "&%b----- 路線一覧 -----"

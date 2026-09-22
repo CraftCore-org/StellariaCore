@@ -5,9 +5,11 @@ import org.craftcore.stellaria.managers.DatabaseManager;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -31,7 +33,7 @@ public class RailLineManager {
     }
 
     public enum CreateResult {
-        SUCCESS, NAME_TAKEN, TOO_FEW_STATIONS, STATION_NOT_FOUND, STATION_ALREADY_ON_LINE, DATABASE_ERROR
+        SUCCESS, NAME_TAKEN, TOO_FEW_STATIONS, STATION_NOT_FOUND, STATION_ALREADY_ON_LINE, DUPLICATE_STATION, DATABASE_ERROR
     }
 
     private record LineRow(String name, boolean oneWay) {
@@ -79,10 +81,17 @@ public class RailLineManager {
             return CreateResult.TOO_FEW_STATIONS;
         }
         List<String> canonicalNames = new ArrayList<>();
+        Set<String> seenStations = new HashSet<>();
         for (String stationName : stationNames) {
             RailStationManager.Station station = stationManager.get(stationName);
             if (station == null) {
                 return CreateResult.STATION_NOT_FOUND;
+            }
+            // 同じ駅がstationNames内で複数回指定された場合。stationToLineはまだ更新されていない
+            // （registerInCacheはコミット後）ため、このチェックが無いと(line_name, station_name)の
+            // 複合主キー違反でDATABASE_ERRORという分かりにくいエラーになってしまう。
+            if (!seenStations.add(station.name().toLowerCase(Locale.ROOT))) {
+                return CreateResult.DUPLICATE_STATION;
             }
             if (stationToLine.containsKey(station.name().toLowerCase(Locale.ROOT))) {
                 return CreateResult.STATION_ALREADY_ON_LINE;

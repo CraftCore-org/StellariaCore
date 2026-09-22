@@ -232,6 +232,8 @@ public class RailCommand implements CommandExecutor, TabCompleter {
                     plugin.getConfigManager().getMessage("rail.line_station_not_found", player));
             case STATION_ALREADY_ON_LINE -> player.sendMessage(
                     plugin.getConfigManager().getMessage("rail.line_station_already_on_line", player));
+            case DUPLICATE_STATION -> player.sendMessage(
+                    plugin.getConfigManager().getMessage("rail.line_duplicate_station", player));
             case DATABASE_ERROR -> player.sendMessage(
                     plugin.getConfigManager().getMessage("rail.database_error", player));
         }
