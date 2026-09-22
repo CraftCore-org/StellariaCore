@@ -4,10 +4,12 @@ import org.bukkit.Material;
 import org.bukkit.entity.Minecart;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerAnimationEvent;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
 import org.bukkit.event.vehicle.VehicleEntityCollisionEvent;
 import org.bukkit.event.vehicle.VehicleExitEvent;
@@ -133,6 +135,37 @@ public class RailListener implements Listener {
         player.sendMessage(plugin.getConfigManager().getMessage("rail.auto_gui_prompt", player));
         new RailDepartGui(plugin, plugin.getRailCommand(), cart).open(player);
         return true;
+    }
+
+    /**
+     * 調査用の一時的なデバッグ出力。トロッコに乗車中、右クリック系イベントが実際に何か1つでも
+     * 飛んでくるのかどうかをチャットに出す（cancelled状態も見るためMONITOR+ignoreCancelled=false）。
+     * 原因が特定でき次第この3つのハンドラは削除する。
+     */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onDebugInteract(PlayerInteractEvent event) {
+        Player player = event.getPlayer();
+        if (player.getVehicle() instanceof Minecart) {
+            player.sendMessage("§7[rail-debug] PlayerInteractEvent action=" + event.getAction()
+                    + " hand=" + event.getHand() + " cancelled=" + event.isCancelled());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onDebugInteractEntity(PlayerInteractEntityEvent event) {
+        Player player = event.getPlayer();
+        if (player.getVehicle() instanceof Minecart) {
+            player.sendMessage("§7[rail-debug] PlayerInteractEntityEvent target=" + event.getRightClicked().getType()
+                    + " cancelled=" + event.isCancelled());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onDebugAnimation(PlayerAnimationEvent event) {
+        Player player = event.getPlayer();
+        if (player.getVehicle() instanceof Minecart) {
+            player.sendMessage("§7[rail-debug] PlayerAnimationEvent type=" + event.getAnimationType());
+        }
     }
 
     private static boolean isInertForGuiTrigger(ItemStack item) {
