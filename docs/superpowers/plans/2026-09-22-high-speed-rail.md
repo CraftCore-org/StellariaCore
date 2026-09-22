@@ -734,6 +734,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.Vector;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.utils.FormatUtil;
 import org.craftcore.stellaria.utils.WorldBlacklistUtil;
 
 import java.util.HashMap;
@@ -798,6 +799,14 @@ public class RailManager {
     }
 
     public void endSession(Minecart cart, EndReason reason) {
+        endSession(cart, reason, null);
+    }
+
+    /**
+     * stationNameはARRIVED時のみ意味を持つ（messages.ymlのrail.arrivedにある%station%の置換用）。
+     * それ以外の理由ではnullでよい。
+     */
+    private void endSession(Minecart cart, EndReason reason, String stationName) {
         RailSession session = sessions.remove(cart.getUniqueId());
         if (session == null) {
             return;
@@ -807,10 +816,10 @@ public class RailManager {
             cart.getPersistentDataContainer().remove(railModeKey);
             cart.setVelocity(new Vector(0, 0, 0));
         }
-        notifyEnd(cart, reason);
+        notifyEnd(cart, reason, stationName);
     }
 
-    private void notifyEnd(Minecart cart, EndReason reason) {
+    private void notifyEnd(Minecart cart, EndReason reason, String stationName) {
         String key = switch (reason) {
             case ARRIVED -> "rail.arrived";
             case OFF_RAIL -> "rail.off_rail_cancelled";
@@ -821,7 +830,11 @@ public class RailManager {
         }
         for (Entity passenger : cart.getPassengers()) {
             if (passenger instanceof Player player) {
-                player.sendMessage(plugin.getConfigManager().getMessage(key, player));
+                String message = plugin.getConfigManager().getMessage(key, player);
+                if (stationName != null) {
+                    message = FormatUtil.replace(message, "%station%", stationName);
+                }
+                player.sendMessage(message);
             }
         }
     }
@@ -862,7 +875,7 @@ public class RailManager {
 
         RailStationManager.Station nearStation = stationManager.findWithin(cart.getLocation(), config.getStationArrivalRadius());
         if (nearStation != null && newSpeed <= config.getMinSpeedBps()) {
-            endSession(cart, EndReason.ARRIVED);
+            endSession(cart, EndReason.ARRIVED, nearStation.name());
             return;
         }
 
@@ -1060,7 +1073,7 @@ git commit -m "feat(rail): add RailListener vehicle event wiring"
 - Create: `src/main/java/org/craftcore/stellaria/commands/RailCommand.java`
 
 **Interfaces:**
-- Consumes: `StellariaCore#getRailStationManager()`, `#getRailManager()`（Task 8で追加）
+- Consumes: `StellariaCore#getRailStationManager()`, `#getRailManager()`, `#getRailConfig()`（いずれもTask 8で追加。`rail.disabled-worlds`/`rail.station.activation-radius`はRailConfig経由で読む。RailConfig自体はTask 3で作成済み）
 - Produces: `/rail station add|remove|list`, `/rail depart <station>` のCommandExecutor/TabCompleter
 
 - [ ] **Step 1: `RailCommand` を作成する**
@@ -1188,7 +1201,7 @@ public class RailCommand implements CommandExecutor, TabCompleter {
             player.sendMessage(plugin.getConfigManager().getUsageMessage("rail.usage_depart", player));
             return;
         }
-        if (WorldBlacklistUtil.isBlacklisted(plugin.getConfigManager().getStringList("rail.disabled-worlds", true), player.getWorld().getName())) {
+        if (WorldBlacklistUtil.isBlacklisted(plugin.getRailConfig().getDisabledWorlds(), player.getWorld().getName())) {
             player.sendMessage(plugin.getConfigManager().getMessage("rail.world_disabled", player));
             return;
         }
@@ -1203,7 +1216,7 @@ public class RailCommand implements CommandExecutor, TabCompleter {
                     plugin.getConfigManager().getMessage("rail.station_not_found", player), "%name%", stationName));
             return;
         }
-        double activationRadius = plugin.getConfigManager().getDouble("rail.station.activation-radius", 5.0);
+        double activationRadius = plugin.getRailConfig().getStationActivationRadius();
         if (!station.location().getWorld().equals(cart.getWorld())
                 || station.location().distanceSquared(cart.getLocation()) > activationRadius * activationRadius) {
             player.sendMessage(FormatUtil.replace(
