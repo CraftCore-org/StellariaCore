@@ -4,12 +4,11 @@ import org.bukkit.Material;
 import org.bukkit.entity.Minecart;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerAnimationEvent;
+import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
 import org.bukkit.event.vehicle.VehicleEntityCollisionEvent;
 import org.bukkit.event.vehicle.VehicleExitEvent;
@@ -81,9 +80,12 @@ public class RailListener implements Listener {
 
     /**
      * /rail station add 実行後、右クリックでレールを選択して駅の位置を確定するためのフック。
-     * それに該当しなければ、レール上のトロッコに乗車中の右クリック（素手 or 右クリックで何も
-     * 起きないツール）を行き先GUI起動として扱う。乗車した瞬間に強制で開く方式は「ちょっとあれ」
+     * それに該当しなければ、レール上のトロッコに乗車中の右クリック（右クリックで何も起きないツール
+     * を持っている場合）を行き先GUI起動として扱う。乗車した瞬間に強制で開く方式は「ちょっとあれ」
      * という理由で見送り、プレイヤー自身の右クリック操作をトリガーにする。
+     * 素手＋見ている先に何も無い（空気）状態の右クリックは、調査の結果バニラのクライアントが
+     * そもそも何もパケットを送らない（乗り物に乗っているかは無関係の一般的な仕様）ことが判明した
+     * ため、ここでは検知できない — その場合はonPlayerToggleSneakの方でカバーする。
      */
     @EventHandler(ignoreCancelled = true)
     public void onPlayerInteract(PlayerInteractEvent event) {
@@ -93,26 +95,35 @@ public class RailListener implements Listener {
             return;
         }
         if ((event.getAction() == Action.RIGHT_CLICK_BLOCK || event.getAction() == Action.RIGHT_CLICK_AIR)
-                && tryOpenDepartGuiOnInteract(event.getPlayer())) {
+                && isInertForGuiTrigger(event.getPlayer().getInventory().getItemInMainHand())
+                && tryOpenDepartGui(event.getPlayer())) {
+            event.setCancelled(true);
+        }
+    }
+
+    /** アイテムを持った状態で自分の乗り物（空気の代わりに乗り物本体を狙ってしまうケース）を右クリックした時用。 */
+    @EventHandler(ignoreCancelled = true)
+    public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
+        if (event.getRightClicked() instanceof Minecart cart && event.getPlayer().getVehicle() == cart
+                && isInertForGuiTrigger(event.getPlayer().getInventory().getItemInMainHand())
+                && tryOpenDepartGui(event.getPlayer())) {
             event.setCancelled(true);
         }
     }
 
     /**
-     * トロッコに乗っている間の右クリックは、見た先に何も無ければ（リーチが届く範囲にブロックが無ければ）
-     * バニラ側は「空気を右クリック」ではなく「自分が乗っている乗り物を右クリック」として処理することが
-     * 多く、その場合PlayerInteractEventではなくこちらが飛ぶ。PlayerInteractEventのRIGHT_CLICK_AIRだけを
-     * 見ていると、リーチ内のブロックを狙わない限り行き先GUIが開かない不具合になるため、こちらも拾う。
+     * 素手＋空気クリックでは検知できない（onPlayerInteractのコメント参照）ため、しゃがみ開始を
+     * 代替トリガーにする。トロッコ乗車中のしゃがみは元々何のアクションも起こさないため、
+     * KikoriManagerのエレベーター同様「乗車中のしゃがみ」を安全に流用できる。
      */
     @EventHandler(ignoreCancelled = true)
-    public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
-        if (event.getRightClicked() instanceof Minecart cart && event.getPlayer().getVehicle() == cart
-                && tryOpenDepartGuiOnInteract(event.getPlayer())) {
-            event.setCancelled(true);
+    public void onPlayerToggleSneak(PlayerToggleSneakEvent event) {
+        if (event.isSneaking()) {
+            tryOpenDepartGui(event.getPlayer());
         }
     }
 
-    private boolean tryOpenDepartGuiOnInteract(Player player) {
+    private boolean tryOpenDepartGui(Player player) {
         if (!plugin.getRailConfig().isOpenGuiOnInteractEnabled()) {
             return false;
         }
@@ -125,9 +136,6 @@ public class RailListener implements Listener {
         if (WorldBlacklistUtil.isBlacklisted(plugin.getRailConfig().getDisabledWorlds(), player.getWorld().getName())) {
             return false;
         }
-        if (!isInertForGuiTrigger(player.getInventory().getItemInMainHand())) {
-            return false;
-        }
         List<RailManager.ReachableStation> reachable = plugin.getRailManager().findReachableStations(cart);
         if (reachable.isEmpty()) {
             return false;
@@ -135,37 +143,6 @@ public class RailListener implements Listener {
         player.sendMessage(plugin.getConfigManager().getMessage("rail.auto_gui_prompt", player));
         new RailDepartGui(plugin, plugin.getRailCommand(), cart).open(player);
         return true;
-    }
-
-    /**
-     * 調査用の一時的なデバッグ出力。トロッコに乗車中、右クリック系イベントが実際に何か1つでも
-     * 飛んでくるのかどうかをチャットに出す（cancelled状態も見るためMONITOR+ignoreCancelled=false）。
-     * 原因が特定でき次第この3つのハンドラは削除する。
-     */
-    @EventHandler(priority = EventPriority.MONITOR)
-    public void onDebugInteract(PlayerInteractEvent event) {
-        Player player = event.getPlayer();
-        if (player.getVehicle() instanceof Minecart) {
-            player.sendMessage("§7[rail-debug] PlayerInteractEvent action=" + event.getAction()
-                    + " hand=" + event.getHand() + " cancelled=" + event.isCancelled());
-        }
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR)
-    public void onDebugInteractEntity(PlayerInteractEntityEvent event) {
-        Player player = event.getPlayer();
-        if (player.getVehicle() instanceof Minecart) {
-            player.sendMessage("§7[rail-debug] PlayerInteractEntityEvent target=" + event.getRightClicked().getType()
-                    + " cancelled=" + event.isCancelled());
-        }
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR)
-    public void onDebugAnimation(PlayerAnimationEvent event) {
-        Player player = event.getPlayer();
-        if (player.getVehicle() instanceof Minecart) {
-            player.sendMessage("§7[rail-debug] PlayerAnimationEvent type=" + event.getAnimationType());
-        }
     }
 
     private static boolean isInertForGuiTrigger(ItemStack item) {
