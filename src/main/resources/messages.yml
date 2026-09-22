@@ -562,6 +562,8 @@ rail:
   line_gui_confirm_title: "&%c路線の削除"
   line_gui_confirm_description: "&%f路線「%name%」を削除します（駅自体は残ります）。よろしいですか？"
   arrived: "&%a%station%駅に到着しました"
+  arrival_subtitle_arrived: "&%a到着"
+  arrival_subtitle_passed: "&%7通過"
   off_rail_cancelled: "&%7レールを外れたため、高速モードを解除しました。"
   collision_cancelled: "&%c前の車両と衝突しました。高速モードを解除しました。"
 

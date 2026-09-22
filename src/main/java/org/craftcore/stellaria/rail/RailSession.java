@@ -5,6 +5,7 @@ import org.bukkit.World;
 import org.bukkit.block.BlockFace;
 
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
@@ -20,6 +21,7 @@ public final class RailSession {
     private double currentSpeedBps;
     private BlockFace direction;
     private long lastOnRailMillis;
+    private int offRailTicks;
     private int lastChunkX = Integer.MIN_VALUE;
     private int lastChunkZ = Integer.MIN_VALUE;
     private int lastBlockX = Integer.MIN_VALUE;
@@ -27,6 +29,8 @@ public final class RailSession {
     private int lastBlockZ = Integer.MIN_VALUE;
     private ScheduledTask watchdogTask;
     private final Set<Long> heldChunkTickets = new HashSet<>();
+    /** このトリップ中に通過/到着タイトルを既に出した駅名（小文字）。同じ駅で毎tick出し続けないための記録。 */
+    private final Set<String> notifiedStations = new HashSet<>();
     private double originalMaxSpeed;
     private World ticketWorld;
 
@@ -53,7 +57,13 @@ public final class RailSession {
 
     public long lastOnRailMillis() { return lastOnRailMillis; }
 
-    public void markOnRailNow() { this.lastOnRailMillis = System.currentTimeMillis(); }
+    public void markOnRailNow() {
+        this.lastOnRailMillis = System.currentTimeMillis();
+        this.offRailTicks = 0;
+    }
+
+    /** レールを外れてから連続何tick経過したか（平面交差点の隙間などを能動的に押し切る猶予の判定用）。 */
+    public int incrementAndGetOffRailTicks() { return ++offRailTicks; }
 
     /** チャンク先読みの再計算を「チャンクをまたいだ時だけ」にするための比較。 */
     public boolean hasEnteredChunk(int chunkX, int chunkZ) {
@@ -81,6 +91,14 @@ public final class RailSession {
     public void setWatchdogTask(ScheduledTask task) { this.watchdogTask = task; }
 
     public Set<Long> heldChunkTickets() { return heldChunkTickets; }
+
+    public boolean hasNotifiedStation(String stationName) {
+        return notifiedStations.contains(stationName.toLowerCase(Locale.ROOT));
+    }
+
+    public void markStationNotified(String stationName) {
+        notifiedStations.add(stationName.toLowerCase(Locale.ROOT));
+    }
 
     public double originalMaxSpeed() { return originalMaxSpeed; }
 

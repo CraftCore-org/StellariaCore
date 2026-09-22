@@ -1,7 +1,6 @@
 package org.craftcore.stellaria.gui;
 
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Minecart;
@@ -62,7 +61,7 @@ public final class RailDepartGui extends Gui {
         int first = page * CONTENT_SLOTS;
         for (int slot = 0; slot < CONTENT_SLOTS && first + slot < stations.size(); slot++) {
             RailManager.ReachableStation entry = stations.get(first + slot);
-            getInventory().setItem(slot, item(Material.MINECART, Component.text(entry.station().name(), NamedTextColor.WHITE), List.of(
+            getInventory().setItem(slot, item(Material.MINECART, FormatUtil.component(entry.station().name()), List.of(
                     lineLore(entry.station().name()),
                     message("rail.gui_entry_direction", "%direction%", directionLabel(entry.direction())),
                     message("rail.gui_entry_distance", "%distance%", String.valueOf(entry.approxDistanceBlocks())),

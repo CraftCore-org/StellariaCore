@@ -223,7 +223,7 @@ public class RailManager {
         for (Entity passenger : cart.getPassengers()) {
             if (passenger instanceof Player player) {
                 String message = FormatUtil.replace(
-                        plugin.getConfigManager().getMessage("rail.moving_to_actionbar", player), "%name%", target.name());
+                        plugin.getConfigManager().getMessage("rail.moving_to_actionbar", player), "%name%", FormatUtil.color(target.name()));
                 plugin.getActionBarManager().setChannel(player, "rail", FormatUtil.component(message));
             }
         }
@@ -273,9 +273,40 @@ public class RailManager {
             if (passenger instanceof Player player) {
                 String message = plugin.getConfigManager().getMessage(key, player);
                 if (stationName != null) {
-                    message = FormatUtil.replace(message, "%station%", stationName);
+                    // 駅名自体にカラーコードを含められるよう、置換前に駅名側だけ個別に色変換する
+                    // （getMessageは既にテンプレート側の色を変換済みの文字列を返すため、駅名の
+                    // %player%展開やPAPI解決は不要 — FormatUtil.textをもう一度掛ける必要はない）。
+                    message = FormatUtil.replace(message, "%station%", FormatUtil.color(stationName));
                 }
                 player.sendMessage(message);
+            }
+        }
+        if (reason == EndReason.ARRIVED && stationName != null) {
+            for (Entity passenger : cart.getPassengers()) {
+                if (passenger instanceof Player player) {
+                    RailStationAnnouncement.play(plugin, player, stationName, true);
+                }
+            }
+        }
+    }
+
+    /** target以外の駅の到着範囲に入った瞬間、通過タイトル＋通知音を1回だけ出す（急行運転の演出）。 */
+    private void notifyStationPassage(Minecart cart, RailSession session, RailStationManager.Station target) {
+        double arrivalRadiusSq = config.getStationArrivalRadius() * config.getStationArrivalRadius();
+        for (RailStationManager.Station station : stationManager.listAll()) {
+            if (station.name().equalsIgnoreCase(target.name()) || session.hasNotifiedStation(station.name())) {
+                continue;
+            }
+            Location stationLocation = station.resolveLocation();
+            if (stationLocation == null || !stationLocation.getWorld().equals(cart.getWorld())
+                    || stationLocation.distanceSquared(cart.getLocation()) > arrivalRadiusSq) {
+                continue;
+            }
+            session.markStationNotified(station.name());
+            for (Entity passenger : cart.getPassengers()) {
+                if (passenger instanceof Player player) {
+                    RailStationAnnouncement.play(plugin, player, station.name(), false);
+                }
             }
         }
     }
@@ -296,6 +327,15 @@ public class RailManager {
         if (shape == null) {
             if (System.currentTimeMillis() - session.lastOnRailMillis() > config.getOffRailGraceMillis()) {
                 endSession(cart, EndReason.OFF_RAIL);
+                return;
+            }
+            // 平面交差点などレールが1ブロックだけ途切れている区間を、バニラの慣性任せにせず
+            // 猶予期間の最初の数tickだけ能動的に押し続けて確実に跨がせる。ここでapplyVelocityを
+            // 呼ばずただ待つだけだと、レールを外れた瞬間にバニラ側の摩擦で急減速し、次tickでも
+            // 対岸のレールに届かないまま…を繰り返して結局OFF_RAILになることがあった
+            // （以前の実装はこの猶予期間を「何もせず待つだけ」に使っていた）。
+            if (session.incrementAndGetOffRailTicks() <= config.getOffRailActivePushTicks()) {
+                applyVelocity(cart, session, session.currentSpeedBps());
             }
             return;
         }
@@ -321,6 +361,7 @@ public class RailManager {
             endSession(cart, EndReason.ERROR);
             return;
         }
+        notifyStationPassage(cart, session, target);
 
         double targetSpeed = computeTargetSpeed(currentBlock, shape, session);
         double newSpeed = RailSpeedController.nextSpeed(
@@ -393,24 +434,21 @@ public class RailManager {
                 }
             }
 
-            Block nextBlock = scanBlock.getRelative(scanDirection);
-            if (!world.isChunkLoaded(nextBlock.getX() >> 4, nextBlock.getZ() >> 4)) {
-                break; // 先読みのために未ロードのチャンクを強制ロードしない
+            // stepAlongRailを使うことで、カーブ・坂道の接続バグ（曲がる前の方向で隣を見てしまう等）を
+            // この先読みでも踏まないようにする。以前はここだけ簡易な独自実装（scanBlock.getRelative
+            // (scanDirection)固定）を持っていて、カーブや坂の先にある駅の手前で先読みが早期に打ち切られ、
+            // 減速が始まらないまま駅を通過してしまうことがあった。
+            RailStep step = stepAlongRail(scanBlock, scanDirection, true);
+            if (step == null) {
+                break; // この先はレールが無い、または未ロードのチャンク。今のブロックの制限だけで判断する
             }
-            Rail.Shape nextShape = RailSpeedController.shapeAt(nextBlock);
-            if (nextShape == null) {
-                break; // この先はレールが無い（行き止まり・未敷設）。今のブロックの制限だけで判断する
-            }
+            Rail.Shape nextShape = RailSpeedController.shapeAt(step.block());
             double aheadLimit = RailSpeedController.maxSpeedFor(nextShape, config);
             if (aheadLimit < limit && distance <= brakingNeeded) {
                 limit = Math.min(limit, aheadLimit);
             }
-            BlockFace nextDirection = RailSpeedController.nextDirection(nextShape, scanDirection);
-            if (nextDirection == null) {
-                break;
-            }
-            scanBlock = nextBlock;
-            scanDirection = nextDirection;
+            scanBlock = step.block();
+            scanDirection = step.direction();
             distance += 1.0;
         }
         return limit;
@@ -452,20 +490,30 @@ public class RailManager {
      * 坂道の高い側へ抜ける場合はY方向にも+1する（水平移動だけだとレールが途切れている扱いになる）。
      * 次ブロックの水平方向はカーブで曲がった後のnextDirection側（進行方向）を使う。曲がる前の
      * directionのまま隣を見てしまうと、カーブでは実際に接続していない側を見ることになる。
+     * コマンド実行時の経路探索（駅の少し先まで確認できれば十分）からは2引数版を、毎tick走る
+     * computeTargetSpeedの先読みからは requireChunkLoaded=true の3引数版を呼ぶこと
+     * （毎tick未ロードチャンクを強制ロードしてしまうと重くなるため）。
      */
     private RailStep stepAlongRail(Block fromBlock, BlockFace direction) {
+        return stepAlongRail(fromBlock, direction, false);
+    }
+
+    private RailStep stepAlongRail(Block fromBlock, BlockFace direction, boolean requireChunkLoaded) {
         Rail.Shape shape = RailSpeedController.shapeAt(fromBlock);
         if (shape != null) {
             BlockFace nextDirection = RailSpeedController.nextDirection(shape, direction);
             if (nextDirection != null) {
                 int verticalOffset = RailSpeedController.verticalOffset(shape, nextDirection);
                 Block nextBlock = fromBlock.getRelative(nextDirection.getModX(), verticalOffset, nextDirection.getModZ());
+                if (requireChunkLoaded && !isChunkLoaded(nextBlock)) {
+                    return null;
+                }
                 if (verticalOffset == 0 && RailSpeedController.shapeAt(nextBlock) == null) {
                     // 平坦レール→1段下にある坂道の高い側入口、という接続を試す
                     // （verticalOffsetはfromBlock自身が坂道から抜ける時しか+1にならず、平坦区間から
                     // 坂道へ下りて入る時のオフセットまでは分からないため、ここで補う）。
                     Block loweredBlock = fromBlock.getRelative(nextDirection.getModX(), -1, nextDirection.getModZ());
-                    if (RailSpeedController.shapeAt(loweredBlock) != null) {
+                    if ((!requireChunkLoaded || isChunkLoaded(loweredBlock)) && RailSpeedController.shapeAt(loweredBlock) != null) {
                         nextBlock = loweredBlock;
                     }
                 }
@@ -475,6 +523,9 @@ public class RailManager {
         // fromBlockのレールが無い、または直進方向と互換性が無い（別路線が直交している平面交差点）。
         // 直進方向にもう1マス先（交差点の反対側）を試す。
         Block hopBlock = fromBlock.getRelative(direction);
+        if (requireChunkLoaded && !isChunkLoaded(hopBlock)) {
+            return null;
+        }
         Rail.Shape hopShape = RailSpeedController.shapeAt(hopBlock);
         if (hopShape == null) {
             return null;
@@ -484,6 +535,10 @@ public class RailManager {
             return null;
         }
         return new RailStep(hopBlock, hopNextDirection);
+    }
+
+    private static boolean isChunkLoaded(Block block) {
+        return block.getWorld().isChunkLoaded(block.getX() >> 4, block.getZ() >> 4);
     }
 
     /** originBlockからcandidateDirection方向へレールをたどり、targetLocationの到着範囲内に入れるか調べる。

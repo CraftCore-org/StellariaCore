@@ -1,5 +1,6 @@
 package org.craftcore.stellaria.rail;
 
+import org.bukkit.Material;
 import org.bukkit.entity.Minecart;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -7,16 +8,17 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
-import org.bukkit.event.vehicle.VehicleEnterEvent;
 import org.bukkit.event.vehicle.VehicleEntityCollisionEvent;
 import org.bukkit.event.vehicle.VehicleExitEvent;
 import org.bukkit.event.vehicle.VehicleMoveEvent;
+import org.bukkit.inventory.ItemStack;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.commands.RailCommand;
 import org.craftcore.stellaria.gui.RailDepartGui;
 import org.craftcore.stellaria.utils.WorldBlacklistUtil;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * 高速鉄道セッションの毎tick更新とライフサイクル終了のきっかけとなるBukkitイベントを拾う。
@@ -70,46 +72,64 @@ public class RailListener implements Listener {
         plugin.getRailManager().endSession(cart, RailManager.EndReason.DISMOUNTED);
     }
 
+    /** ツルハシ・オノ・シャベル・クワ・剣は、レール上でトロッコに乗った状態で右クリックしても
+     *  通常バニラ動作（クワの耕地化等）が起きにくいため、行き先GUI起動用の右クリックとして許可する。 */
+    private static final Set<String> GUI_TRIGGER_TOOL_SUFFIXES = Set.of("_PICKAXE", "_AXE", "_SHOVEL", "_HOE", "_SWORD");
+
     /**
-     * 高速モードでないトロッコにプレイヤーが乗車したら、レール上かつ発車可能な駅があれば
-     * 自動で目的地GUIを開く。/rail depart gui を知らない一般プレイヤーでも迷わず使えるようにするため。
-     * 乗車直後の1tickはPassenger/位置の反映がまだ確定していないことがあるため1tick遅らせて判定する。
+     * /rail station add 実行後、右クリックでレールを選択して駅の位置を確定するためのフック。
+     * それに該当しなければ、レール上のトロッコに乗車中の右クリック（素手 or 右クリックで何も
+     * 起きないツール）を行き先GUI起動として扱う。乗車した瞬間に強制で開く方式は「ちょっとあれ」
+     * という理由で見送り、プレイヤー自身の右クリック操作をトリガーにする。
      */
     @EventHandler(ignoreCancelled = true)
-    public void onVehicleEnter(VehicleEnterEvent event) {
-        if (!plugin.getRailConfig().isAutoGuiOnMountEnabled()) {
-            return;
-        }
-        if (!(event.getVehicle() instanceof Minecart cart) || !(event.getEntered() instanceof Player player)) {
-            return;
-        }
-        if (!player.hasPermission("stellaria.rail") || plugin.getRailManager().isRailMode(cart.getUniqueId())) {
-            return;
-        }
-        if (WorldBlacklistUtil.isBlacklisted(plugin.getRailConfig().getDisabledWorlds(), player.getWorld().getName())) {
-            return;
-        }
-        player.getScheduler().runDelayed(plugin, task -> {
-            if (!cart.isValid() || player.getVehicle() != cart || plugin.getRailManager().isRailMode(cart.getUniqueId())) {
-                return;
-            }
-            List<RailManager.ReachableStation> reachable = plugin.getRailManager().findReachableStations(cart);
-            if (reachable.isEmpty()) {
-                return;
-            }
-            player.sendMessage(plugin.getConfigManager().getMessage("rail.auto_gui_prompt", player));
-            new RailDepartGui(plugin, plugin.getRailCommand(), cart).open(player);
-        }, null, 1L);
-    }
-
-    /** /rail station add 実行後、右クリックでレールを選択して駅の位置を確定するためのフック。 */
-    @EventHandler(ignoreCancelled = true)
     public void onPlayerInteract(PlayerInteractEvent event) {
-        if (event.getAction() != Action.RIGHT_CLICK_BLOCK || event.getClickedBlock() == null) {
+        if (event.getAction() == Action.RIGHT_CLICK_BLOCK && event.getClickedBlock() != null
+                && RailCommand.handleStationRailClick(plugin, event.getPlayer(), event.getClickedBlock())) {
+            event.setCancelled(true);
             return;
         }
-        if (RailCommand.handleStationRailClick(plugin, event.getPlayer(), event.getClickedBlock())) {
+        if ((event.getAction() == Action.RIGHT_CLICK_BLOCK || event.getAction() == Action.RIGHT_CLICK_AIR)
+                && tryOpenDepartGuiOnInteract(event.getPlayer())) {
             event.setCancelled(true);
         }
+    }
+
+    private boolean tryOpenDepartGuiOnInteract(Player player) {
+        if (!plugin.getRailConfig().isOpenGuiOnInteractEnabled()) {
+            return false;
+        }
+        if (!(player.getVehicle() instanceof Minecart cart) || plugin.getRailManager().isRailMode(cart.getUniqueId())) {
+            return false;
+        }
+        if (!player.hasPermission("stellaria.rail")) {
+            return false;
+        }
+        if (WorldBlacklistUtil.isBlacklisted(plugin.getRailConfig().getDisabledWorlds(), player.getWorld().getName())) {
+            return false;
+        }
+        if (!isInertForGuiTrigger(player.getInventory().getItemInMainHand())) {
+            return false;
+        }
+        List<RailManager.ReachableStation> reachable = plugin.getRailManager().findReachableStations(cart);
+        if (reachable.isEmpty()) {
+            return false;
+        }
+        player.sendMessage(plugin.getConfigManager().getMessage("rail.auto_gui_prompt", player));
+        new RailDepartGui(plugin, plugin.getRailCommand(), cart).open(player);
+        return true;
+    }
+
+    private static boolean isInertForGuiTrigger(ItemStack item) {
+        if (item == null || item.getType() == Material.AIR) {
+            return true;
+        }
+        String name = item.getType().name();
+        for (String suffix : GUI_TRIGGER_TOOL_SUFFIXES) {
+            if (name.endsWith(suffix)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

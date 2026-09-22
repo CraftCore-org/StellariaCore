@@ -17,6 +17,7 @@ import org.craftcore.stellaria.rail.RailLineManager;
 import org.craftcore.stellaria.rail.RailListener;
 import org.craftcore.stellaria.rail.RailManager;
 import org.craftcore.stellaria.rail.RailStationManager;
+import org.craftcore.stellaria.rail.RailStationParticleManager;
 import org.craftcore.stellaria.listeners.*;
 import org.craftcore.stellaria.managers.*;
 import org.craftcore.stellaria.gui.GuiListener;
@@ -99,6 +100,7 @@ public class StellariaCore extends JavaPlugin {
     private RailLineManager railLineManager;
     private RailManager railManager;
     private RailCommand railCommand;
+    private RailStationParticleManager railStationParticleManager;
     private JapanTimeSyncManager japanTimeSyncManager;
     private ShopManager shopManager;
     private ShopListener shopListener;
@@ -111,6 +113,7 @@ public class StellariaCore extends JavaPlugin {
     private ScheduledTask belownameTask;
     private ScheduledTask nametagTask;
     private ScheduledTask landBorderTask;
+    private ScheduledTask railStationParticleTask;
     private ScheduledTask afkTask;
     private ScheduledTask kikoriTask;
     private ScheduledTask mineTask;
@@ -294,6 +297,7 @@ public class StellariaCore extends JavaPlugin {
         this.railLineManager.loadAll();
         this.railStationManager.bindLineManager(railLineManager);
         this.railManager = new RailManager(this, railConfig, railStationManager, railLineManager);
+        this.railStationParticleManager = new RailStationParticleManager(this);
         this.mineManager = new MineManager(this);
         this.lobbyManager = new LobbyManager(this);
         this.features = List.of(new KikoriFeature(kikoriManager), new MineFeature(mineManager));
@@ -739,6 +743,10 @@ public class StellariaCore extends JavaPlugin {
         return this.railCommand;
     }
 
+    public RailStationParticleManager getRailStationParticleManager() {
+        return this.railStationParticleManager;
+    }
+
     public List<Feature> getFeatures() {
         return this.features;
     }
@@ -818,6 +826,7 @@ public class StellariaCore extends JavaPlugin {
         cancelTask(belownameTask);
         cancelTask(nametagTask);
         cancelTask(landBorderTask);
+        cancelTask(railStationParticleTask);
         cancelTask(afkTask);
         cancelTask(kikoriTask);
         cancelTask(mineTask);
@@ -856,6 +865,9 @@ public class StellariaCore extends JavaPlugin {
         nametagTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> nametagManager.tick(), nametagInterval, nametagInterval);
         long landInterval = SchedulerIntervalUtil.ticks(configManager.getInt("land.border-particle.toggle-interval-ticks", 20));
         landBorderTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> landBorderParticleManager.tick(), landInterval, landInterval);
+        long railStationParticleInterval = SchedulerIntervalUtil.ticks(railConfig.getStationParticleIntervalTicks());
+        railStationParticleTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(
+                this, task -> railStationParticleManager.tick(), railStationParticleInterval, railStationParticleInterval);
         if (configManager.getBoolean("afk.enabled", true)) {
             afkTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> afkManager.tick(), 200L, 200L);
         }
