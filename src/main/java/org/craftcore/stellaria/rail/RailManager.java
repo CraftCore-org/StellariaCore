@@ -19,6 +19,7 @@ import org.craftcore.stellaria.utils.FormatUtil;
 import org.craftcore.stellaria.utils.WorldBlacklistUtil;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -394,58 +395,101 @@ public class RailManager {
     }
 
     /**
-     * targetが一方通行路線に属する場合、chosenDirection側への発車が路線の正順序（駅の登録順）と
-     * 一致しているかを検証する。両方通行の路線、またはtargetがどの路線にも属していなければ常にtrue。
-     * 起点の背後（chosenDirectionの逆側）で最初に見つかる同路線の駅とtargetの順序を比較する
-     * （背後に同路線の駅が見つからなければ、起点は路線の端にいるとみなして許可する）。
+     * chosenDirection側への発車が、経路上のどの一方通行路線の駅も逆順で通過しないかを検証する。
+     * target自身がどの路線に属していなくても、経路の途中で一方通行路線の駅を逆順に通過するなら拒否する
+     * （路線に未登録の駅が一方通行区間の途中・先にあり、そこへ逆走できてしまうケースをカバーするため）。
+     * 起点の背後（逆方向）で最初に見つかる各路線の駅の順序を基準値にし、そこから発車方向へ実際に
+     * 目的地までたどりながら、各路線の駅の順序が単調増加になっているかを見る。
      */
     private boolean isDirectionAllowed(Block originBlock, BlockFace chosenDirection, RailStationManager.Station target) {
-        RailLineManager.RailLine line = lineManager.findLineForStation(target.name());
-        if (line == null || !line.oneWay()) {
+        List<RailLineManager.RailLine> oneWayLines = lineManager.listAll().stream()
+                .filter(RailLineManager.RailLine::oneWay)
+                .toList();
+        if (oneWayLines.isEmpty()) {
             return true;
         }
-        int targetSequence = line.sequenceOf(target.name());
         double arrivalRadiusSq = config.getStationArrivalRadius() * config.getStationArrivalRadius();
-        RailStationManager.Station behindStation = findNearestLineStation(
-                originBlock, chosenDirection.getOppositeFace(), line, target.name(), arrivalRadiusSq);
-        if (behindStation == null) {
-            return true;
-        }
-        int behindSequence = line.sequenceOf(behindStation.name());
-        return behindSequence < targetSequence;
-    }
+        Location targetLocation = target.resolveLocation();
 
-    /** originBlockからdirection方向へレールをたどり、lineに属する駅（excludeStationNameを除く）のうち
-     *  最初に見つかったものを返す。config.getPathSearchMaxBlocks() を上限に打ち切る。 */
-    private RailStationManager.Station findNearestLineStation(
-            Block originBlock, BlockFace direction, RailLineManager.RailLine line, String excludeStationName, double arrivalRadiusSq) {
+        Map<String, Integer> lastSequenceByLine = new HashMap<>();
+        collectNearestSequencePerLine(originBlock, chosenDirection.getOppositeFace(), oneWayLines, arrivalRadiusSq, lastSequenceByLine);
+
         Block scanBlock = originBlock;
-        BlockFace scanDirection = direction;
+        BlockFace scanDirection = chosenDirection;
         int maxBlocks = config.getPathSearchMaxBlocks();
         for (int i = 0; i < maxBlocks; i++) {
             Rail.Shape shape = RailSpeedController.shapeAt(scanBlock);
             if (shape == null) {
-                return null;
+                return true; // これ以上レールが無い。ここまでの範囲で逆順は無かったので許可する
             }
             Location blockCenter = scanBlock.getLocation().add(0.5, 0.5, 0.5);
-            for (String stationName : line.stationNamesInOrder()) {
-                if (stationName.equalsIgnoreCase(excludeStationName)) {
+            for (RailLineManager.RailLine line : oneWayLines) {
+                RailStationManager.Station station = stationOnLineAt(line, blockCenter, arrivalRadiusSq);
+                if (station == null) {
                     continue;
                 }
-                RailStationManager.Station station = stationManager.get(stationName);
-                Location stationLocation = station != null ? station.resolveLocation() : null;
-                if (stationLocation != null && stationLocation.getWorld().equals(blockCenter.getWorld())
-                        && stationLocation.distanceSquared(blockCenter) <= arrivalRadiusSq) {
-                    return station;
+                int sequence = line.sequenceOf(station.name());
+                Integer previous = lastSequenceByLine.get(line.name());
+                if (previous != null && sequence < previous) {
+                    return false; // この路線を逆順に通過している
+                }
+                lastSequenceByLine.put(line.name(), sequence);
+            }
+            if (targetLocation != null && blockCenter.getWorld().equals(targetLocation.getWorld())
+                    && blockCenter.distanceSquared(targetLocation) <= arrivalRadiusSq) {
+                return true; // 目的地に到達。ここまで逆順は無かった
+            }
+            BlockFace nextDirection = RailSpeedController.nextDirection(shape, scanDirection);
+            if (nextDirection == null) {
+                return true;
+            }
+            scanBlock = scanBlock.getRelative(nextDirection);
+            scanDirection = nextDirection;
+        }
+        return true;
+    }
+
+    /** originBlockからdirection方向へレールをたどり、oneWayLinesそれぞれについて最初に見つかった駅の
+     *  順序番号をresultに記録する（全路線ぶん見つかるか、探索上限に達したら打ち切る）。 */
+    private void collectNearestSequencePerLine(
+            Block originBlock, BlockFace direction, List<RailLineManager.RailLine> oneWayLines,
+            double arrivalRadiusSq, Map<String, Integer> result) {
+        Block scanBlock = originBlock;
+        BlockFace scanDirection = direction;
+        int maxBlocks = config.getPathSearchMaxBlocks();
+        for (int i = 0; i < maxBlocks && result.size() < oneWayLines.size(); i++) {
+            Rail.Shape shape = RailSpeedController.shapeAt(scanBlock);
+            if (shape == null) {
+                return;
+            }
+            Location blockCenter = scanBlock.getLocation().add(0.5, 0.5, 0.5);
+            for (RailLineManager.RailLine line : oneWayLines) {
+                if (result.containsKey(line.name())) {
+                    continue;
+                }
+                RailStationManager.Station station = stationOnLineAt(line, blockCenter, arrivalRadiusSq);
+                if (station != null) {
+                    result.put(line.name(), line.sequenceOf(station.name()));
                 }
             }
             BlockFace nextDirection = RailSpeedController.nextDirection(shape, scanDirection);
             if (nextDirection == null) {
-                return null;
+                return;
             }
-            // pathReachesStationと同じ理由で、曲がった後のnextDirection側のブロックへ進む。
             scanBlock = scanBlock.getRelative(nextDirection);
             scanDirection = nextDirection;
+        }
+    }
+
+    /** lineに属する駅のうち、blockCenterからarrivalRadiusSq以内にあるものを返す（無ければnull）。 */
+    private RailStationManager.Station stationOnLineAt(RailLineManager.RailLine line, Location blockCenter, double arrivalRadiusSq) {
+        for (String stationName : line.stationNamesInOrder()) {
+            RailStationManager.Station station = stationManager.get(stationName);
+            Location stationLocation = station != null ? station.resolveLocation() : null;
+            if (stationLocation != null && stationLocation.getWorld().equals(blockCenter.getWorld())
+                    && stationLocation.distanceSquared(blockCenter) <= arrivalRadiusSq) {
+                return station;
+            }
         }
         return null;
     }
