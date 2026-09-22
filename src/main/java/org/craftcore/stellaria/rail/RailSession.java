@@ -1,5 +1,6 @@
 package org.craftcore.stellaria.rail;
 
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.World;
 import org.bukkit.block.BlockFace;
 
@@ -21,6 +22,10 @@ public final class RailSession {
     private long lastOnRailMillis;
     private int lastChunkX = Integer.MIN_VALUE;
     private int lastChunkZ = Integer.MIN_VALUE;
+    private int lastBlockX = Integer.MIN_VALUE;
+    private int lastBlockY = Integer.MIN_VALUE;
+    private int lastBlockZ = Integer.MIN_VALUE;
+    private ScheduledTask watchdogTask;
     private final Set<Long> heldChunkTickets = new HashSet<>();
     private boolean departedOrigin;
     private double originalMaxSpeed;
@@ -60,6 +65,21 @@ public final class RailSession {
         this.lastChunkX = chunkX;
         this.lastChunkZ = chunkZ;
     }
+
+    /** カーブ分岐の再計算を「ブロックをまたいだ時だけ」にするための比較。 */
+    public boolean hasEnteredBlock(int x, int y, int z) {
+        return x != lastBlockX || y != lastBlockY || z != lastBlockZ;
+    }
+
+    public void rememberBlock(int x, int y, int z) {
+        this.lastBlockX = x;
+        this.lastBlockY = y;
+        this.lastBlockZ = z;
+    }
+
+    public ScheduledTask watchdogTask() { return watchdogTask; }
+
+    public void setWatchdogTask(ScheduledTask task) { this.watchdogTask = task; }
 
     public Set<Long> heldChunkTickets() { return heldChunkTickets; }
 

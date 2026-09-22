@@ -21,7 +21,15 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class RailStationManager {
 
-    public record Station(String name, Location location, BlockFace direction) {
+    public record Station(String name, String world, double x, double y, double z, BlockFace direction) {
+        /** 現在ロードされているワールドに解決したLocationを返す。ワールドが存在しない（未ロード/削除済み）場合はnull。 */
+        public Location resolveLocation() {
+            World resolvedWorld = Bukkit.getWorld(world);
+            if (resolvedWorld == null) {
+                return null;
+            }
+            return new Location(resolvedWorld, x, y, z);
+        }
     }
 
     public enum CreateResult { SUCCESS, NAME_TAKEN, DATABASE_ERROR }
@@ -48,13 +56,11 @@ public class RailStationManager {
     }
 
     private static Station mapStation(ResultSet rs) throws SQLException {
-        World world = Bukkit.getWorld(rs.getString("world"));
-        if (world == null) {
-            return null; // ワールド削除等で参照先が無い駅は無視する
-        }
-        Location location = new Location(world, rs.getDouble("x"), rs.getDouble("y"), rs.getDouble("z"));
-        BlockFace direction = BlockFace.valueOf(rs.getString("direction"));
-        return new Station(rs.getString("name"), location, direction);
+        return new Station(
+                rs.getString("name"), rs.getString("world"),
+                rs.getDouble("x"), rs.getDouble("y"), rs.getDouble("z"),
+                BlockFace.valueOf(rs.getString("direction"))
+        );
     }
 
     /** /rail station add から呼ぶ。名前はサーバー全体でユニーク（大文字小文字区別なし）。 */
@@ -75,7 +81,7 @@ public class RailStationManager {
         if (affected != 1) {
             return CreateResult.DATABASE_ERROR;
         }
-        stations.put(key, new Station(name, location.clone(), direction));
+        stations.put(key, new Station(name, world.getName(), location.getX(), location.getY(), location.getZ(), direction));
         return CreateResult.SUCCESS;
     }
 
@@ -113,16 +119,27 @@ public class RailStationManager {
         Station nearest = null;
         double nearestDistSq = radius * radius;
         for (Station station : stations.values()) {
-            World stationWorld = station.location().getWorld();
-            if (stationWorld == null || !stationWorld.equals(point.getWorld())) {
+            Location stationLocation = station.resolveLocation();
+            if (stationLocation == null || !stationLocation.getWorld().equals(point.getWorld())) {
                 continue;
             }
-            double distSq = station.location().distanceSquared(point);
+            double distSq = stationLocation.distanceSquared(point);
             if (distSq <= nearestDistSq) {
                 nearest = station;
                 nearestDistSq = distSq;
             }
         }
         return nearest;
+    }
+
+    /** ワールドリセット時に呼ぶ。指定ワールドに属する駅をDBとキャッシュの両方から削除する（homes/warpsと同様の後始末）。 */
+    public void removeAllInWorld(String worldName) {
+        List<String> namesToRemove = stations.values().stream()
+                .filter(station -> station.world().equalsIgnoreCase(worldName))
+                .map(Station::name)
+                .toList();
+        for (String name : namesToRemove) {
+            remove(name);
+        }
     }
 }

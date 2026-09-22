@@ -358,6 +358,7 @@ public class WorldResetManager {
                 throw new IllegalStateException("warpsの削除に失敗しました: " + worldName);
             }
         });
+        plugin.getRailStationManager().removeAllInWorld(worldName);
         if (!dataCleanupSucceeded) {
             plugin.getLogger().severe("ワールド '" + worldName
                     + "' のhome/warp削除に失敗したため、ロックを維持したまま再試行します。"

@@ -506,6 +506,7 @@ rail:
   station_name_taken: "&%c駅名「%name%」は既に使われています。"
   station_removed: "&%a駅「%name%」を削除しました。"
   station_not_found: "&%c駅「%name%」が見つかりません。"
+  database_error: "&%c保存に失敗しました。もう一度お試しください。"
   station_list_header: "&%b----- 駅一覧 -----"
   station_list_entry: "&%f%name% &%7(%world%)"
   station_list_empty: "&%7登録されている駅はありません。"

@@ -1,5 +1,6 @@
 package org.craftcore.stellaria.commands;
 
+import org.bukkit.Location;
 import org.bukkit.block.BlockFace;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -80,7 +81,7 @@ public class RailCommand implements CommandExecutor, TabCompleter {
             case NAME_TAKEN -> player.sendMessage(FormatUtil.replace(
                     plugin.getConfigManager().getMessage("rail.station_name_taken", player), "%name%", name));
             case DATABASE_ERROR -> player.sendMessage(
-                    plugin.getConfigManager().getMessage("rail.station_not_found", player));
+                    plugin.getConfigManager().getMessage("rail.database_error", player));
         }
     }
 
@@ -105,7 +106,7 @@ public class RailCommand implements CommandExecutor, TabCompleter {
         for (RailStationManager.Station station : stations) {
             String line = plugin.getConfigManager().getMessage("rail.station_list_entry", player);
             line = FormatUtil.replace(line, "%name%", station.name());
-            String worldName = station.location().getWorld() != null ? station.location().getWorld().getName() : "?";
+            String worldName = station.world();
             line = FormatUtil.replace(line, "%world%", worldName);
             player.sendMessage(line);
         }
@@ -136,8 +137,10 @@ public class RailCommand implements CommandExecutor, TabCompleter {
             return;
         }
         double activationRadius = plugin.getRailConfig().getStationActivationRadius();
-        if (!station.location().getWorld().equals(cart.getWorld())
-                || station.location().distanceSquared(cart.getLocation()) > activationRadius * activationRadius) {
+        Location stationLocation = station.resolveLocation();
+        if (stationLocation == null
+                || !stationLocation.getWorld().equals(cart.getWorld())
+                || stationLocation.distanceSquared(cart.getLocation()) > activationRadius * activationRadius) {
             player.sendMessage(FormatUtil.replace(
                     plugin.getConfigManager().getMessage("rail.too_far_from_station", player), "%name%", stationName));
             return;

@@ -1,7 +1,9 @@
 package org.craftcore.stellaria.rail;
 
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
+import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -80,6 +82,15 @@ public class RailManager {
         sessions.put(cart.getUniqueId(), session);
         cart.getPersistentDataContainer().set(railModeKey, PersistentDataType.BOOLEAN, true);
         cart.setMaxSpeed(config.getMaxVelocityClampBpt());
+
+        UUID minecartId = cart.getUniqueId();
+        ScheduledTask watchdogTask = cart.getScheduler().runAtFixedRate(
+                plugin,
+                task -> watchdogTick(cart),
+                () -> onEntityRetired(minecartId),
+                20L, 20L
+        );
+        session.setWatchdogTask(watchdogTask);
         return true;
     }
 
@@ -95,6 +106,9 @@ public class RailManager {
         RailSession session = sessions.remove(cart.getUniqueId());
         if (session == null) {
             return;
+        }
+        if (session.watchdogTask() != null) {
+            session.watchdogTask().cancel();
         }
         releaseChunkTickets(session);
         if (cart.isValid()) {
@@ -148,22 +162,26 @@ public class RailManager {
 
         if (!session.hasDepartedOrigin()) {
             RailStationManager.Station origin = stationManager.get(session.originStationName());
+            Location originLocation = origin != null ? origin.resolveLocation() : null;
             double clearRadius = config.getStationActivationRadius();
-            boolean stillNearOrigin = origin != null
-                    && origin.location().getWorld().equals(cart.getWorld())
-                    && origin.location().distanceSquared(cart.getLocation()) <= clearRadius * clearRadius;
+            boolean stillNearOrigin = originLocation != null
+                    && originLocation.getWorld().equals(cart.getWorld())
+                    && originLocation.distanceSquared(cart.getLocation()) <= clearRadius * clearRadius;
             if (!stillNearOrigin) {
                 session.markDepartedOrigin();
             }
         }
 
-        BlockFace nextDirection = RailSpeedController.nextDirection(shape, session.direction());
-        if (nextDirection == null) {
-            // T字分岐・接続不整合。バニラ側で何が起きるか予測できないため安全側に倒して制御を手放す。
-            endSession(cart, EndReason.OFF_RAIL);
-            return;
+        if (session.hasEnteredBlock(currentBlock.getX(), currentBlock.getY(), currentBlock.getZ())) {
+            BlockFace nextDirection = RailSpeedController.nextDirection(shape, session.direction());
+            if (nextDirection == null) {
+                // T字分岐・接続不整合。バニラ側で何が起きるか予測できないため安全側に倒して制御を手放す。
+                endSession(cart, EndReason.OFF_RAIL);
+                return;
+            }
+            session.setDirection(nextDirection);
+            session.rememberBlock(currentBlock.getX(), currentBlock.getY(), currentBlock.getZ());
         }
-        session.setDirection(nextDirection);
 
         double targetSpeed = computeTargetSpeed(currentBlock, shape, session);
         double newSpeed = RailSpeedController.nextSpeed(
@@ -183,6 +201,27 @@ public class RailManager {
             return; // applyVelocity内でNaN検知によりERROR終了した場合、破棄済みセッションでチャンク先読みを行わない
         }
         updateChunkPreload(cart, session);
+    }
+
+    /** 20tick(1秒)ごとにcart.getScheduler()から呼ばれる。VehicleMoveEventが発火しない（停止・詰まった）場合でも
+     *  レールを外れてからの猶予タイムアウトを確実に評価するための安全網。 */
+    private void watchdogTick(Minecart cart) {
+        RailSession session = sessions.get(cart.getUniqueId());
+        if (session == null) {
+            return;
+        }
+        if (System.currentTimeMillis() - session.lastOnRailMillis() > config.getOffRailGraceMillis()) {
+            endSession(cart, EndReason.OFF_RAIL);
+        }
+    }
+
+    /** エンティティがFoliaのスケジューラから見て無効化された時に呼ばれる（VehicleDestroyEvent以外の理由での
+     *  消滅でも確実にチャンクチケットを解放するため）。cartオブジェクトは既に無効な可能性があるため参照しない。 */
+    private void onEntityRetired(UUID minecartId) {
+        RailSession session = sessions.remove(minecartId);
+        if (session != null) {
+            releaseChunkTickets(session);
+        }
     }
 
     /**
@@ -262,6 +301,7 @@ public class RailManager {
         releaseChunkTickets(session);
 
         World world = cart.getWorld();
+        session.setTicketWorld(world);
         int chunkDx = (int) Math.signum(session.direction().getModX());
         int chunkDz = (int) Math.signum(session.direction().getModZ());
         for (int i = 1; i <= config.getChunkPreloadDistance(); i++) {
@@ -269,9 +309,6 @@ public class RailManager {
             int cz = currentChunk.getZ() + chunkDz * i;
             world.addPluginChunkTicket(cx, cz, plugin);
             session.heldChunkTickets().add(packChunk(cx, cz));
-        }
-        if (!session.heldChunkTickets().isEmpty()) {
-            session.setTicketWorld(world);
         }
         session.rememberChunk(currentChunk.getX(), currentChunk.getZ());
     }
@@ -294,11 +331,19 @@ public class RailManager {
     /** onDisableから呼ぶ。保持中のチャンクチケットを全て解放し、セッションを破棄する。 */
     public void shutdown() {
         for (RailSession session : sessions.values()) {
-            releaseChunkTickets(session);
-            Entity entity = Bukkit.getEntity(session.minecartId());
-            if (entity instanceof Minecart cart && cart.isValid()) {
-                cart.getPersistentDataContainer().remove(railModeKey);
-                cart.setMaxSpeed(session.originalMaxSpeed());
+            if (session.watchdogTask() != null) {
+                session.watchdogTask().cancel();
+            }
+            try {
+                releaseChunkTickets(session);
+                Entity entity = Bukkit.getEntity(session.minecartId());
+                if (entity instanceof Minecart cart && cart.isValid()) {
+                    cart.getPersistentDataContainer().remove(railModeKey);
+                    cart.setMaxSpeed(session.originalMaxSpeed());
+                }
+            } catch (Exception e) {
+                plugin.getLogger().warning("レール高速モードのシャットダウン処理中にエラーが発生しました（セッション: "
+                        + session.minecartId() + "）: " + e.getMessage());
             }
         }
         sessions.clear();
