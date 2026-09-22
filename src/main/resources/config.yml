@@ -463,7 +463,7 @@ rail:
   fare:
     enabled: false # 将来の有料化用。現状は未使用（常に無料）
   gui:
-    open-on-interact: true # レール上で高速モード対象外のトロッコに乗っている間、素手または右クリックで何も起きないツールで右クリックすると行き先GUIを開く
+    open-on-interact: true # レール上で高速モード対象外のトロッコに乗っている間、レールブロックを右クリックすると行き先GUIを開く（乗車直後はヒントをアクションバーに1tick遅らせて表示するだけで、GUI自体は自動では開かない）
   station-particle:
     enabled: true # 機能全体のON/OFF。実際に見えるかはプレイヤーごとの /rail particle 設定（既定OFF）による
     color: "#3399FF" # 目印の色（land.border-particleと同じ16進カラー指定）
