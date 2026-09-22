@@ -385,7 +385,9 @@ public class RailManager {
             if (nextDirection == null) {
                 return false;
             }
-            scanBlock = scanBlock.getRelative(scanDirection);
+            // カーブブロックを通過した後は、曲がる前のscanDirectionではなく曲がった後のnextDirection側の
+            // ブロックへ進む（直線だとnextDirection==scanDirectionで区別が付かず、カーブでだけ表面化するバグだった）。
+            scanBlock = scanBlock.getRelative(nextDirection);
             scanDirection = nextDirection;
         }
         return false;
@@ -441,7 +443,8 @@ public class RailManager {
             if (nextDirection == null) {
                 return null;
             }
-            scanBlock = scanBlock.getRelative(scanDirection);
+            // pathReachesStationと同じ理由で、曲がった後のnextDirection側のブロックへ進む。
+            scanBlock = scanBlock.getRelative(nextDirection);
             scanDirection = nextDirection;
         }
         return null;
