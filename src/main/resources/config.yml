@@ -127,7 +127,11 @@ world:
         - "&%7資源ワールドです"
   # Bukkit上のワールド名をGUIやプレースホルダーに表示する名前へ置き換える（未設定のワールドは元の名前を表示）
   # ※ 上記 worlds の各項目で name を指定した場合はそちらが優先されます
-  display-names: {}
+  display-names:
+    world_nether: "&%a生活ワールド (ネザー)"
+    world_the_end: "&%a生活ワールド (エンド)"
+    resource_nether: "&%e資源ワールド (ネザー)"
+    resource_the_end: "&%e資源ワールド (エンド)"
   # ワールド名ごとにcustomhead.ymlのヘッドIDを指定できる（上記 worlds の各項目で custom-head を指定した場合はそちらが優先）
   gui-custom-heads:
     lobby: "earth"
@@ -402,7 +406,8 @@ elevator:
       name: "BLOCK_PISTON_EXTEND"
       volume: 1.0
       pitch: 0.75
-  ignoreblocks: ["&CARPET","&_SIGN","&TORCH","&BANNER","&BUTTON","&LEVER","&_DOOR"]# エレベーターブロックの上2ブロックに置いてあっても移動ができるブロック
+  ignoreblocks: ["&CARPET","&_SIGN","&TORCH","&BANNER","&BUTTON","&LEVER","&_DOOR"]
+  # エレベーターブロックの上2ブロックに置いてあっても移動ができるブロック
 
 weathervote:
   disabled-worlds: ["lobby"]
