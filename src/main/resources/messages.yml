@@ -564,6 +564,8 @@ rail:
   arrived: "&%a%station%駅に到着しました"
   arrival_subtitle_arrived: "&%a到着"
   arrival_subtitle_passed: "&%7通過"
+  particle_enabled: "&%a駅の目印パーティクルをONにしました。"
+  particle_disabled: "&%7駅の目印パーティクルをOFFにしました。"
   off_rail_cancelled: "&%7レールを外れたため、高速モードを解除しました。"
   collision_cancelled: "&%c前の車両と衝突しました。高速モードを解除しました。"
 

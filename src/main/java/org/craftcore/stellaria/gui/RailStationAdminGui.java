@@ -48,7 +48,7 @@ public final class RailStationAdminGui extends Gui {
         for (int slot = 0; slot < CONTENT_SLOTS && first + slot < stations.size(); slot++) {
             RailStationManager.Station station = stations.get(first + slot);
             RailLineManager.RailLine line = plugin.getRailLineManager().findLineForStation(station.name());
-            getInventory().setItem(slot, item(Material.RAIL, FormatUtil.component(station.name()), List.of(
+            getInventory().setItem(slot, item(Material.RAIL, station.displayNameComponent(), List.of(
                     message("rail.station_gui_entry_world", "%world%", station.world()),
                     line != null
                             ? message("rail.station_gui_entry_line", "%line%", line.name())
@@ -102,7 +102,7 @@ public final class RailStationAdminGui extends Gui {
         if (line != null) {
             player.closeInventory();
             String message = plugin.getConfigManager().getMessage("rail.station_remove_belongs_to_line", player);
-            message = FormatUtil.replace(message, "%name%", FormatUtil.color(station.name()));
+            message = FormatUtil.replace(message, "%name%", station.displayName());
             message = FormatUtil.replace(message, "%line%", line.name());
             player.sendMessage(message);
             return;
@@ -119,7 +119,7 @@ public final class RailStationAdminGui extends Gui {
                 () -> {
                     plugin.getRailStationManager().remove(station.name());
                     player.sendMessage(FormatUtil.replace(
-                            plugin.getConfigManager().getMessage("rail.station_removed", player), "%name%", FormatUtil.color(station.name())));
+                            plugin.getConfigManager().getMessage("rail.station_removed", player), "%name%", station.displayName()));
                     new RailStationAdminGui(plugin).open(player);
                 },
                 () -> new RailStationAdminGui(plugin, stations, page).open(player)

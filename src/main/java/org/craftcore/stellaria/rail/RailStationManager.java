@@ -1,10 +1,12 @@
 package org.craftcore.stellaria.rail;
 
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.managers.DatabaseManager;
+import org.craftcore.stellaria.utils.FormatUtil;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -24,6 +26,9 @@ public class RailStationManager {
      *  （/rail depart 側でレールをたどって発車方向を自動判定するため）。常にこの値を書き込み、読み込み時は無視する。 */
     private static final String UNUSED_DIRECTION_PLACEHOLDER = "NORTH";
 
+    /** 駅名の表示色。駅名ごとに個別のカラーコードを持たせるのはやめて、常にこの色で統一表示する。 */
+    private static final String DISPLAY_COLOR = "&%e";
+
     public record Station(String name, String world, double x, double y, double z) {
         /** 現在ロードされているワールドに解決したLocationを返す。ワールドが存在しない（未ロード/削除済み）場合はnull。 */
         public Location resolveLocation() {
@@ -33,6 +38,25 @@ public class RailStationManager {
             }
             return new Location(resolvedWorld, x, y, z);
         }
+
+        /** チャット等、既に色変換済みの文字列へ%name%展開する用途向け（DISPLAY_COLOR適用済み）。 */
+        public String displayName() {
+            return formatDisplayName(name);
+        }
+
+        /** GUIアイテム名・タイトル等、Componentが欲しい用途向け（DISPLAY_COLOR適用済み）。 */
+        public Component displayNameComponent() {
+            return formatDisplayNameComponent(name);
+        }
+    }
+
+    /** endSession等、Stationインスタンスを持たずタイトルだけ持っている呼び出し元向け。 */
+    public static String formatDisplayName(String stationName) {
+        return FormatUtil.color(DISPLAY_COLOR + stationName);
+    }
+
+    public static Component formatDisplayNameComponent(String stationName) {
+        return FormatUtil.component(DISPLAY_COLOR + stationName);
     }
 
     public enum CreateResult { SUCCESS, NAME_TAKEN, DATABASE_ERROR }

@@ -465,11 +465,12 @@ rail:
   gui:
     open-on-interact: true # レール上で高速モード対象外のトロッコに乗っている間、素手または右クリックで何も起きないツールで右クリックすると行き先GUIを開く
   station-particle:
-    enabled: true # 駅の位置に常時パーティクルの目印を表示するか（/stellariareloadで即切り替え可能）
+    enabled: true # 機能全体のON/OFF。実際に見えるかはプレイヤーごとの /rail particle 設定（既定OFF）による
     color: "#3399FF" # 目印の色（land.border-particleと同じ16進カラー指定）
     radius: 1.3       # 駅を中心にした円の半径 (blocks)
     size: 1.0
     interval-ticks: 20
+    view-distance: 48 # プレイヤーからこの距離以内の駅だけ描画する（パフォーマンス用の間引き）
   arrival-announcement:
     enabled: true
     sound: "BLOCK_NOTE_BLOCK_BELL" # org.bukkit.Sound の列挙名

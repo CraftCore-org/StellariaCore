@@ -65,6 +65,7 @@ public class RailCommand implements CommandExecutor, TabCompleter {
             case "station" -> handleStation(player, args);
             case "line" -> handleLine(player, args);
             case "depart" -> handleDepart(player, args);
+            case "particle" -> handleParticleToggle(player);
             default -> player.sendMessage(plugin.getConfigManager().getUsageMessage("rail.usage_depart", player));
         }
         return true;
@@ -131,9 +132,9 @@ public class RailCommand implements CommandExecutor, TabCompleter {
         RailStationManager.CreateResult result = plugin.getRailStationManager().create(pending.name(), location);
         switch (result) {
             case SUCCESS -> player.sendMessage(FormatUtil.replace(
-                    plugin.getConfigManager().getMessage("rail.station_created", player), "%name%", FormatUtil.color(pending.name())));
+                    plugin.getConfigManager().getMessage("rail.station_created", player), "%name%", RailStationManager.formatDisplayName(pending.name())));
             case NAME_TAKEN -> player.sendMessage(FormatUtil.replace(
-                    plugin.getConfigManager().getMessage("rail.station_name_taken", player), "%name%", FormatUtil.color(pending.name())));
+                    plugin.getConfigManager().getMessage("rail.station_name_taken", player), "%name%", RailStationManager.formatDisplayName(pending.name())));
             case DATABASE_ERROR -> player.sendMessage(
                     plugin.getConfigManager().getMessage("rail.database_error", player));
         }
@@ -178,7 +179,7 @@ public class RailCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(plugin.getConfigManager().getMessage("rail.station_list_header", player));
         for (RailStationManager.Station station : stations) {
             String line = plugin.getConfigManager().getMessage("rail.station_list_entry", player);
-            line = FormatUtil.replace(line, "%name%", FormatUtil.color(station.name()));
+            line = FormatUtil.replace(line, "%name%", station.displayName());
             String worldName = station.world();
             line = FormatUtil.replace(line, "%world%", worldName);
             player.sendMessage(line);
@@ -265,6 +266,17 @@ public class RailCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    /** /rail particle。駅の青いパーティクル目印を自分だけON/OFFする（既定OFF、DBに永続化）。 */
+    private void handleParticleToggle(Player player) {
+        if (!player.hasPermission("stellaria.rail")) {
+            player.sendMessage(plugin.getConfigManager().getMessage("rail.no_permission", player));
+            return;
+        }
+        boolean enabled = plugin.getRailStationParticleManager().toggle(player);
+        player.sendMessage(plugin.getConfigManager().getMessage(
+                enabled ? "rail.particle_enabled" : "rail.particle_disabled", player));
+    }
+
     private void handleDepart(Player player, String[] args) {
         if (!player.hasPermission("stellaria.rail")) {
             player.sendMessage(plugin.getConfigManager().getMessage("rail.no_permission", player));
@@ -318,7 +330,7 @@ public class RailCommand implements CommandExecutor, TabCompleter {
         if (targetLocation != null && targetLocation.getWorld().equals(cart.getWorld())
                 && targetLocation.distanceSquared(cart.getLocation()) <= arrivalRadius * arrivalRadius) {
             player.sendMessage(FormatUtil.replace(
-                    plugin.getConfigManager().getMessage("rail.already_at_station", player), "%name%", FormatUtil.color(target.name())));
+                    plugin.getConfigManager().getMessage("rail.already_at_station", player), "%name%", target.displayName()));
             return;
         }
         RailManager.DepartureCheck check = plugin.getRailManager().checkDeparture(cart, target);
@@ -333,12 +345,12 @@ public class RailCommand implements CommandExecutor, TabCompleter {
             }
             case WRONG_DIRECTION -> {
                 player.sendMessage(FormatUtil.replace(
-                        plugin.getConfigManager().getMessage("rail.wrong_direction", player), "%name%", FormatUtil.color(target.name())));
+                        plugin.getConfigManager().getMessage("rail.wrong_direction", player), "%name%", target.displayName()));
                 return;
             }
             case NO_ROUTE -> {
                 player.sendMessage(FormatUtil.replace(
-                        plugin.getConfigManager().getMessage("rail.no_route_to_station", player), "%name%", FormatUtil.color(target.name())));
+                        plugin.getConfigManager().getMessage("rail.no_route_to_station", player), "%name%", target.displayName()));
                 return;
             }
             case OK -> {
@@ -347,17 +359,17 @@ public class RailCommand implements CommandExecutor, TabCompleter {
         }
         if (!plugin.getRailManager().startSession(cart, target)) {
             player.sendMessage(FormatUtil.replace(
-                    plugin.getConfigManager().getMessage("rail.no_route_to_station", player), "%name%", FormatUtil.color(target.name())));
+                    plugin.getConfigManager().getMessage("rail.no_route_to_station", player), "%name%", target.displayName()));
             return;
         }
         player.sendMessage(FormatUtil.replace(
-                plugin.getConfigManager().getMessage("rail.departed", player), "%name%", FormatUtil.color(target.name())));
+                plugin.getConfigManager().getMessage("rail.departed", player), "%name%", target.displayName()));
     }
 
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String @NotNull [] args) {
         if (args.length == 1) {
-            return TabCompleteUtil.filterStartsWith(List.of("station", "line", "depart"), args[0]);
+            return TabCompleteUtil.filterStartsWith(List.of("station", "line", "depart", "particle"), args[0]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("station")) {
             return TabCompleteUtil.filterStartsWith(List.of("add", "remove", "list", "gui"), args[1]);

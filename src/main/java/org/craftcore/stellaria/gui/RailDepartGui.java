@@ -61,7 +61,7 @@ public final class RailDepartGui extends Gui {
         int first = page * CONTENT_SLOTS;
         for (int slot = 0; slot < CONTENT_SLOTS && first + slot < stations.size(); slot++) {
             RailManager.ReachableStation entry = stations.get(first + slot);
-            getInventory().setItem(slot, item(Material.MINECART, FormatUtil.component(entry.station().name()), List.of(
+            getInventory().setItem(slot, item(Material.MINECART, entry.station().displayNameComponent(), List.of(
                     lineLore(entry.station().name()),
                     message("rail.gui_entry_direction", "%direction%", directionLabel(entry.direction())),
                     message("rail.gui_entry_distance", "%distance%", String.valueOf(entry.approxDistanceBlocks())),
@@ -124,8 +124,14 @@ public final class RailDepartGui extends Gui {
         if (slot < CONTENT_SLOTS) {
             int index = page * CONTENT_SLOTS + slot;
             if (index < stations.size()) {
+                RailManager.ReachableStation entry = stations.get(index);
+                if (entry.approxDistanceBlocks() < 1) {
+                    // 今いる位置がそのまま到着範囲内（0m）の駅。発車してもすぐ到着扱いで
+                    // 意味の無い操作になるため、クリックしても何もしない。
+                    return;
+                }
                 player.closeInventory();
-                railCommand.departToStation(player, cart, stations.get(index).station());
+                railCommand.departToStation(player, cart, entry.station());
             }
         }
     }

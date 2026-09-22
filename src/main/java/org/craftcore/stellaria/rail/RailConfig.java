@@ -35,6 +35,7 @@ public final class RailConfig {
     private volatile double stationParticleRadius;
     private volatile double stationParticleSize;
     private volatile int stationParticleIntervalTicks;
+    private volatile double stationParticleViewDistance;
 
     public RailConfig(StellariaCore plugin) {
         this.plugin = plugin;
@@ -64,6 +65,7 @@ public final class RailConfig {
         stationParticleRadius = Math.max(0.1, cfg.getDouble("rail.station-particle.radius", 1.3));
         stationParticleSize = Math.max(0.1, cfg.getDouble("rail.station-particle.size", 1.0));
         stationParticleIntervalTicks = Math.max(1, cfg.getInt("rail.station-particle.interval-ticks", 20));
+        stationParticleViewDistance = Math.max(1.0, cfg.getDouble("rail.station-particle.view-distance", 48.0));
     }
 
     public double getStraightSpeedBps() { return straightSpeedBps; }
@@ -87,4 +89,5 @@ public final class RailConfig {
     public double getStationParticleRadius() { return stationParticleRadius; }
     public double getStationParticleSize() { return stationParticleSize; }
     public int getStationParticleIntervalTicks() { return stationParticleIntervalTicks; }
+    public double getStationParticleViewDistance() { return stationParticleViewDistance; }
 }

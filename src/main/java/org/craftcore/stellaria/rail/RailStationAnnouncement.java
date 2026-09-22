@@ -18,12 +18,11 @@ final class RailStationAnnouncement {
     private RailStationAnnouncement() {
     }
 
-    /** stationNameはプレイヤー入力の駅名で、&%c等のカラーコードを含んでいてもよい（タイトルにそのまま使う）。 */
     static void play(StellariaCore plugin, Player player, String stationName, boolean arrived) {
         if (!plugin.getConfigManager().getBoolean("rail.arrival-announcement.enabled", true)) {
             return;
         }
-        Component title = FormatUtil.component(stationName);
+        Component title = RailStationManager.formatDisplayNameComponent(stationName);
         String subtitleKey = arrived ? "rail.arrival_subtitle_arrived" : "rail.arrival_subtitle_passed";
         Component subtitle = FormatUtil.component(plugin.getConfigManager().getMessage(subtitleKey, player));
         Title.Times times = Title.Times.times(

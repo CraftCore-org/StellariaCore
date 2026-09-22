@@ -196,6 +196,11 @@ public class RailManager {
 
         double originalMaxSpeed = cart.getMaxSpeed();
         RailSession session = new RailSession(cart.getUniqueId(), target.name(), direction, config.getMinSpeedBps(), originalMaxSpeed);
+        // 発車地点が既にどこかの駅の到着範囲内にある場合（＝その駅から発車した場合）、
+        // 通過/到着タイトルをここで先に「発行済み」にしておく。そうしないと発車直後の最初の数tickで
+        // notifyStationPassageがこの「発車元の駅」を通過扱いで検知し、出発した瞬間にタイトルが
+        // 出てしまう。
+        markNearbyStationsAsNotified(cart, session);
         sessions.put(cart.getUniqueId(), session);
         cart.getPersistentDataContainer().set(railModeKey, PersistentDataType.BOOLEAN, true);
         cart.setMaxSpeed(config.getMaxVelocityClampBpt());
@@ -223,7 +228,7 @@ public class RailManager {
         for (Entity passenger : cart.getPassengers()) {
             if (passenger instanceof Player player) {
                 String message = FormatUtil.replace(
-                        plugin.getConfigManager().getMessage("rail.moving_to_actionbar", player), "%name%", FormatUtil.color(target.name()));
+                        plugin.getConfigManager().getMessage("rail.moving_to_actionbar", player), "%name%", target.displayName());
                 plugin.getActionBarManager().setChannel(player, "rail", FormatUtil.component(message));
             }
         }
@@ -273,10 +278,7 @@ public class RailManager {
             if (passenger instanceof Player player) {
                 String message = plugin.getConfigManager().getMessage(key, player);
                 if (stationName != null) {
-                    // 駅名自体にカラーコードを含められるよう、置換前に駅名側だけ個別に色変換する
-                    // （getMessageは既にテンプレート側の色を変換済みの文字列を返すため、駅名の
-                    // %player%展開やPAPI解決は不要 — FormatUtil.textをもう一度掛ける必要はない）。
-                    message = FormatUtil.replace(message, "%station%", FormatUtil.color(stationName));
+                    message = FormatUtil.replace(message, "%station%", RailStationManager.formatDisplayName(stationName));
                 }
                 player.sendMessage(message);
             }
@@ -286,6 +288,18 @@ public class RailManager {
                 if (passenger instanceof Player player) {
                     RailStationAnnouncement.play(plugin, player, stationName, true);
                 }
+            }
+        }
+    }
+
+    /** startSessionから呼ぶ。発車地点の到着範囲に入っている駅を、最初から「通知済み」として扱う。 */
+    private void markNearbyStationsAsNotified(Minecart cart, RailSession session) {
+        double arrivalRadiusSq = config.getStationArrivalRadius() * config.getStationArrivalRadius();
+        for (RailStationManager.Station station : stationManager.listAll()) {
+            Location stationLocation = station.resolveLocation();
+            if (stationLocation != null && stationLocation.getWorld().equals(cart.getWorld())
+                    && stationLocation.distanceSquared(cart.getLocation()) <= arrivalRadiusSq) {
+                session.markStationNotified(station.name());
             }
         }
     }
@@ -324,35 +338,42 @@ public class RailManager {
 
         Block currentBlock = cart.getLocation().getBlock();
         Rail.Shape shape = RailSpeedController.shapeAt(currentBlock);
-        if (shape == null) {
+
+        // 「レールが無い」だけでなく「レールはあるが今の進行方向と接続しない」（平面交差点で
+        // 別路線が直交して使っている等）も同じ扱いにする。以前は後者を即OFF_RAILにしていたため、
+        // markOnRailNowが直前まで毎tick更新され続けていて猶予期間が一切効かず、
+        // 交差点に差し掛かった瞬間に問答無用でキャンセルされていた。
+        boolean blocked = shape == null;
+        boolean directionChanged = false;
+        if (!blocked && session.hasEnteredBlock(currentBlock.getX(), currentBlock.getY(), currentBlock.getZ())) {
+            BlockFace nextDirection = RailSpeedController.nextDirection(shape, session.direction());
+            if (nextDirection == null) {
+                blocked = true;
+            } else {
+                directionChanged = nextDirection != session.direction();
+                session.setDirection(nextDirection);
+                session.rememberBlock(currentBlock.getX(), currentBlock.getY(), currentBlock.getZ());
+            }
+        }
+
+        if (blocked) {
             if (System.currentTimeMillis() - session.lastOnRailMillis() > config.getOffRailGraceMillis()) {
                 endSession(cart, EndReason.OFF_RAIL);
                 return;
             }
-            // 平面交差点などレールが1ブロックだけ途切れている区間を、バニラの慣性任せにせず
-            // 猶予期間の最初の数tickだけ能動的に押し続けて確実に跨がせる。ここでapplyVelocityを
-            // 呼ばずただ待つだけだと、レールを外れた瞬間にバニラ側の摩擦で急減速し、次tickでも
-            // 対岸のレールに届かないまま…を繰り返して結局OFF_RAILになることがあった
-            // （以前の実装はこの猶予期間を「何もせず待つだけ」に使っていた）。
+            // 平面交差点などレールが1ブロックだけ途切れている（または直交する別路線のレールで
+            // 塞がれている）区間を、バニラの慣性任せにせず猶予期間の最初の数tickだけ能動的に
+            // 押し続けて確実に跨がせる。ここでapplyVelocityを呼ばずただ待つだけだと、バニラ側の
+            // 摩擦で急減速し、次tickでも対岸のレールに届かないまま…を繰り返して結局OFF_RAILに
+            // なることがあった（以前の実装はこの猶予期間を「何もせず待つだけ」に使っていた）。
+            // directionは更新していない（＝曲がる前の方向のまま）ので、通り抜けた先でまた
+            // hasEnteredBlockの判定に戻り、そこで初めて次の方向を確定する。
             if (session.incrementAndGetOffRailTicks() <= config.getOffRailActivePushTicks()) {
                 applyVelocity(cart, session, session.currentSpeedBps());
             }
             return;
         }
         session.markOnRailNow();
-
-        boolean directionChanged = false;
-        if (session.hasEnteredBlock(currentBlock.getX(), currentBlock.getY(), currentBlock.getZ())) {
-            BlockFace nextDirection = RailSpeedController.nextDirection(shape, session.direction());
-            if (nextDirection == null) {
-                // T字分岐・接続不整合。バニラ側で何が起きるか予測できないため安全側に倒して制御を手放す。
-                endSession(cart, EndReason.OFF_RAIL);
-                return;
-            }
-            directionChanged = nextDirection != session.direction();
-            session.setDirection(nextDirection);
-            session.rememberBlock(currentBlock.getX(), currentBlock.getY(), currentBlock.getZ());
-        }
 
         RailStationManager.Station target = stationManager.get(session.targetStationName());
         if (target == null) {

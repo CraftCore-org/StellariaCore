@@ -200,6 +200,10 @@ public class StellariaCore extends JavaPlugin {
             "sequence INTEGER NOT NULL",
             "PRIMARY KEY (line_name, station_name)"
         );
+        // 行が存在する = 駅パーティクル表示ON（既定OFF）。land_border_displaysと同じ「存在=ON」方式。
+        DatabaseManager.createTableIfNotExists("rail_station_particle_prefs",
+            "uuid TEXT PRIMARY KEY"
+        );
 
         DatabaseManager.addColumnIfNotExists("players", "kikori_unlocked INTEGER NOT NULL DEFAULT 0");
         DatabaseManager.addColumnIfNotExists("players", "hide_balance INTEGER NOT NULL DEFAULT 0");

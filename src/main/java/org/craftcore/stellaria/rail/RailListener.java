@@ -6,6 +6,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
 import org.bukkit.event.vehicle.VehicleEntityCollisionEvent;
@@ -90,6 +91,20 @@ public class RailListener implements Listener {
             return;
         }
         if ((event.getAction() == Action.RIGHT_CLICK_BLOCK || event.getAction() == Action.RIGHT_CLICK_AIR)
+                && tryOpenDepartGuiOnInteract(event.getPlayer())) {
+            event.setCancelled(true);
+        }
+    }
+
+    /**
+     * トロッコに乗っている間の右クリックは、見た先に何も無ければ（リーチが届く範囲にブロックが無ければ）
+     * バニラ側は「空気を右クリック」ではなく「自分が乗っている乗り物を右クリック」として処理することが
+     * 多く、その場合PlayerInteractEventではなくこちらが飛ぶ。PlayerInteractEventのRIGHT_CLICK_AIRだけを
+     * 見ていると、リーチ内のブロックを狙わない限り行き先GUIが開かない不具合になるため、こちらも拾う。
+     */
+    @EventHandler(ignoreCancelled = true)
+    public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
+        if (event.getRightClicked() instanceof Minecart cart && event.getPlayer().getVehicle() == cart
                 && tryOpenDepartGuiOnInteract(event.getPlayer())) {
             event.setCancelled(true);
         }
