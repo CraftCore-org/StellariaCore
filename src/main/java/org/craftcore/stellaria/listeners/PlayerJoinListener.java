@@ -63,6 +63,8 @@ public class PlayerJoinListener implements Listener {
 
         // オフライン中にショップが削除された場合の在庫返却キューを、オーナーの次回ログイン時に払い出す。
         plugin.getShopManager().deliverPendingReturns(player);
+        // オフライン中に成立したショップ取引を、ショップ×アイテムごとに合算してオーナーへ知らせる。
+        plugin.getShopManager().deliverSaleNotifications(player);
 
         // 投票報酬によりログイン前からレコードがある場合でも、初回キットは配布する。
         if (!player.hasPlayedBefore()) {

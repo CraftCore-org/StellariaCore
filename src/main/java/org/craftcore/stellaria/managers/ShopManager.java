@@ -1,5 +1,6 @@
 package org.craftcore.stellaria.managers;
 
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Display;
@@ -13,6 +14,7 @@ import org.bukkit.util.io.BukkitObjectOutputStream;
 import org.joml.AxisAngle4f;
 import org.joml.Vector3f;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.utils.ColorUtil;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -181,6 +183,7 @@ public final class ShopManager {
                     old.stock() - tradeQuantity,
                     old.funds()
             );
+            notifyOwner(old, player, tradeQuantity, total, old.stock() - tradeQuantity, old.funds());
             return TradeResult.SUCCESS;
         }
         // SELL
@@ -214,6 +217,7 @@ public final class ShopManager {
                 old.stock() + quantity,
                 old.funds() - total
         );
+        notifyOwner(old, player, quantity, total, old.stock() + quantity, old.funds() - total);
         return TradeResult.SUCCESS;
     }
 
@@ -305,6 +309,101 @@ public final class ShopManager {
 
             giveOrDrop(player, item, amount);
         }
+    }
+
+    /**
+     * 取引成立をオーナーへ知らせる。オンラインなら即座にチャットで、オフラインならshop_sale_notificationsへ積み、
+     * 次回ログイン時にdeliverSaleNotificationsでまとめて表示する。
+     * 取引自体は既に確定しているため、ここでの失敗（INSERT失敗など）は取引を巻き戻さず、ログに残すだけにする。
+     */
+    private void notifyOwner(Shop shop, Player customer, int amount, long total, int stockAfter, long fundsAfter) {
+        if (shop.owner().equals(customer.getUniqueId())) {
+            return;
+        }
+        Player owner = Bukkit.getPlayer(shop.owner());
+        if (owner != null) {
+            String path = shop.mode() == Mode.BUY ? "shop.notify.sold" : "shop.notify.bought";
+            owner.sendMessage(saleMessage(path, owner, shop.item(), Map.of(
+                    "%customer%", customer.getName(),
+                    "%amount%", Integer.toString(amount),
+                    "%total%", plugin.getEconomyManager().format(total),
+                    "%stock%", Integer.toString(stockAfter),
+                    "%funds%", plugin.getEconomyManager().format(fundsAfter))));
+            return;
+        }
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("owner_uuid", shop.owner().toString());
+        values.put("shop_id", shop.id());
+        values.put("mode", shop.mode().name());
+        values.put("item_data", serialize(shop.item()));
+        values.put("amount", amount);
+        values.put("total", total);
+        values.put("created_at", System.currentTimeMillis());
+        DatabaseManager.insertAsync("shop_sale_notifications", values);
+    }
+
+    private record SaleSummary(Mode mode, ItemStack item, long amount, long total, int maxId) {
+    }
+
+    /**
+     * オフライン中に成立した取引を、ショップ×アイテムごとに個数・金額を合算して表示する。
+     * ログイン直後のメッセージに埋もれないよう少し遅らせて送る。表示前に読んだ分（id <= 読んだ最大id）だけを
+     * 削除するので、この処理の最中に成立した取引の通知は消えずに次回へ持ち越される。
+     * 削除に失敗した場合は、次回ログイン時の二重表示を避けるため今回は表示しない。
+     */
+    public void deliverSaleNotifications(Player player) {
+        String uuid = player.getUniqueId().toString();
+        List<SaleSummary> rows = DatabaseManager.query(
+                "SELECT mode, item_data, SUM(amount) AS amount, SUM(total) AS total, MAX(id) AS max_id "
+                        + "FROM shop_sale_notifications WHERE owner_uuid = ? "
+                        + "GROUP BY shop_id, mode, item_data ORDER BY MIN(id)",
+                rs -> {
+                    ItemStack item;
+                    try {
+                        item = deserialize(rs.getString("item_data"));
+                    } catch (IllegalStateException e) {
+                        item = null;
+                    }
+                    return new SaleSummary(Mode.valueOf(rs.getString("mode")), item,
+                            rs.getLong("amount"), rs.getLong("total"), rs.getInt("max_id"));
+                },
+                uuid);
+        if (rows.isEmpty()) {
+            return;
+        }
+        int maxId = rows.stream().mapToInt(SaleSummary::maxId).max().orElseThrow();
+        if (DatabaseManager.execute("DELETE FROM shop_sale_notifications WHERE owner_uuid = ? AND id <= ?", uuid, maxId) < 1) {
+            plugin.getLogger().warning("shop_sale_notifications(owner=" + uuid + ")の削除に失敗したため、今回は通知をスキップします(次回ログイン時に再試行されます)。");
+            return;
+        }
+
+        List<Component> lines = new ArrayList<>();
+        lines.add(ColorUtil.component(plugin.getConfigManager().getMessage("shop.notify.offline_header", player)));
+        long net = 0;
+        for (SaleSummary row : rows) {
+            boolean sold = row.mode() == Mode.BUY;
+            net += sold ? row.total() : -row.total();
+            lines.add(saleMessage(sold ? "shop.notify.offline_line_sold" : "shop.notify.offline_line_bought", player, row.item(), Map.of(
+                    "%amount%", Long.toString(row.amount()),
+                    "%total%", plugin.getEconomyManager().format(row.total()))));
+        }
+        String netText = (net >= 0 ? "+" : "-") + plugin.getEconomyManager().format(Math.abs(net));
+        lines.add(ColorUtil.component(plugin.getConfigManager().getMessage("shop.notify.offline_total", player).replace("%net%", netText)));
+
+        player.getScheduler().runDelayed(plugin, task -> lines.forEach(player::sendMessage), null, 40L);
+    }
+
+    /**
+     * messages.ymlの文言に文字列プレースホルダーを埋めた上で、%item%をアイテム名のComponentに差し替える。
+     * アイテム名はクライアントの言語で表示されるよう翻訳キーのまま渡す（名前付きアイテムならその名前）。
+     */
+    private Component saleMessage(String path, Player viewer, ItemStack item, Map<String, String> replacements) {
+        String text = plugin.getConfigManager().getMessage(path, viewer);
+        for (Map.Entry<String, String> entry : replacements.entrySet()) {
+            text = text.replace(entry.getKey(), entry.getValue());
+        }
+        Component itemName = item != null ? item.effectiveName() : Component.text("?");
+        return ColorUtil.component(text).replaceText(b -> b.matchLiteral("%item%").replacement(itemName));
     }
 
     private Shop createDisplays(Shop shop) {

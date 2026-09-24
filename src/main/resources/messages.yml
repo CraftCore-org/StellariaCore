@@ -900,6 +900,14 @@ shop:
   funds_deposited: "&%a資金プールに%amount%入金しました。"
   funds_withdrawn: "&%a資金プールから%amount%出金しました。"
   insufficient_pool: "&%c資金プールが不足しています。"
+  # ショップで取引が成立した時のオーナー向け通知。%item%はアイテム名、%customer%は取引相手の名前に置き換わる。
+  notify:
+    sold: "&%a[ショップ] &%f%customer% &%7が &%f%item% ×%amount% &%7を購入しました &%a+%total% &%7(残り在庫 %stock%)"
+    bought: "&%e[ショップ] &%f%customer% &%7が &%f%item% ×%amount% &%7を売却しました &%c資金プール -%total% &%7(残り資金 %funds%)"
+    offline_header: "&%e━━ 不在中のショップ取引 ━━"
+    offline_line_sold: "&%a[販売] &%f%item% ×%amount% &%a+%total%"
+    offline_line_bought: "&%e[買取] &%f%item% ×%amount% &%c-%total%"
+    offline_total: "&%7合計収支: &%f%net%"
   removed: "&%aショップを削除しました。残在庫・資金を返却しました。"
   not_found: "&%c注視先にショップがありません。"
   not_owner: "&%cこのショップの所有者ではありません。"
