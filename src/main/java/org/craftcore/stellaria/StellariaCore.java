@@ -283,6 +283,10 @@ public class StellariaCore extends JavaPlugin {
         DatabaseManager.createTableIfNotExists("shop_pending_returns",
             "id INTEGER PRIMARY KEY AUTOINCREMENT", "owner_uuid TEXT NOT NULL", "item_data TEXT NOT NULL",
             "amount INTEGER NOT NULL", "created_at INTEGER NOT NULL");
+        DatabaseManager.createTableIfNotExists("shop_sale_notifications",
+            "id INTEGER PRIMARY KEY AUTOINCREMENT", "owner_uuid TEXT NOT NULL", "shop_id INTEGER NOT NULL",
+            "mode TEXT NOT NULL", "item_data TEXT NOT NULL", "amount INTEGER NOT NULL",
+            "total INTEGER NOT NULL", "created_at INTEGER NOT NULL");
 
         this.afkManager = new AfkManager(this);
         this.playtimeManager = new PlaytimeManager(this);
