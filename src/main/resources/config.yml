@@ -510,13 +510,14 @@ land:
     # これを超えるキャッシュ構築要求はサーバー負荷が跳ね上がるため拒否する。
     max-radius: 64
 
-# claim（/land）とは無関係に、ワールド単位でCreeper/TNT/エンドクリスタル爆発による地形破壊を無効化する設定。
+# claim（/land）とは無関係に、ワールド単位でCreeper/TNT/エンドクリスタル/ウィザーによる地形破壊を無効化する設定。
 # land.protect.explosionsはclaim済み土地のみを保護するが、こちらはworldsに指定したワールド全体が対象。
 explosion-protection:
   worlds: [] # 対象ワールド名のリスト（例: ["world_the_end"]）。空なら何もしない
   creeper: true
-  tnt: true
+  tnt: true # TNT付きトロッコも含む
   end-crystal: true
+  wither: true # ウィザー本体の爆発・ウィザーの頭蓋骨・ウィザーが動いて壊すブロックすべて
 
 menu:
   rows: 3 # 1〜6。省略/範囲外の場合は5
