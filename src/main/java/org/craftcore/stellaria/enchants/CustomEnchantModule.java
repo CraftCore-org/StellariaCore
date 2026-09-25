@@ -25,6 +25,7 @@ public final class CustomEnchantModule {
             return;
         }
         // 各エンチャントのリスナー
+        register(new SmeltingListener(registry));
     }
 
     public void reload() {
