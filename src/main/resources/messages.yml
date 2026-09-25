@@ -913,3 +913,21 @@ shop:
   break_not_owner: "&%c他のプレイヤーのショップチェストは直接破壊できません。"
   info_changed: "&%cショップ情報が変更されました。開き直してください。"
   remove_failed: "&%cショップの削除に失敗しました。もう一度お試しください。"
+
+custom-enchants:
+  replant_not_enough_saplings: "&%c苗木が足りないため植樹できませんでした。（必要: %required%本）"
+  last_stand_activated: "&%6&l背水！ &%f%seconds%秒間、力がみなぎる！"
+  launch_charged: "&%e跳躍の準備完了！ &%fジャンプで発射"
+  angler_streak: "&%b連続釣り &%fx%streak% &%a+%amount%"
+  angler_daily_cap: "&%7今日の連続釣りボーナスは上限に達しました。"
+  premium_crop_blocked: "&%c上質作物はこのままでは使えません。クラフトで通常の作物3個に戻してください。"
+  premium-crop:
+    name: "&%e上質な%crop%"
+    lore:
+      - "&%7作業台に1個だけ置くと、通常の作物3個に戻せます。"
+    crop-names:
+      WHEAT: "小麦"
+      CARROT: "ニンジン"
+      POTATO: "ジャガイモ"
+      BEETROOT: "ビートルート"
+      NETHER_WART: "ネザーウォート"
