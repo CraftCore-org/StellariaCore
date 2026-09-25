@@ -112,17 +112,22 @@ public final class LaunchListener implements Listener {
         player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 1);
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_WIND_CHARGE_WIND_BURST, 1.0f, 0.8f);
 
+        // サーバー側の速度はクライアントの実際の動きとずれるため、高さの変化で頂点を判定する
         int[] waited = {0};
+        double[] previousY = {player.getLocation().getY()};
         player.getScheduler().runAtFixedRate(plugin, scheduled -> {
             waited[0]++;
             if (waited[0] > GLIDE_WATCH_MAX_TICKS || player.isGliding() || player.isInWater()) {
                 scheduled.cancel();
                 return;
             }
-            if (player.getVelocity().getY() <= 0 && level(player) > 0) {
+            double currentY = player.getLocation().getY();
+            if (waited[0] > 1 && GlideMath.reachedApex(previousY[0], currentY) && level(player) > 0) {
                 player.setGliding(true);
                 scheduled.cancel();
+                return;
             }
+            previousY[0] = currentY;
         }, null, 2L, 1L);
     }
 

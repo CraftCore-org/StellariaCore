@@ -1,6 +1,7 @@
 package org.craftcore.stellaria.enchants;
 
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
+import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
@@ -47,20 +48,27 @@ public final class GlideBoostListener implements Listener {
             return;
         }
         long intervalTicks = Math.max(1L, Math.round(EnchantMath.perLevel(config.glideBoostIntervalSeconds(), level) * 20));
+        // サーバー側の速度はクライアントの実際の動きとずれるため、毎 tick の位置の変化を記録し、
+        // 加速のタイミングでその移動量に上乗せする（getVelocity() に足すと減速になることがある）
+        long[] ticks = {0};
+        Location[] previous = {player.getLocation()};
         ScheduledTask task = player.getScheduler().runAtFixedRate(plugin, scheduled -> {
             if (!player.isGliding()) {
                 cancel(player.getUniqueId());
                 return;
             }
-            if (!EnchantMath.hasEnoughFood(player.getFoodLevel(), config.movementMinFoodLevel())) {
+            Location current = player.getLocation();
+            Vector motion = current.toVector().subtract(previous[0].toVector());
+            previous[0] = current;
+            if (++ticks[0] % intervalTicks != 0
+                    || !EnchantMath.hasEnoughFood(player.getFoodLevel(), config.movementMinFoodLevel())) {
                 return;
             }
-            Vector boost = player.getLocation().getDirection().multiply(config.glideBoostStrength());
-            player.setVelocity(player.getVelocity().add(boost));
+            player.setVelocity(GlideMath.boostedVelocity(motion, current.getDirection(), config.glideBoostStrength()));
             player.setExhaustion(player.getExhaustion() + config.glideBoostExhaustion());
-            player.getWorld().spawnParticle(Particle.FIREWORK, player.getLocation(), 10, 0.2, 0.2, 0.2, 0.05);
-            player.getWorld().playSound(player.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 0.7f, 1.3f);
-        }, () -> boostTasks.remove(player.getUniqueId()), intervalTicks, intervalTicks);
+            player.getWorld().spawnParticle(Particle.FIREWORK, current, 10, 0.2, 0.2, 0.2, 0.05);
+            player.getWorld().playSound(current, Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 0.7f, 1.3f);
+        }, () -> boostTasks.remove(player.getUniqueId()), 1L, 1L);
         if (task != null) {
             boostTasks.put(player.getUniqueId(), task);
         }
