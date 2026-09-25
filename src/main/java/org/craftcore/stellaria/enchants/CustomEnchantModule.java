@@ -27,6 +27,7 @@ public final class CustomEnchantModule {
         // 各エンチャントのリスナー
         register(new SmeltingListener(registry));
         register(new CombatEnchantListener(plugin, registry, config));
+        plugin.getKikoriManager().setFellCompleteHandler(new ReplantHandler(plugin, registry));
     }
 
     public void reload() {

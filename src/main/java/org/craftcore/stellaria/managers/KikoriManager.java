@@ -14,6 +14,7 @@ import org.craftcore.stellaria.utils.TreeUtil;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -38,6 +39,18 @@ public class KikoriManager {
     private final Set<UUID> pendingPass = new HashSet<>();
     private final Map<UUID, List<ScheduledTask>> activeFellTasks = new HashMap<>();
     private final Set<Block> claimedBlocks = new HashSet<>();
+
+    /** 伐採が最後まで終わったときの通知先。植樹エンチャント（CustomEnchantModule）が設定する。 */
+    @FunctionalInterface
+    public interface FellCompleteHandler {
+        void onFellComplete(Player player, ItemStack axe, Material logType, List<Block> roots);
+    }
+
+    private FellCompleteHandler fellCompleteHandler = (player, axe, logType, roots) -> { };
+
+    public void setFellCompleteHandler(FellCompleteHandler handler) {
+        this.fellCompleteHandler = handler;
+    }
     private final Set<UUID> suppressLeafDurability = new HashSet<>();
 
     public KikoriManager(StellariaCore plugin) {
@@ -257,6 +270,9 @@ public class KikoriManager {
             pendingPass.remove(uuid);
         }
 
+        Material logType = origin.getType();
+        List<Block> roots = lowestLayer(collectedLogs);
+
         int leafRadius = plugin.getConfigManager().getInt("kikori.leaf-radius", 3);
         Set<Block> leaves = collectLeaves(collectedLogs, leafRadius);
 
@@ -269,11 +285,22 @@ public class KikoriManager {
         breakQueue.addAll(leaves);
 
         if (breakQueue.isEmpty()) {
-            return; // 起点1本だけの木（隣接丸太も葉も無し） — バニラの単発破壊のみで完結
+            // 起点1本だけの木（隣接丸太も葉も無し） — バニラの単発破壊のみで完結。
+            // 起点はこのイベントの後にバニラが壊すため、完了通知は1tick後に出す
+            ItemStack axe = player.getInventory().getItemInMainHand();
+            player.getScheduler().run(plugin,
+                    task -> fellCompleteHandler.onFellComplete(player, axe, logType, roots), null);
+            return;
         }
 
         claimedBlocks.addAll(breakQueue);
-        startFellTask(player, breakQueue);
+        startFellTask(player, breakQueue, logType, roots);
+    }
+
+    /** 収集した丸太のうち最も低い段にあるもの（木の根元）。 */
+    private static List<Block> lowestLayer(Collection<Block> logs) {
+        int minY = logs.stream().mapToInt(Block::getY).min().orElse(0);
+        return logs.stream().filter(block -> block.getY() == minY).toList();
     }
 
     /** 26方向（斜め含む）の隣接ブロックを返す。 */
@@ -329,7 +356,7 @@ public class KikoriManager {
      * 1プレイヤーが同時に複数の木を伐採できるよう、タスクはプレイヤーごとに複数並行して走れる
      * （個々のブロックはclaimedBlocksで排他制御しているので、同じブロックが二重に処理されることはない）。
      */
-    private void startFellTask(Player player, Deque<Block> breakQueue) {
+    private void startFellTask(Player player, Deque<Block> breakQueue, Material logType, List<Block> roots) {
         UUID uuid = player.getUniqueId();
 
         int axeSlot = player.getInventory().getHeldItemSlot();
@@ -405,6 +432,7 @@ public class KikoriManager {
             if (breakQueue.isEmpty()) {
                 scheduledTask.cancel();
                 removeActiveTask(uuid, taskRef[0]);
+                fellCompleteHandler.onFellComplete(current, current.getInventory().getItem(axeSlot), logType, roots);
             }
 
         }, () -> {
