@@ -39,6 +39,7 @@ public final class CustomEnchantModule {
         register(new HarvestListener(registry, config, premiumCrops));
         register(new DoubleJumpListener(registry, config));
         register(new LaunchListener(plugin, registry, config));
+        register(new GlideBoostListener(plugin, registry, config));
     }
 
     public void reload() {
