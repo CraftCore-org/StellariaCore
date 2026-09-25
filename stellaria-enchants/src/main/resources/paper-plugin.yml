@@ -1,0 +1,7 @@
+name: StellariaEnchants
+version: ${version}
+main: org.craftcore.stellariaenchants.StellariaEnchantsPlugin
+bootstrapper: org.craftcore.stellariaenchants.StellariaEnchantsBootstrap
+api-version: '1.21'
+description: StellariaCore のカスタムエンチャントを登録するプラグイン
+author: Nyaffle, shu4700

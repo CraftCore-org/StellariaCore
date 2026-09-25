@@ -93,5 +93,6 @@ jobs:
         run: |
           gh release create "v${{ steps.new-version.outputs.version }}" \
             build/libs/StellariaCore-*.jar \
+            stellaria-enchants/build/libs/StellariaEnchants-*.jar \
             --title "v${{ steps.new-version.outputs.version }}" \
             --generate-notes --notes-start-tag "v${{ steps.new-version.outputs.previous }}"

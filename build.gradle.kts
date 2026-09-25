@@ -38,6 +38,7 @@ dependencies {
     compileOnly("com.github.nuvotifier:nuvotifier:2.7.2")
     compileOnly("org.mvplugins.multiverse.core:multiverse-core:5.8.1")
     implementation("org.xerial:sqlite-jdbc:3.46.1.0")
+    implementation(project(":enchant-keys"))
     
 }
 
@@ -62,9 +63,16 @@ tasks.processResources {
 }
 
 tasks.named("build") {
+    dependsOn(":stellaria-enchants:shadowJar")
     doLast {
         copy {
             from(tasks.shadowJar.get().archiveFile)
+            into("run/plugins")
+        }
+        copy {
+            from(layout.projectDirectory.dir("stellaria-enchants/build/libs")) {
+                include("StellariaEnchants-${version}.jar")
+            }
             into("run/plugins")
         }
     }
