@@ -36,6 +36,7 @@ public final class CustomEnchantModule {
         PremiumCropRecipes premiumRecipes = new PremiumCropRecipes(plugin, premiumCrops);
         premiumRecipes.register();
         register(new PremiumCropGuardListener(plugin, premiumCrops, premiumRecipes));
+        register(new HarvestListener(registry, config, premiumCrops));
     }
 
     public void reload() {
