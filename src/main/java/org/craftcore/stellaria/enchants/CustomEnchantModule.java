@@ -40,6 +40,7 @@ public final class CustomEnchantModule {
         register(new DoubleJumpListener(registry, config));
         register(new LaunchListener(plugin, registry, config));
         register(new GlideBoostListener(plugin, registry, config));
+        register(new AnglerListener(plugin, registry, config));
     }
 
     public void reload() {
