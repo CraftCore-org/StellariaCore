@@ -6,7 +6,7 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.ShapelessRecipe;
-import org.craftcore.stellaria.StellariaCore;
+import org.bukkit.plugin.Plugin;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -20,12 +20,12 @@ import java.util.Set;
  */
 public final class PremiumCropRecipes {
 
-    private final StellariaCore plugin;
+    private final Plugin plugin;
     private final PremiumCrops crops;
     private final Set<NamespacedKey> toPremiumKeys = new HashSet<>();
     private final Set<NamespacedKey> toNormalKeys = new HashSet<>();
 
-    public PremiumCropRecipes(StellariaCore plugin, PremiumCrops crops) {
+    public PremiumCropRecipes(Plugin plugin, PremiumCrops crops) {
         this.plugin = plugin;
         this.crops = crops;
     }

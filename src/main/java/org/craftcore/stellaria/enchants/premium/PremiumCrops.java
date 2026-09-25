@@ -5,7 +5,7 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
-import org.craftcore.stellaria.StellariaCore;
+import org.bukkit.plugin.Plugin;
 import org.craftcore.stellaria.managers.ConfigManager;
 import org.craftcore.stellaria.utils.ColorUtil;
 import org.jetbrains.annotations.Nullable;
@@ -26,8 +26,8 @@ public final class PremiumCrops {
     private final ConfigManager config;
     private final NamespacedKey markerKey;
 
-    public PremiumCrops(StellariaCore plugin) {
-        this.config = plugin.getConfigManager();
+    public PremiumCrops(Plugin plugin, ConfigManager config) {
+        this.config = config;
         this.markerKey = new NamespacedKey(plugin, "premium_crop");
     }
 

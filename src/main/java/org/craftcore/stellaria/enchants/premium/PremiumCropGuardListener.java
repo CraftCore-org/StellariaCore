@@ -1,5 +1,6 @@
 package org.craftcore.stellaria.enchants.premium;
 
+import io.papermc.paper.event.player.PlayerPurchaseEvent;
 import org.bukkit.Keyed;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -14,6 +15,7 @@ import org.bukkit.event.block.BlockCookEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.CrafterCraftEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.inventory.BrewEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
@@ -22,10 +24,12 @@ import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
+import org.bukkit.inventory.BrewerInventory;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.MerchantInventory;
 import org.bukkit.inventory.Recipe;
-import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.managers.ConfigManager;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -39,12 +43,12 @@ public final class PremiumCropGuardListener implements Listener {
     private static final Set<Material> BLOCKED_INTERACT_TARGETS = EnumSet.of(
             Material.COMPOSTER, Material.CAMPFIRE, Material.SOUL_CAMPFIRE);
 
-    private final StellariaCore plugin;
+    private final ConfigManager config;
     private final PremiumCrops crops;
     private final PremiumCropRecipes recipes;
 
-    public PremiumCropGuardListener(StellariaCore plugin, PremiumCrops crops, PremiumCropRecipes recipes) {
-        this.plugin = plugin;
+    public PremiumCropGuardListener(ConfigManager config, PremiumCrops crops, PremiumCropRecipes recipes) {
+        this.config = config;
         this.crops = crops;
         this.recipes = recipes;
     }
@@ -156,14 +160,25 @@ public final class PremiumCropGuardListener implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onHopperMove(InventoryMoveItemEvent event) {
-        InventoryType destination = event.getDestination().getType();
-        if (destination == InventoryType.COMPOSTER && crops.isPremium(event.getItem())) {
+        if (!crops.isPremium(event.getItem())) {
+            return;
+        }
+        Inventory destination = event.getDestination();
+        if (destination instanceof BrewerInventory || destination.getType() == InventoryType.COMPOSTER) {
+            event.setCancelled(true);
+        }
+    }
+
+    /** 醸造台に入ってしまった上質作物（ネザーウォート）での醸造を止める。投入の防止をすり抜けた場合の最後の砦。 */
+    @EventHandler(ignoreCancelled = true)
+    public void onBrew(BrewEvent event) {
+        if (crops.isPremium(event.getContents().getIngredient())) {
             event.setCancelled(true);
         }
     }
 
     // ------------------------------------------------------------------
-    // 動物・村人への受け渡し
+    // 動物・村人への受け渡し、取引・醸造台への投入
     // ------------------------------------------------------------------
 
     @EventHandler(ignoreCancelled = true)
@@ -181,9 +196,14 @@ public final class PremiumCropGuardListener implements Listener {
         }
     }
 
+    /** 取引画面・醸造台を開いている間は、上質作物を動かすクリックを止める。 */
+    private static boolean isGuardedContainer(Inventory top) {
+        return top instanceof MerchantInventory || top instanceof BrewerInventory;
+    }
+
     @EventHandler(ignoreCancelled = true)
-    public void onMerchantClick(InventoryClickEvent event) {
-        if (!(event.getView().getTopInventory() instanceof MerchantInventory)) {
+    public void onContainerClick(InventoryClickEvent event) {
+        if (!isGuardedContainer(event.getView().getTopInventory())) {
             return;
         }
         ItemStack hotbar = event.getHotbarButton() >= 0
@@ -195,14 +215,26 @@ public final class PremiumCropGuardListener implements Listener {
     }
 
     @EventHandler(ignoreCancelled = true)
-    public void onMerchantDrag(InventoryDragEvent event) {
-        if (event.getView().getTopInventory() instanceof MerchantInventory && crops.isPremium(event.getOldCursor())) {
+    public void onContainerDrag(InventoryDragEvent event) {
+        if (isGuardedContainer(event.getView().getTopInventory()) && crops.isPremium(event.getOldCursor())) {
             event.setCancelled(true);
+        }
+    }
+
+    /**
+     * 取引リストからの選択ではバニラが支払い欄へ自動で作物を移すため、クリックの監視をすり抜ける。
+     * 取引が成立する瞬間に支払い欄を確認して止める（PlayerTradeEvent もこのイベントのサブクラスとして届く）。
+     */
+    @EventHandler(ignoreCancelled = true)
+    public void onPurchase(PlayerPurchaseEvent event) {
+        if (event.getPlayer().getOpenInventory().getTopInventory() instanceof MerchantInventory merchant
+                && (crops.isPremium(merchant.getItem(0)) || crops.isPremium(merchant.getItem(1)))) {
+            deny(event, event.getPlayer());
         }
     }
 
     private void deny(Cancellable event, Player player) {
         event.setCancelled(true);
-        player.sendMessage(plugin.getConfigManager().getMessage("custom-enchants.premium_crop_blocked", player));
+        player.sendMessage(config.getMessage("custom-enchants.premium_crop_blocked", player));
     }
 }

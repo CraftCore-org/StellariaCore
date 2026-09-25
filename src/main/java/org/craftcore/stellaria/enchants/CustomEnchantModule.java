@@ -32,10 +32,10 @@ public final class CustomEnchantModule {
         register(new SmeltingListener(registry));
         register(new CombatEnchantListener(plugin, registry, config));
         plugin.getKikoriManager().setFellCompleteHandler(new ReplantHandler(plugin, registry));
-        this.premiumCrops = new PremiumCrops(plugin);
+        this.premiumCrops = new PremiumCrops(plugin, plugin.getConfigManager());
         PremiumCropRecipes premiumRecipes = new PremiumCropRecipes(plugin, premiumCrops);
         premiumRecipes.register();
-        register(new PremiumCropGuardListener(plugin, premiumCrops, premiumRecipes));
+        register(new PremiumCropGuardListener(plugin.getConfigManager(), premiumCrops, premiumRecipes));
         register(new HarvestListener(registry, config, premiumCrops));
         register(new DoubleJumpListener(registry, config));
         register(new LaunchListener(plugin, registry, config));
