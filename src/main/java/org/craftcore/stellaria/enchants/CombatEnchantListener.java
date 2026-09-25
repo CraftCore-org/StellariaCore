@@ -76,19 +76,31 @@ public final class CombatEnchantListener implements Listener {
         if (player == null || target.isDead() || !target.isValid()) {
             return;
         }
-        // 無敵時間を無視し、ノックバックは付けない（元の速度に戻す）。source にプレイヤーを渡してキルの帰属を保つ
-        Vector velocity = target.getVelocity();
-        target.setNoDamageTicks(0);
         pursuitInFlight.add(target.getUniqueId());
         try {
-            target.damage(damage, player);
+            applyPursuitDamage(target, player, damage);
         } finally {
             pursuitInFlight.remove(target.getUniqueId());
         }
-        target.setVelocity(velocity);
         target.getWorld().spawnParticle(Particle.CRIT,
                 target.getLocation().add(0, target.getHeight() / 2, 0), 12, 0.3, 0.3, 0.3, 0.1);
         target.getWorld().playSound(target.getLocation(), Sound.ENTITY_PLAYER_ATTACK_CRIT, 0.8f, 1.4f);
+    }
+
+    /**
+     * 無敵時間を無視し、ノックバックは付けない（元の速度に戻す）。source にプレイヤーを渡してキルの帰属を保つ。
+     * 追撃の後に本命の攻撃の無敵時間と「直前のダメージ」を戻す。戻さないと、追撃で無敵時間が延び、
+     * 次の剣の攻撃が「今回のダメージ − 追撃のダメージ」しか通らなくなる（バニラの無敵時間中の差分ダメージ）。
+     */
+    static void applyPursuitDamage(LivingEntity target, Player source, double damage) {
+        Vector velocity = target.getVelocity();
+        int noDamageTicks = target.getNoDamageTicks();
+        double lastDamage = target.getLastDamage();
+        target.setNoDamageTicks(0);
+        target.damage(damage, source);
+        target.setNoDamageTicks(noDamageTicks);
+        target.setLastDamage(lastDamage);
+        target.setVelocity(velocity);
     }
 
     // ------------------------------------------------------------------
