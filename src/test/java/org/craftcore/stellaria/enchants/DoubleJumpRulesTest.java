@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DoubleJumpRulesTest {
 
     private static State airborne() {
-        return new State(false, true, false, false, false, false, false, 20);
+        return new State(false, true, false, false, false, false, false, false, 20);
     }
 
     @Test
@@ -22,28 +22,34 @@ class DoubleJumpRulesTest {
 
     @Test
     void groundJumpIsLeftToVanilla() {
-        State onGround = new State(true, true, false, false, false, false, false, 20);
+        State onGround = new State(true, true, false, false, false, false, false, false, 20);
         assertFalse(DoubleJumpRules.canAirJump(onGround, 0, 2, 7));
     }
 
     @Test
     void elytraTakesPriorityOverDoubleJump() {
-        State wearingElytra = new State(false, true, false, false, false, false, true, 20);
+        State wearingElytra = new State(false, true, false, false, false, false, true, false, 20);
         assertFalse(DoubleJumpRules.canAirJump(wearingElytra, 0, 2, 7));
     }
 
     @Test
     void blockedWhileFlyingGlidingSwimmingClimbingOrInCreative() {
-        assertFalse(DoubleJumpRules.canAirJump(new State(false, false, false, false, false, false, false, 20), 0, 2, 7));
-        assertFalse(DoubleJumpRules.canAirJump(new State(false, true, true, false, false, false, false, 20), 0, 2, 7));
-        assertFalse(DoubleJumpRules.canAirJump(new State(false, true, false, true, false, false, false, 20), 0, 2, 7));
-        assertFalse(DoubleJumpRules.canAirJump(new State(false, true, false, false, true, false, false, 20), 0, 2, 7));
-        assertFalse(DoubleJumpRules.canAirJump(new State(false, true, false, false, false, true, false, 20), 0, 2, 7));
+        assertFalse(DoubleJumpRules.canAirJump(new State(false, false, false, false, false, false, false, false, 20), 0, 2, 7));
+        assertFalse(DoubleJumpRules.canAirJump(new State(false, true, true, false, false, false, false, false, 20), 0, 2, 7));
+        assertFalse(DoubleJumpRules.canAirJump(new State(false, true, false, true, false, false, false, false, 20), 0, 2, 7));
+        assertFalse(DoubleJumpRules.canAirJump(new State(false, true, false, false, true, false, false, false, 20), 0, 2, 7));
+        assertFalse(DoubleJumpRules.canAirJump(new State(false, true, false, false, false, true, false, false, 20), 0, 2, 7));
+    }
+
+    @Test
+    void blockedWhileRidingAVehicleOrMount() {
+        State riding = new State(false, true, false, false, false, false, false, true, 20);
+        assertFalse(DoubleJumpRules.canAirJump(riding, 0, 2, 7));
     }
 
     @Test
     void blockedWhenHungry() {
-        State hungry = new State(false, true, false, false, false, false, false, 6);
+        State hungry = new State(false, true, false, false, false, false, false, false, 6);
         assertFalse(DoubleJumpRules.canAirJump(hungry, 0, 2, 7));
     }
 }

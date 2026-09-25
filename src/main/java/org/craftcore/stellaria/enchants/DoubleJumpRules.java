@@ -3,6 +3,7 @@ package org.craftcore.stellaria.enchants;
 /**
  * 二段跳びを発動できるかの判定。レベル I で空中 1 回（地面を含め合計 2 回）、レベル II で空中 2 回（合計 3 回）。
  * エリトラ着用中は、空中でのジャンプキーがバニラの滑空開始と重なるため発動しない（滑空を優先）。
+ * 馬やボートなどに乗っている間も、ジャンプキーは乗り物の操作に使われるため発動しない。
  */
 public final class DoubleJumpRules {
 
@@ -14,6 +15,7 @@ public final class DoubleJumpRules {
             boolean inWater,
             boolean climbing,
             boolean wearingElytra,
+            boolean inVehicle,
             int foodLevel
     ) {
     }
@@ -31,6 +33,7 @@ public final class DoubleJumpRules {
                 && !state.inWater()
                 && !state.climbing()
                 && !state.wearingElytra()
+                && !state.inVehicle()
                 && EnchantMath.hasEnoughFood(state.foodLevel(), minFoodLevel);
     }
 }

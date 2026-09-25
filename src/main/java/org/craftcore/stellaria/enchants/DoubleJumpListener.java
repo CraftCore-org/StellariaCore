@@ -85,6 +85,7 @@ public final class DoubleJumpListener implements Listener {
                 player.isInWater(),
                 player.isClimbing(),
                 chest != null && chest.getType() == Material.ELYTRA,
+                player.isInsideVehicle(),
                 player.getFoodLevel()
         );
     }
