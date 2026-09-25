@@ -2,6 +2,9 @@ package org.craftcore.stellaria.enchants;
 
 import org.bukkit.event.Listener;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.enchants.premium.PremiumCropGuardListener;
+import org.craftcore.stellaria.enchants.premium.PremiumCropRecipes;
+import org.craftcore.stellaria.enchants.premium.PremiumCrops;
 
 /**
  * カスタムエンチャントの効果側の入口。StellariaCore#onEnable から enable()、
@@ -13,6 +16,7 @@ public final class CustomEnchantModule {
     private final StellariaCore plugin;
     private final CustomEnchantConfig config;
     private CustomEnchantRegistry registry;
+    private PremiumCrops premiumCrops;
 
     public CustomEnchantModule(StellariaCore plugin) {
         this.plugin = plugin;
@@ -28,6 +32,10 @@ public final class CustomEnchantModule {
         register(new SmeltingListener(registry));
         register(new CombatEnchantListener(plugin, registry, config));
         plugin.getKikoriManager().setFellCompleteHandler(new ReplantHandler(plugin, registry));
+        this.premiumCrops = new PremiumCrops(plugin);
+        PremiumCropRecipes premiumRecipes = new PremiumCropRecipes(plugin, premiumCrops);
+        premiumRecipes.register();
+        register(new PremiumCropGuardListener(plugin, premiumCrops, premiumRecipes));
     }
 
     public void reload() {
@@ -40,6 +48,10 @@ public final class CustomEnchantModule {
 
     public CustomEnchantConfig config() {
         return config;
+    }
+
+    public PremiumCrops premiumCrops() {
+        return premiumCrops;
     }
 
     private void register(Listener listener) {
