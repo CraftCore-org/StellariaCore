@@ -10,9 +10,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class EnchantKeysTest {
 
     @Test
-    void allContainsTenDistinctIds() {
-        assertEquals(10, EnchantKeys.ALL.size());
-        assertEquals(10, new HashSet<>(EnchantKeys.ALL).size());
+    void allContainsElevenDistinctIds() {
+        assertEquals(11, EnchantKeys.ALL.size());
+        assertEquals(11, new HashSet<>(EnchantKeys.ALL).size());
     }
 
     @Test
