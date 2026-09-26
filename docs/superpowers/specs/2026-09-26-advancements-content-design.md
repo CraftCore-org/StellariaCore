@@ -2,7 +2,7 @@
 
 - 作成日: 2026-09-26
 - 対象: StellariaCore（Paper 1.21.11）
-- 状態: レビュー待ち
+- 状態: 実装済み
 - 前提: [独自進捗の基盤](2026-09-26-custom-advancements-design.md)（PR #41）と、累計で稼いだお金のランキング（PR #42、`economy.earned`）の上に作る。
 - 進捗の一覧（ユーザー承認済み）: https://claude.ai/artifact/EkSL957FiNokd9UPQ8B9YW
 
@@ -68,8 +68,8 @@
 | `rail.full_line` | event | 出発駅が路線の端の駅で、到着駅が反対側の端の駅 |
 | `rail.distance` | counter | 到着時に、その乗車で走ったブロック数を加算 |
 | `rail.ride5k`, `rail.ride20k` | event | 1 回の乗車で 5,000・20,000 ブロック以上 |
-| `kikori.logs` | counter | 木こりで原木が壊れたとき（1 本ずつ） |
-| `kikori.log_types` | distinct | 同上（原木の種類。樹皮付きの `_WOOD` は `_LOG` と同じ種類として数える） |
+| `kikori.trees` | counter | 木こりの伐採が最後まで終わったとき（木 1 本につき 1。元の案の「100 本の木」に合わせ、原木の個数ではなく木の本数で数える） |
+| `kikori.log_types` | distinct | 同上（伐採した木の原木の種類。樹皮付きの `_WOOD` は `_LOG` と同じ種類として数える） |
 | `mine.blocks` | counter | 一括採掘で壊した個数（1 回の採掘の合計） |
 | `mine.big` | event | 1 回の一括採掘で 32 個以上 |
 | `join.count` | event | 基盤で記録済み |
