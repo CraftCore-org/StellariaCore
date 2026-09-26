@@ -147,6 +147,7 @@ player_counter_members
 player_advancements
   uuid TEXT NOT NULL, advancement_id TEXT NOT NULL,
   completed_at INTEGER NOT NULL, reward_paid INTEGER NOT NULL DEFAULT 0,
+  reward_amount INTEGER NOT NULL DEFAULT 0,  -- 実際に支払った額（GUI の報酬合計用。設定を後から変えても正しく出るように）
   PRIMARY KEY (uuid, advancement_id)
 ```
 
@@ -154,7 +155,7 @@ player_advancements
 
 ### 5.2 キャッシュ
 
-- ログイン時に、そのプレイヤーのカウンター・distinct の件数・達成済み一覧を非同期で読み込み、メモリに保持する。読み込みが終わるまでに来た `increment` は、キャッシュに加算して読み込み結果とマージする。
+- ログイン時に、そのプレイヤーのカウンター・distinct の件数・達成済み一覧を同期で読み込み、メモリに保持する（数件の SELECT で数ミリ秒のため。`EconomyManager` と同じ方針）。キャッシュがないプレイヤー（ログイン処理の前後）への `increment` は DB にだけ加算する。
 - `distinct` はメンバーそのものではなく件数だけをキャッシュする。新しいメンバーかどうかは `INSERT OR IGNORE` の結果（追加された行数）で判定する。
 - カウンターの書き込みは非同期で、`UPDATE ... SET value = value + ?` の加算として行う（キャッシュの値で上書きしない）。
 - ログアウト時にキャッシュを破棄する。
@@ -189,7 +190,7 @@ player_advancements
 
 1. 各定義から JSON を作る（`AdvancementJson`）。条件は `minecraft:impossible` の `done` を 1 つだけ持たせ、コードからのみ達成させる。
 2. 全定義の JSON をまとめたハッシュを、前回起動時の値（プラグインのデータフォルダに保存）と比べる。同じなら何もしない。
-3. 違う場合は、`stellaria` 名前空間の登録済み進捗のうち、定義にないもの・内容が変わったものを `removeAdvancement` で消し、新しいものを `loadAdvancement` で登録する。登録順は、親が子より先になるようにする。
+3. 違う場合は、`stellaria` 名前空間の登録済み進捗のうち、定義にないもの・内容が変わったもの（とその子孫）を `removeAdvancement` で消し、新しいものを `loadAdvancement` で登録する。登録順は、親が子より先になるようにする。ハッシュは進捗ごとに保存し、変わったものだけを登録し直す。登録し直した進捗は、次のログイン時の同期（6.2）で達成済みの人にもう一度トーストが出るため、変更のない進捗まで登録し直さないようにする。
 4. 登録に失敗した進捗は警告を出して飛ばす。その進捗は GUI と DB 側の判定・報酬だけで動く。
 
 `loadAdvancement` は非推奨扱いの `UnsafeValues` の API であり、登録内容はメインワールドのデータパック（`bukkit`）に保存されて再起動後も残る。`/stellariareload` では再登録しない。
