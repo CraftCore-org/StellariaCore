@@ -152,6 +152,10 @@ public class StatSnapshotManager {
     public void snapshotAsync(Player player) {
         UUID uuid = player.getUniqueId();
         Map<String, Long> values = readLive(player);
+        AdvancementManager advancements = plugin.getAdvancementManager();
+        if (advancements != null) {
+            advancements.onStatsRead(player, values);
+        }
         Bukkit.getAsyncScheduler().runNow(plugin, task -> write(uuid, values));
     }
 

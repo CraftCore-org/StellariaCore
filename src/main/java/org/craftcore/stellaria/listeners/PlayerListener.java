@@ -31,6 +31,7 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onPlayerLeave(PlayerQuitEvent event){
         plugin.getStatSnapshotManager().snapshotAsync(event.getPlayer());
+        plugin.getAdvancementManager().onQuit(event.getPlayer());
         TpaCore.resetPlayerTeleportRequests(event.getPlayer(), plugin);
         HomeCommand.clearPendingConfirm(event.getPlayer().getUniqueId());
         WarpCommand.clearPendingConfirm(event.getPlayer().getUniqueId());

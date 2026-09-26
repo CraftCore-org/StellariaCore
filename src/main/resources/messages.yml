@@ -961,3 +961,6 @@ custom-enchants:
       POTATO: "ジャガイモ"
       BEETROOT: "ビートルート"
       NETHER_WART: "ネザーウォート"
+
+advancements:
+  reward: "&%e進捗「%title%&%e」の報酬として &%f%amount% &%eを受け取りました。"

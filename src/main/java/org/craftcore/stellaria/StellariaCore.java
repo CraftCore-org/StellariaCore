@@ -83,6 +83,7 @@ public class StellariaCore extends JavaPlugin {
     private BossBarManager bossBarManager;
     private PlaytimeManager playtimeManager;
     private StatSnapshotManager statSnapshotManager;
+    private AdvancementManager advancementManager;
     private ScheduledTask statSnapshotTask;
     private RankManager rankManager;
     private HomeManager homeManager;
@@ -130,6 +131,7 @@ public class StellariaCore extends JavaPlugin {
         this.configManager.register("config.yml");
         this.configManager.register("messages.yml");
         this.configManager.register("customhead.yml");
+        this.configManager.register("advancements.yml");
 
         // 1. データベースの接続とテーブル作成
         DatabaseManager.connect(this, "database.db");
@@ -297,12 +299,14 @@ public class StellariaCore extends JavaPlugin {
             "updated_at INTEGER NOT NULL", "PRIMARY KEY (uuid, stat_key)");
         DatabaseManager.execute("CREATE INDEX IF NOT EXISTS idx_player_stat_snapshots_key_value "
             + "ON player_stat_snapshots (stat_key, value DESC)");
+        AdvancementStore.createTables();
 
         this.afkManager = new AfkManager(this);
         this.playtimeManager = new PlaytimeManager(this);
         this.statSnapshotManager = new StatSnapshotManager(this);
         this.statSnapshotManager.reload();
         this.statSnapshotManager.backfillAsync();
+        this.advancementManager = new AdvancementManager(this);
         this.rankManager = new RankManager(this);
         this.homeManager = new HomeManager(this);
         this.warpManager = new WarpManager(this);
@@ -630,6 +634,7 @@ public class StellariaCore extends JavaPlugin {
         getCommand("sudo").setTabCompleter(sudoCommand);
 
         this.autoBroadcastManager = new AutoBroadcastManager(this);
+        advancementManager.enable();
         autoBroadcastManager.start();
 
         headshopManager.start();
@@ -719,6 +724,10 @@ public class StellariaCore extends JavaPlugin {
 
     public StatSnapshotManager getStatSnapshotManager() {
         return this.statSnapshotManager;
+    }
+
+    public AdvancementManager getAdvancementManager() {
+        return this.advancementManager;
     }
 
     public RankManager getRankManager() {

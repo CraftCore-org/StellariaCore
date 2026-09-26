@@ -1,0 +1,103 @@
+# 独自進捗の定義。変更は再起動で反映される（/stellariareload では反映されない）。
+# 書式は docs/superpowers/specs/2026-09-26-custom-advancements-design.md の 3 章・4 章を参照。
+#
+# trigger.type:
+#   counter   … key のカウンターが goal 以上
+#   distinct  … key に記録された異なる値の数が goal 以上
+#   event     … key のカウンターが 1 以上（1 回起きた）
+#   stat      … 統計（mobkills, pvpkills, deaths, fishing, mined, placed, distance, jumps, trades, bred, cake）か
+#               playtime（秒）が goal 以上
+#   all_of    … ids の進捗をすべて達成
+#   completed … 進捗を goal 個達成（completed 型の進捗は数えない）
+# difficulty: easy / normal / hard / challenge（報酬と通知は config.yml の advancements.difficulties）
+
+tabs:
+  stellaria:
+    title: "&%dすてらりあ"
+    description: "サーバーを遊び尽くそう"
+    icon: NETHER_STAR
+    background: "minecraft:block/amethyst_block"
+  economy:
+    title: "&%a経済・ショップ"
+    description: "お金を稼いで、使って、回そう"
+    icon: EMERALD
+    background: "minecraft:block/emerald_block"
+  social:
+    title: "&%b交流"
+    description: "ほかのプレイヤーと関わろう"
+    icon: WRITABLE_BOOK
+    background: "minecraft:block/bookshelf"
+  land:
+    title: "&%2土地・建築"
+    description: "自分の土地を持とう"
+    icon: GRASS_BLOCK
+    background: "minecraft:block/dirt"
+  transport:
+    title: "&%6移動・鉄道"
+    description: "遠くまで旅をしよう"
+    icon: POWERED_RAIL
+    background: "minecraft:block/smooth_stone"
+  mining:
+    title: "&%a木こり・採掘"
+    description: "木を切り、岩を掘る"
+    icon: DIAMOND_PICKAXE
+    background: "minecraft:block/stone"
+  playtime:
+    title: "&%eプレイ時間"
+    description: "すてらりあで過ごした時間"
+    icon: CLOCK
+    background: "minecraft:block/quartz_block_side"
+  warp_home:
+    title: "&%9Warp・Home"
+    description: "拠点を作って行き来しよう"
+    icon: ENDER_PEARL
+    background: "minecraft:block/end_stone"
+  vote:
+    title: "&%c投票"
+    description: "みんなで決めよう"
+    icon: BELL
+    background: "minecraft:block/spruce_planks"
+  headshop:
+    title: "&%dHeadShop"
+    description: "頭を集めよう"
+    icon: PLAYER_HEAD
+    background: "minecraft:block/black_wool"
+
+advancements:
+  welcome:
+    tab: stellaria
+    icon: OAK_SAPLING
+    title: "&%dはじめまして"
+    description: "すてらりあにログインする"
+    difficulty: easy
+    trigger: { type: event, key: join.count }
+  playtime_1h:
+    tab: playtime
+    icon: CLOCK
+    title: "&%eひとやすみ"
+    description: "累計1時間プレイする"
+    difficulty: easy
+    trigger: { type: stat, key: playtime, goal: 3600 }
+  playtime_10h:
+    tab: playtime
+    parent: playtime_1h
+    icon: CLOCK
+    title: "&%eすっかり常連"
+    description: "累計10時間プレイする"
+    difficulty: normal
+    trigger: { type: stat, key: playtime, goal: 36000 }
+  kikori_100:
+    tab: mining
+    icon: WOODEN_AXE
+    title: "&%a見習い木こり"
+    description: "木こりで100本伐採する"
+    difficulty: normal
+    trigger: { type: counter, key: kikori.logs, goal: 100 }
+  first_steps:
+    tab: stellaria
+    parent: welcome
+    icon: BOOK
+    title: "&%dはじめの一歩"
+    description: "「はじめまして」と「ひとやすみ」を達成する"
+    difficulty: normal
+    trigger: { type: all_of, ids: [welcome, playtime_1h] }
