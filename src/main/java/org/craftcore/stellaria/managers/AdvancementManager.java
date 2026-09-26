@@ -15,7 +15,9 @@ import org.craftcore.stellaria.utils.AdvancementDefinitions.TriggerType;
 import org.craftcore.stellaria.utils.AdvancementJson;
 import org.craftcore.stellaria.utils.AdvancementRules;
 import org.craftcore.stellaria.utils.FormatUtil;
+import org.craftcore.stellaria.rail.RailLineManager;
 import org.craftcore.stellaria.utils.LoginDays;
+import org.craftcore.stellaria.utils.RailRideRecord;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -23,6 +25,7 @@ import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -282,6 +285,21 @@ public class AdvancementManager implements Listener {
         if (entry[1] == 100) {
             event(uuid, "chat.day100");
         }
+    }
+
+    /** 高速鉄道で駅に到着したとき（到着以外で終わった乗車は記録しない）。 */
+    public void onRailArrival(Player player, String departure, String arrival, RailLineManager.RailLine line, long blocks) {
+        increment(player, "rail.rides", 1);
+        addDistinct(player, "rail.stations", arrival.toLowerCase(Locale.ROOT));
+        if (line != null) {
+            addDistinct(player, "rail.lines", line.name().toLowerCase(Locale.ROOT));
+            if (RailRideRecord.isFullLine(line.stationNamesInOrder(), line.oneWay(), departure, arrival)) {
+                increment(player, "rail.full_line", 1);
+            }
+        }
+        increment(player, "rail.distance", blocks);
+        if (blocks >= 5_000) increment(player, "rail.ride5k", 1);
+        if (blocks >= 20_000) increment(player, "rail.ride20k", 1);
     }
 
     /** stat 型の進捗を、その場の統計で判定する（ログイン時）。 */

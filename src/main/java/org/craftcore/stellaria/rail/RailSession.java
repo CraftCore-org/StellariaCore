@@ -32,6 +32,8 @@ public final class RailSession {
     /** このトリップ中に通過/到着タイトルを既に出した駅名（小文字）。同じ駅で毎tick出し続けないための記録。 */
     private final Set<String> notifiedStations = new HashSet<>();
     private double originalMaxSpeed;
+    private String departureStationName;
+    private long traveledBlocks;
     private World ticketWorld;
 
     public RailSession(UUID minecartId, String targetStationName, BlockFace direction, double initialSpeedBps, double originalMaxSpeed) {
@@ -81,10 +83,25 @@ public final class RailSession {
     }
 
     public void rememberBlock(int x, int y, int z) {
+        if (lastBlockX != Integer.MIN_VALUE) {
+            traveledBlocks += Math.abs(x - lastBlockX) + Math.abs(z - lastBlockZ);
+        }
         this.lastBlockX = x;
         this.lastBlockY = y;
         this.lastBlockZ = z;
     }
+
+    /** 発車時にトロッコの近くにあった駅（進捗の全線走破の判定用）。無ければ null。 */
+    public String departureStationName() { return departureStationName; }
+
+    public void setDepartureStationName(String name) {
+        if (departureStationName == null) {
+            departureStationName = name;
+        }
+    }
+
+    /** この乗車で走った水平方向のブロック数。 */
+    public long traveledBlocks() { return traveledBlocks; }
 
     public ScheduledTask watchdogTask() { return watchdogTask; }
 
