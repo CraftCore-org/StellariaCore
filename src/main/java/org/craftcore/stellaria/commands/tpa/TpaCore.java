@@ -314,6 +314,7 @@ public class TpaCore implements CommandExecutor, Listener, TabCompleter {
                 tpaPendingSender.put(((Player) sender).getUniqueId(), player.getUniqueId());
                 scheduleRequestExpiry(tpRequest, tpaPendingSender, ((Player) sender).getUniqueId(), player.getUniqueId(),
                         "tpa.tpa_expired_sender", "tpa.tpa_expired_receiver");
+                plugin.getAdvancementManager().increment((Player) sender, "tpa.sent", 1);
                 player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_FLUTE,1,0);
 
                 String tpa_accept = plugin.getConfigManager().getMessage("tpa.tpa_accept", (OfflinePlayer) sender);
@@ -349,6 +350,7 @@ public class TpaCore implements CommandExecutor, Listener, TabCompleter {
                     player.sendMessage(tpa_accept_sender);
                     tpRequest.get(((Player) sender).getUniqueId()).remove(player.getUniqueId());
                     tpaPendingSender.remove(player.getUniqueId());
+                    plugin.getAdvancementManager().increment((Player) sender, "tpa.accepted", 1);
                     scheduleTeleport(player, (Player) sender);
                     return true;
                 } else {
@@ -406,6 +408,7 @@ public class TpaCore implements CommandExecutor, Listener, TabCompleter {
                 tpHerePendingSender.put(((Player) sender).getUniqueId(), player.getUniqueId());
                 scheduleRequestExpiry(tpHere, tpHerePendingSender, ((Player) sender).getUniqueId(), player.getUniqueId(),
                         "tpa.tphere_expired_sender", "tpa.tphere_expired_receiver");
+                plugin.getAdvancementManager().increment((Player) sender, "tpa.sent", 1);
                 player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_FLUTE,1,0);
                 String tphere_accept = plugin.getConfigManager().getMessage("tpa.tpa_accept", (OfflinePlayer) sender);
                 String tphere_deny = plugin.getConfigManager().getMessage("tpa.tpa_deny", (OfflinePlayer) sender);
@@ -441,6 +444,7 @@ public class TpaCore implements CommandExecutor, Listener, TabCompleter {
                     player.sendMessage(tphere_accept_sender);
                     tpHere.get(((Player) sender).getUniqueId()).remove(player.getUniqueId());
                     tpHerePendingSender.remove(player.getUniqueId());
+                    plugin.getAdvancementManager().increment((Player) sender, "tpa.accepted", 1);
                     scheduleTeleport((Player) sender, player);
                     return true;
                 } else {

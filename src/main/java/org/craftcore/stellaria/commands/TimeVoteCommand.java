@@ -61,6 +61,7 @@ public class TimeVoteCommand implements CommandExecutor, TabCompleter {
         session.votingWorld = world;
         session.voteStartPlayer = player;
         activeVotes.put(world.getUID(), session);
+        plugin.getAdvancementManager().onVoteStarted(player, false);
 
         Component voteMessage = Component.text("   ")
                 .append(button(plugin.getConfigManager().getMessage("timevote.accept", player), "/tvaccept", "timevote.accept_tooltip", player))
@@ -78,6 +79,8 @@ public class TimeVoteCommand implements CommandExecutor, TabCompleter {
     private void endtimeVote(UUID worldId) {
         VoteSession session = activeVotes.remove(worldId);
         if (session == null) return;
+        plugin.getAdvancementManager().event(session.voteStartPlayer.getUniqueId(),
+                session.voteAccepts >= session.voteDenys ? "vote.passed" : "vote.rejected");
         if (session.voteAccepts >= session.voteDenys) {
             String message = FormatUtil.replace(FormatUtil.replace(plugin.getConfigManager().getMessage("timevote.vote_end_accept", (OfflinePlayer) session.voteStartPlayer), "%world%", plugin.getConfigManager().getString("timevote.worldname." + session.votingWorld.getName(), "")), "%time%", session.votingTime);
             for (Player recipient : session.votingWorld.getPlayers()) {
@@ -142,6 +145,7 @@ public class TimeVoteCommand implements CommandExecutor, TabCompleter {
             }
             session.votedPlayers.add(player);
             session.voteAccepts++;
+            plugin.getAdvancementManager().onVoteCast(player, true);
             player.sendMessage(plugin.getConfigManager().getMessage("timevote.vote_accept", player));
         }
         if (command.getName().equalsIgnoreCase("tvdeny")) {
@@ -156,6 +160,7 @@ public class TimeVoteCommand implements CommandExecutor, TabCompleter {
             }
             session.votedPlayers.add(player);
             session.voteDenys++;
+            plugin.getAdvancementManager().onVoteCast(player, false);
             player.sendMessage(plugin.getConfigManager().getMessage("timevote.vote_deny", player));
         }
         return false;

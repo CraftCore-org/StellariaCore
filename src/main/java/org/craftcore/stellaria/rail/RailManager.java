@@ -262,7 +262,21 @@ public class RailManager {
             cart.setMaxSpeed(session.originalMaxSpeed());
             cart.setVelocity(new Vector(0, 0, 0));
         }
+        if (reason == EndReason.ARRIVED && stationName != null) {
+            recordArrival(cart, session, stationName);
+        }
         notifyEnd(cart, reason, stationName);
+    }
+
+    /** 到着した乗車だけを進捗に記録する（降車・脱線・切断などで終わった乗車は数えない）。 */
+    private void recordArrival(Minecart cart, RailSession session, String stationName) {
+        RailLineManager.RailLine line = lineManager.findLineForStation(stationName);
+        for (Entity passenger : cart.getPassengers()) {
+            if (passenger instanceof Player player) {
+                plugin.getAdvancementManager().onRailArrival(player, session.departureStationName(), stationName,
+                        line, session.traveledBlocks());
+            }
+        }
     }
 
     private void notifyEnd(Minecart cart, EndReason reason, String stationName) {
@@ -306,6 +320,7 @@ public class RailManager {
             if (stationLocation != null && stationLocation.getWorld().equals(cart.getWorld())
                     && stationLocation.distanceSquared(cart.getLocation()) <= arrivalRadiusSq) {
                 session.markStationNotified(station.name());
+                session.setDepartureStationName(station.name());
             }
         }
     }

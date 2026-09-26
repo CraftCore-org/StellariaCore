@@ -291,12 +291,19 @@ public class MineManager {
         }
 
         claimedBlocks.addAll(breakQueue);
+        int broken = 1; // 起点はバニラが壊す
         try {
             for (Block ore : breakQueue) {
-                player.breakBlock(ore);
+                if (player.breakBlock(ore)) {
+                    broken++; // 土地保護などで壊せなかったブロックは数えない
+                }
             }
         } finally {
             claimedBlocks.removeAll(breakQueue);
+        }
+        plugin.getAdvancementManager().increment(player, "mine.blocks", broken);
+        if (broken >= 32) {
+            plugin.getAdvancementManager().increment(player, "mine.big", 1);
         }
     }
 

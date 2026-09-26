@@ -11,6 +11,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.managers.AdvancementManager;
 import org.craftcore.stellaria.managers.HeadshopManager;
 import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
@@ -281,6 +282,11 @@ public final class HeadshopPlayerHeadsGui extends Gui {
             return;
         }
 
+        AdvancementManager advancements = plugin.getAdvancementManager();
+        advancements.increment(player, "headshop.bought", 1);
+        advancements.addDistinct(player, "headshop.heads", "player:" + recentPlayer.uuid());
+        advancements.increment(player, "headshop.player_head", 1);
+        advancements.increment(player, "headshop.spent", price);
         Component purchasedMessage = ColorUtil.component(FormatUtil.replace(
                 plugin.getConfigManager().getMessage("headshop.purchased", player),
                 "%price%", plugin.getEconomyManager().format(price)))

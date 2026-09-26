@@ -6,8 +6,11 @@ import org.bukkit.Material;
 import org.bukkit.advancement.Advancement;
 import org.bukkit.advancement.AdvancementProgress;
 import org.bukkit.entity.Player;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.AdvancementDefinitions;
 import org.craftcore.stellaria.utils.AdvancementDefinitions.Definition;
@@ -15,10 +18,17 @@ import org.craftcore.stellaria.utils.AdvancementDefinitions.TriggerType;
 import org.craftcore.stellaria.utils.AdvancementJson;
 import org.craftcore.stellaria.utils.AdvancementRules;
 import org.craftcore.stellaria.utils.FormatUtil;
+import org.craftcore.stellaria.rail.RailLineManager;
+import org.craftcore.stellaria.utils.LoginDays;
+import org.craftcore.stellaria.utils.RailRideRecord;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -32,9 +42,13 @@ import java.util.function.ToLongFunction;
  */
 public class AdvancementManager implements Listener {
 
+    private static final ZoneId JAPAN = ZoneId.of("Asia/Tokyo");
+
     private final StellariaCore plugin;
     private final AdvancementRegistrar registrar;
     private final Map<UUID, AdvancementRules.State> cache = new ConcurrentHashMap<>();
+    /** プレイヤーごとの [日本時間の epochDay, その日のチャット回数]。 */
+    private final Map<UUID, long[]> chatToday = new ConcurrentHashMap<>();
     private boolean enabled;
     private AdvancementDefinitions.Parsed parsed = new AdvancementDefinitions.Parsed(Map.of(), List.of());
     private Map<String, List<Definition>> byKey = Map.of();
@@ -62,6 +76,38 @@ public class AdvancementManager implements Listener {
         for (Player online : plugin.getServer().getOnlinePlayers()) {
             onJoin(online);
         }
+        // 日付をまたいでログインし続けている人の当日分を記録する（連続ログインが途切れないように）。
+        plugin.getServer().getGlobalRegionScheduler().runAtFixedRate(plugin, task -> {
+            for (Player online : plugin.getServer().getOnlinePlayers()) {
+                if (cache.containsKey(online.getUniqueId())) {
+                    recordLoginDay(online.getUniqueId());
+                }
+            }
+        }, 12_000L, 12_000L);
+    }
+
+    /** ログイン時にわかる事実（時刻・初ログインからの日数・ログイン日）を記録する。 */
+    private void recordJoinFacts(Player player) {
+        UUID uuid = player.getUniqueId();
+        if (LocalTime.now(JAPAN).getHour() == 3) {
+            event(uuid, "join.3am");
+        }
+        long firstPlayed = player.getFirstPlayed();
+        if (firstPlayed > 0) {
+            long days = (System.currentTimeMillis() - firstPlayed) / 86_400_000L;
+            if (days >= 7) event(uuid, "account.age7");
+            if (days >= 30) event(uuid, "account.age30");
+            if (days >= 100) event(uuid, "account.age100");
+        }
+        recordLoginDay(uuid);
+    }
+
+    private void recordLoginDay(UUID uuid) {
+        LocalDate today = LoginDays.today();
+        LoginDaysStore.record(uuid, today);
+        Set<LocalDate> days = LoginDaysStore.since(uuid, today.minusDays(30));
+        if (LoginDays.streak(days, today) >= 7) event(uuid, "login.streak7");
+        if (LoginDays.countWithin(days, today, 30) >= 20) event(uuid, "login.active20of30");
     }
 
     /** /minecraft:reload などでデータパックが読み直されると独自進捗が消えるため、登録し直して表示を合わせる。 */
@@ -125,12 +171,14 @@ public class AdvancementManager implements Listener {
                 new HashMap<>(loaded.counters()), new HashMap<>(loaded.distinctCounts()), new HashSet<>(loaded.completed())));
         syncVanilla(player);
         increment(player, "join.count", 1);
+        recordJoinFacts(player);
         checkStats(player);
         evaluate(player, parsed.definitions(), key -> 0L);
     }
 
     public void onQuit(Player player) {
         cache.remove(player.getUniqueId());
+        chatToday.remove(player.getUniqueId());
     }
 
     /** DB を正として、バニラ側の達成状況を合わせる。ここでは報酬を払わない。 */
@@ -178,7 +226,7 @@ public class AdvancementManager implements Listener {
         if (!enabled) {
             return;
         }
-        Runnable apply = () -> {
+        onMain(() -> {
             Player player = plugin.getServer().getPlayer(uuid);
             AdvancementRules.State state = cache.get(uuid);
             if (player == null || state == null) {
@@ -186,24 +234,108 @@ public class AdvancementManager implements Listener {
             }
             state.counters().merge(key, amount, Long::sum);
             evaluate(player, byKey.getOrDefault(key, List.of()), k -> 0L);
-        };
-        if (plugin.getServer().isPrimaryThread()) {
-            apply.run();
-        } else {
-            plugin.getServer().getGlobalRegionScheduler().execute(plugin, apply);
-        }
+        });
+    }
+
+    /** 1 回起きたことを記録する（event 型の進捗用）。オフラインの相手・非同期スレッドからでもよい。 */
+    public void event(UUID uuid, String key) {
+        addToCounter(uuid, key, 1);
     }
 
     public void addDistinct(Player player, String key, String member) {
-        if (!enabled || !AdvancementStore.addMember(player.getUniqueId(), key, member)) {
+        addDistinct(player.getUniqueId(), key, member);
+    }
+
+    /**
+     * distinct 型の値を記録する。オフラインの相手・非同期スレッドからでもよい。
+     * DB には独自進捗が無効でも記録し、新しい値だったときだけ、オンラインならメインスレッドでキャッシュに反映して判定する。
+     */
+    public void addDistinct(UUID uuid, String key, String member) {
+        if (!AdvancementStore.addMember(uuid, key, member) || !enabled) {
             return;
         }
-        AdvancementRules.State state = cache.get(player.getUniqueId());
-        if (state == null) {
-            return;
+        onMain(() -> {
+            Player player = plugin.getServer().getPlayer(uuid);
+            AdvancementRules.State state = cache.get(uuid);
+            if (player == null || state == null) {
+                return;
+            }
+            state.distinctCounts().merge(key, 1L, Long::sum);
+            evaluate(player, byKey.getOrDefault(key, List.of()), k -> 0L);
+        });
+    }
+
+    private void onMain(Runnable task) {
+        if (plugin.getServer().isPrimaryThread()) {
+            task.run();
+        } else {
+            plugin.getServer().getGlobalRegionScheduler().execute(plugin, task);
         }
-        state.distinctCounts().merge(key, 1L, Long::sum);
-        evaluate(player, byKey.getOrDefault(key, List.of()), k -> 0L);
+    }
+
+    /** prefix.<日本時間の日付> に同期で加算して、その日の合計を返す。 */
+    public long addDaily(UUID uuid, String prefix, long amount) {
+        return AdvancementStore.addCounterAndGet(uuid, prefix + "." + LoginDays.today(), amount);
+    }
+
+    /** AsyncChatEvent から呼ばれる。日ごとの回数はメモリだけで数える（再起動でその日の回数はリセット）。 */
+    public void onChat(Player player) {
+        UUID uuid = player.getUniqueId();
+        addToCounter(uuid, "chat.messages", 1);
+        long today = LoginDays.today().toEpochDay();
+        long[] entry = chatToday.compute(uuid, (id, old) ->
+                old == null || old[0] != today ? new long[]{today, 1} : new long[]{today, old[1] + 1});
+        if (entry[1] == 100) {
+            event(uuid, "chat.day100");
+        }
+    }
+
+    /** 時間投票・天気投票を始めたとき。 */
+    public void onVoteStarted(Player player, boolean weather) {
+        increment(player, "vote.started", 1);
+        increment(player, weather ? "vote.weather_started" : "vote.time_started", 1);
+        increment(player, "vote.participations", 1);
+    }
+
+    /** 投票で賛成・反対したとき。 */
+    public void onVoteCast(Player player, boolean yes) {
+        increment(player, yes ? "vote.yes" : "vote.no", 1);
+        increment(player, "vote.participations", 1);
+    }
+
+    private static final Set<String> TOUR_COMMANDS = Set.of("home", "warp", "tpa", "shop", "land");
+
+    /** 「すてらりあへようこそ」用に、/home・/warp・/tpa・/shop・/land を（別名も含めて）使ったことを記録する。 */
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
+    public void onCommandUsed(PlayerCommandPreprocessEvent event) {
+        String label = event.getMessage().substring(1).split(" ", 2)[0].toLowerCase(Locale.ROOT);
+        label = label.substring(label.indexOf(':') + 1);
+        PluginCommand command = plugin.getServer().getPluginCommand(label);
+        if (command != null && command.getPlugin() == plugin) {
+            recordTour(event.getPlayer(), command.getName());
+        }
+    }
+
+    /** メニューから開いた場合のように、コマンドを経由しない利用も「すてらりあへようこそ」に数える。 */
+    public void recordTour(Player player, String commandName) {
+        if (TOUR_COMMANDS.contains(commandName)) {
+            addDistinct(player, "tour.commands", commandName);
+        }
+    }
+
+    /** 高速鉄道で駅に到着したとき（到着以外で終わった乗車は記録しない）。 */
+    public void onRailArrival(Player player, String departure, String arrival, RailLineManager.RailLine line, long blocks) {
+        increment(player, "rail.rides", 1);
+        addDistinct(player, "rail.stations", arrival.toLowerCase(Locale.ROOT));
+        if (line != null) {
+            addDistinct(player, "rail.lines", line.name().toLowerCase(Locale.ROOT));
+            if (RailRideRecord.isFullLine(line.stationNamesInOrder(), line.oneWay(), departure, arrival)) {
+                increment(player, "rail.full_line", 1);
+            }
+        }
+        increment(player, "rail.distance", blocks);
+        if (blocks >= 5_000) increment(player, "rail.ride5k", 1);
+        if (blocks >= 20_000) increment(player, "rail.ride20k", 1);
     }
 
     /** stat 型の進捗を、その場の統計で判定する（ログイン時）。 */

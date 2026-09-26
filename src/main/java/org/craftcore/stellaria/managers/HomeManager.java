@@ -83,6 +83,13 @@ public class HomeManager {
             result.set(SetResult.SUCCESS);
         });
         plugin.getEconomyManager().invalidateBalance(owner);
+        if (committed && result.get() == SetResult.SUCCESS) {
+            AdvancementManager advancements = plugin.getAdvancementManager();
+            advancements.increment(player, "home.set", 1);
+            int homes = count(owner);
+            if (homes >= 3) advancements.increment(player, "home.count3", 1);
+            if (homes >= max) advancements.increment(player, "home.max", 1);
+        }
         return committed ? result.get() : SetResult.DATABASE_ERROR;
     }
 

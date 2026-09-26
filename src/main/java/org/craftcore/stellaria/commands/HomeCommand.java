@@ -112,6 +112,7 @@ public class HomeCommand implements CommandExecutor, TabCompleter {
         }
         TeleportSafetyUtil.Result result = TeleportSafetyUtil.attempt(player, destination, PENDING_CONFIRM);
         if (result == TeleportSafetyUtil.Result.TELEPORTED) {
+            plugin.getAdvancementManager().increment(player, "home.teleports", 1);
             playTeleportEffect(destination);
         } else if (result == TeleportSafetyUtil.Result.WARNED) {
             player.sendMessage(plugin.getConfigManager().getMessage("home.unsafe_warning", player));

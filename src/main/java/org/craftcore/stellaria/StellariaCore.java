@@ -300,6 +300,7 @@ public class StellariaCore extends JavaPlugin {
         DatabaseManager.execute("CREATE INDEX IF NOT EXISTS idx_player_stat_snapshots_key_value "
             + "ON player_stat_snapshots (stat_key, value DESC)");
         AdvancementStore.createTables();
+        LoginDaysStore.createTable();
 
         this.afkManager = new AfkManager(this);
         this.playtimeManager = new PlaytimeManager(this);

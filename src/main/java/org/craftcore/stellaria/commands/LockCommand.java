@@ -111,7 +111,11 @@ public class LockCommand implements CommandExecutor, TabCompleter {
         }
         ContainerLockManager.CreateResult result = manager.create(player, keys);
         switch (result) {
-            case SUCCESS -> message(player, "lock.created");
+            case SUCCESS -> {
+                // 進捗はコマンドで保護したときだけ数える（設置時の自動保護は置いて壊すだけで稼げてしまうため）
+                plugin.getAdvancementManager().increment(player, "lock.created", 1);
+                message(player, "lock.created");
+            }
             case DATABASE_ERROR -> message(player, "lock.database_error");
             default -> message(player, "lock.already_locked");
         }
@@ -129,7 +133,10 @@ public class LockCommand implements CommandExecutor, TabCompleter {
             return;
         }
         switch (manager.unlock(lock)) {
-            case SUCCESS -> message(player, "lock.unlocked");
+            case SUCCESS -> {
+                plugin.getAdvancementManager().increment(player, "lock.removed", 1);
+                message(player, "lock.unlocked");
+            }
             case DATABASE_ERROR -> message(player, "lock.database_error");
             case NOT_FOUND -> message(player, "lock.not_locked");
         }

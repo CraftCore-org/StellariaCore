@@ -1,12 +1,13 @@
 # 独自進捗の定義。変更は再起動で反映される（/stellariareload では反映されない）。
 # 書式は docs/superpowers/specs/2026-09-26-custom-advancements-design.md の 3 章・4 章を参照。
+# 各進捗の上のコメント（S01 など）は、進捗一覧（第 3 段の設計書）の ID。
 #
 # trigger.type:
 #   counter   … key のカウンターが goal 以上
 #   distinct  … key に記録された異なる値の数が goal 以上
 #   event     … key のカウンターが 1 以上（1 回起きた）
 #   stat      … 統計（mobkills, pvpkills, deaths, fishing, mined, placed, distance, jumps, trades, bred, cake）か
-#               playtime（秒）が goal 以上
+#               playtime（秒）が goal 以上。distance の単位は cm（1 ブロック = 100）
 #   all_of    … ids の進捗をすべて達成
 #   completed … 進捗を goal 個達成（completed 型の進捗は数えない）
 # difficulty: easy / normal / hard / challenge（報酬と通知は config.yml の advancements.difficulties）
@@ -64,6 +65,8 @@ tabs:
     background: "minecraft:block/black_wool"
 
 advancements:
+  # ---------------------------------------------------------------- すてらりあ（総合）
+  # S01
   welcome:
     tab: stellaria
     icon: OAK_SAPLING
@@ -71,28 +74,7 @@ advancements:
     description: "すてらりあにログインする"
     difficulty: easy
     trigger: { type: event, key: join.count }
-  playtime_1h:
-    tab: playtime
-    icon: CLOCK
-    title: "&%eひとやすみ"
-    description: "累計1時間プレイする"
-    difficulty: easy
-    trigger: { type: stat, key: playtime, goal: 3600 }
-  playtime_10h:
-    tab: playtime
-    parent: playtime_1h
-    icon: CLOCK
-    title: "&%eすっかり常連"
-    description: "累計10時間プレイする"
-    difficulty: normal
-    trigger: { type: stat, key: playtime, goal: 36000 }
-  kikori_100:
-    tab: mining
-    icon: WOODEN_AXE
-    title: "&%a見習い木こり"
-    description: "木こりで100本伐採する"
-    difficulty: normal
-    trigger: { type: counter, key: kikori.logs, goal: 100 }
+  # S02
   first_steps:
     tab: stellaria
     parent: welcome
@@ -101,3 +83,1015 @@ advancements:
     description: "「はじめまして」と「ひとやすみ」を達成する"
     difficulty: normal
     trigger: { type: all_of, ids: [welcome, playtime_1h] }
+  # S03
+  tour:
+    tab: stellaria
+    parent: welcome
+    icon: COMPASS
+    title: "&%dすてらりあへようこそ"
+    description: "/home・/warp・/tpa・/shop・/land をすべて一度使う"
+    difficulty: normal
+    trigger: { type: distinct, key: tour.commands, goal: 5 }
+  # S04
+  stellaria_life:
+    tab: stellaria
+    parent: tour
+    icon: RED_BED
+    title: "&%dすてらりあ生活"
+    description: "土地を保護し、Home とショップと Warp を作り、他人のショップで10回買い物する"
+    difficulty: hard
+    reward: 3000
+    trigger: { type: all_of, ids: [land_first, home_first, shop_open, warp_first, shop_regular] }
+  # S05
+  resident:
+    tab: stellaria
+    parent: welcome
+    icon: IRON_INGOT
+    title: "&%d一人前の住民"
+    description: "進捗を20個達成する"
+    difficulty: hard
+    trigger: { type: completed, goal: 20 }
+  # S06
+  master:
+    tab: stellaria
+    parent: resident
+    icon: GOLD_INGOT
+    title: "&%dすてらりあマスター"
+    description: "進捗を50個達成する"
+    difficulty: challenge
+    reward: 10000
+    trigger: { type: completed, goal: 50 }
+  # S07
+  legend:
+    tab: stellaria
+    parent: master
+    icon: NETHERITE_INGOT
+    title: "&%dすてらりあの伝説"
+    description: "進捗を80個達成する"
+    difficulty: challenge
+    reward: 20000
+    trigger: { type: completed, goal: 80 }
+
+  # ---------------------------------------------------------------- すてらりあ（隠し）
+  # H01
+  broke:
+    tab: stellaria
+    icon: BOWL
+    title: "&%d無一文"
+    description: "所持金がちょうど0円になる"
+    difficulty: easy
+    hidden: true
+    trigger: { type: event, key: economy.zero }
+  # H02
+  one_yen:
+    tab: stellaria
+    icon: GOLD_NUGGET
+    title: "&%d気持ちだけ"
+    description: "/pay で1円だけ送る"
+    difficulty: easy
+    hidden: true
+    trigger: { type: event, key: pay.one_yen }
+  # H03
+  just_one:
+    tab: stellaria
+    icon: APPLE
+    title: "&%dおためし"
+    description: "ショップで1個だけ買う"
+    difficulty: easy
+    hidden: true
+    trigger: { type: event, key: shop.bought_one }
+  # H04
+  bunny:
+    tab: stellaria
+    icon: RABBIT_FOOT
+    title: "&%dぴょんぴょん"
+    description: "累計1,000回ジャンプする"
+    difficulty: easy
+    hidden: true
+    trigger: { type: stat, key: jumps, goal: 1000 }
+  # H05
+  night_owl:
+    tab: stellaria
+    icon: BLACK_BED
+    title: "&%d夜ふかし"
+    description: "午前3時台（日本時間）にログインする"
+    difficulty: normal
+    hidden: true
+    trigger: { type: event, key: join.3am }
+  # H06
+  chatty_day:
+    tab: stellaria
+    icon: GOAT_HORN
+    title: "&%dおしゃべりな一日"
+    description: "1日（日本時間）で100回チャットする"
+    difficulty: normal
+    hidden: true
+    trigger: { type: event, key: chat.day100 }
+  # H07
+  whim:
+    tab: stellaria
+    icon: GOLD_BLOCK
+    title: "&%d大富豪の気まぐれ"
+    description: "所持金100万円以上の状態で1円だけ送る"
+    difficulty: hard
+    hidden: true
+    trigger: { type: event, key: pay.rich_one_yen }
+  # H08
+  transcontinental:
+    tab: stellaria
+    icon: FURNACE_MINECART
+    title: "&%d大陸横断"
+    description: "高速鉄道の1回の乗車で20,000ブロック以上移動する"
+    difficulty: challenge
+    hidden: true
+    trigger: { type: event, key: rail.ride20k }
+
+  # ---------------------------------------------------------------- 経済・ショップ
+  # E01
+  pay_first:
+    tab: economy
+    icon: GOLD_NUGGET
+    title: "&%aはじめての送金"
+    description: "/pay で初めて送金する"
+    difficulty: easy
+    trigger: { type: event, key: pay.sent_count }
+  # E02
+  pay_10k:
+    tab: economy
+    parent: pay_first
+    icon: GOLD_INGOT
+    title: "&%a太っ腹"
+    description: "/pay で合計1万円送金する"
+    difficulty: normal
+    trigger: { type: counter, key: pay.sent_total, goal: 10000 }
+  # E03
+  pay_100k:
+    tab: economy
+    parent: pay_10k
+    icon: GOLD_BLOCK
+    title: "&%aパトロン"
+    description: "/pay で合計10万円送金する"
+    difficulty: hard
+    trigger: { type: counter, key: pay.sent_total, goal: 100000 }
+  # E04
+  pay_big:
+    tab: economy
+    parent: pay_first
+    icon: RAW_GOLD_BLOCK
+    title: "&%a大盤振る舞い"
+    description: "1回で10万円以上送金する"
+    difficulty: hard
+    trigger: { type: event, key: pay.big }
+  # E05
+  pay_received:
+    tab: economy
+    icon: BUNDLE
+    title: "&%aいただきます"
+    description: "他プレイヤーから初めて送金を受け取る"
+    difficulty: easy
+    trigger: { type: event, key: pay.received_count }
+  # E06
+  trade_partners:
+    tab: economy
+    parent: pay_received
+    icon: EMERALD
+    title: "&%a取引先"
+    description: "5人以上の異なるプレイヤーと送金でやりとりする"
+    difficulty: normal
+    trigger: { type: distinct, key: pay.partners, goal: 5 }
+  # E07
+  shop_open:
+    tab: economy
+    icon: BARREL
+    title: "&%a開店"
+    description: "初めてショップを作る"
+    difficulty: easy
+    trigger: { type: event, key: shop.created }
+  # E08
+  shop_first_sale:
+    tab: economy
+    parent: shop_open
+    icon: EMERALD
+    title: "&%aはじめての売上"
+    description: "自分のショップで初めて商品が売れる"
+    difficulty: easy
+    trigger: { type: event, key: shop.sold_count }
+  # E09
+  shop_sold_100:
+    tab: economy
+    parent: shop_first_sale
+    icon: CHEST
+    title: "&%a商売繁盛"
+    description: "自分のショップで100個売れる"
+    difficulty: normal
+    trigger: { type: counter, key: shop.sold_items, goal: 100 }
+  # E10
+  shop_sold_1000:
+    tab: economy
+    parent: shop_sold_100
+    icon: ENDER_CHEST
+    title: "&%a大商人"
+    description: "自分のショップで1,000個売れる"
+    difficulty: hard
+    trigger: { type: counter, key: shop.sold_items, goal: 1000 }
+  # E11
+  shop_customers:
+    tab: economy
+    parent: shop_first_sale
+    icon: VILLAGER_SPAWN_EGG
+    title: "&%a常連さん"
+    description: "10人の異なるプレイヤーに商品を買ってもらう"
+    difficulty: hard
+    trigger: { type: distinct, key: shop.customers, goal: 10 }
+  # E12
+  shop_daily:
+    tab: economy
+    parent: shop_first_sale
+    icon: SUNFLOWER
+    title: "&%a本日の売上"
+    description: "1日（日本時間）で10万円売り上げる"
+    difficulty: hard
+    trigger: { type: event, key: shop.daily100k }
+  # E13
+  sold_out:
+    tab: economy
+    parent: shop_first_sale
+    icon: BARRIER
+    title: "&%a完売御礼"
+    description: "ショップの在庫が売り切れる"
+    difficulty: normal
+    trigger: { type: event, key: shop.sold_out }
+  # E14
+  sell_to_shop:
+    tab: economy
+    icon: HOPPER
+    title: "&%a買取上手"
+    description: "他人の買取ショップに初めて商品を売る"
+    difficulty: easy
+    trigger: { type: event, key: shop.sold_to_shop }
+  # E15
+  earned_10k:
+    tab: economy
+    icon: IRON_NUGGET
+    title: "&%aこつこつ貯金"
+    description: "累計で1万円稼ぐ"
+    difficulty: easy
+    trigger: { type: counter, key: economy.earned, goal: 10000 }
+  # E16
+  earned_100k:
+    tab: economy
+    parent: earned_10k
+    icon: IRON_INGOT
+    title: "&%a稼ぎ頭"
+    description: "累計で10万円稼ぐ"
+    difficulty: normal
+    trigger: { type: counter, key: economy.earned, goal: 100000 }
+  # E17
+  earned_1m:
+    tab: economy
+    parent: earned_100k
+    icon: DIAMOND
+    title: "&%aミリオネア"
+    description: "累計で100万円稼ぐ"
+    difficulty: hard
+    trigger: { type: counter, key: economy.earned, goal: 1000000 }
+  # E18
+  earned_10m:
+    tab: economy
+    parent: earned_1m
+    icon: DIAMOND_BLOCK
+    title: "&%a大富豪"
+    description: "累計で1,000万円稼ぐ"
+    difficulty: challenge
+    trigger: { type: counter, key: economy.earned, goal: 10000000 }
+
+  # ---------------------------------------------------------------- 交流
+  # C01
+  chat_100:
+    tab: social
+    icon: PAPER
+    title: "&%bおしゃべり"
+    description: "チャットを100回する"
+    difficulty: easy
+    trigger: { type: counter, key: chat.messages, goal: 100 }
+  # C02
+  chat_1000:
+    tab: social
+    parent: chat_100
+    icon: BOOK
+    title: "&%b話し好き"
+    description: "チャットを1,000回する"
+    difficulty: normal
+    trigger: { type: counter, key: chat.messages, goal: 1000 }
+  # C03
+  chat_10000:
+    tab: social
+    parent: chat_1000
+    icon: BOOKSHELF
+    title: "&%b井戸端会議の主"
+    description: "チャットを10,000回する"
+    difficulty: hard
+    trigger: { type: counter, key: chat.messages, goal: 10000 }
+  # C04
+  mention_5:
+    tab: social
+    icon: BELL
+    title: "&%b呼びかけ"
+    description: "5人の異なるプレイヤーにメンションを送る"
+    difficulty: normal
+    trigger: { type: distinct, key: mention.targets, goal: 5 }
+  # C05
+  msg_10:
+    tab: social
+    icon: WRITABLE_BOOK
+    title: "&%b文通"
+    description: "10人の異なるプレイヤーに個人メッセージを送る"
+    difficulty: normal
+    trigger: { type: distinct, key: msg.targets, goal: 10 }
+  # C06
+  reply_first:
+    tab: social
+    icon: FEATHER
+    title: "&%bお返事"
+    description: "/reply を使う"
+    difficulty: easy
+    trigger: { type: event, key: msg.reply }
+  # C07
+  tpa_sent:
+    tab: social
+    icon: ENDER_EYE
+    title: "&%b会いに行く"
+    description: "/tpa でテレポートリクエストを送る"
+    difficulty: easy
+    trigger: { type: event, key: tpa.sent }
+  # C08
+  tpa_accept:
+    tab: social
+    icon: OAK_DOOR
+    title: "&%bいらっしゃい"
+    description: "他人からの /tpa を承認する"
+    difficulty: easy
+    trigger: { type: event, key: tpa.accepted }
+  # C09
+  visit_land:
+    tab: social
+    icon: OAK_SIGN
+    title: "&%bおじゃまします"
+    description: "他人の土地に入る"
+    difficulty: easy
+    trigger: { type: event, key: land.visited_other }
+  # C10
+  shop_regular:
+    tab: social
+    icon: EMERALD
+    title: "&%bお得意様"
+    description: "他人のショップで10回買い物する"
+    difficulty: normal
+    trigger: { type: counter, key: shop.bought_other, goal: 10 }
+  # C11
+  shop_crawl:
+    tab: social
+    parent: shop_regular
+    icon: MAP
+    title: "&%b商店街めぐり"
+    description: "5軒の異なるプレイヤーショップで買い物する"
+    difficulty: normal
+    trigger: { type: distinct, key: shop.bought_shops, goal: 5 }
+  # C12
+  warp_tourist:
+    tab: social
+    icon: FILLED_MAP
+    title: "&%b観光客"
+    description: "他人の Warp を10か所訪れる"
+    difficulty: normal
+    trigger: { type: distinct, key: warp.visited_other, goal: 10 }
+  # C13
+  warp_owners:
+    tab: social
+    parent: warp_tourist
+    icon: PLAYER_HEAD
+    title: "&%b顔が広い"
+    description: "10人の異なるプレイヤーの Warp を利用する"
+    difficulty: hard
+    trigger: { type: distinct, key: warp.visited_owners, goal: 10 }
+  # C14
+  warp_first_guest:
+    tab: social
+    icon: LODESTONE
+    title: "&%bはじめてのお客さん"
+    description: "自分の Warp が初めて他人に使われる"
+    difficulty: easy
+    trigger: { type: event, key: warp.my_used }
+  # C15
+  warp_popular:
+    tab: social
+    parent: warp_first_guest
+    icon: BEACON
+    title: "&%b人気スポット"
+    description: "自分の Warp が10回使われる"
+    difficulty: normal
+    trigger: { type: counter, key: warp.my_used, goal: 10 }
+  # C16
+  warp_landmark:
+    tab: social
+    parent: warp_popular
+    icon: END_CRYSTAL
+    title: "&%b名所"
+    description: "自分の Warp が100回使われる"
+    difficulty: hard
+    trigger: { type: counter, key: warp.my_used, goal: 100 }
+
+  # ---------------------------------------------------------------- 土地・建築
+  # L01
+  land_first:
+    tab: land
+    icon: WHITE_BANNER
+    title: "&%2旗を立てる"
+    description: "初めて土地を保護する"
+    difficulty: easy
+    trigger: { type: event, key: land.claimed }
+  # L02
+  land_trust:
+    tab: land
+    parent: land_first
+    icon: TRIPWIRE_HOOK
+    title: "&%2仲間入り"
+    description: "初めて土地にメンバーを追加する"
+    difficulty: easy
+    trigger: { type: event, key: land.trusted_other }
+  # L03
+  land_member:
+    tab: land
+    icon: LEAD
+    title: "&%2居候"
+    description: "他人の土地のメンバーになる"
+    difficulty: easy
+    trigger: { type: event, key: land.became_member }
+  # L04
+  land_area10:
+    tab: land
+    parent: land_first
+    icon: GRASS_BLOCK
+    title: "&%2開拓者"
+    description: "つながった土地を10チャンク持つ"
+    difficulty: normal
+    trigger: { type: event, key: land.area10 }
+  # L05
+  land_area25:
+    tab: land
+    parent: land_area10
+    icon: MOSS_BLOCK
+    title: "&%2領主"
+    description: "つながった土地を25チャンク以上持つ"
+    difficulty: hard
+    trigger: { type: event, key: land.area25 }
+  # L06
+  land_shop:
+    tab: land
+    parent: land_first
+    icon: BARREL
+    title: "&%2店舗経営"
+    description: "自分の土地の中にショップを作る"
+    difficulty: normal
+    trigger: { type: event, key: land.shop_in_land }
+  # L07
+  land_warp:
+    tab: land
+    parent: land_first
+    icon: LODESTONE
+    title: "&%2観光地"
+    description: "自分の土地の中に Warp を作る"
+    difficulty: normal
+    trigger: { type: event, key: land.warp_in_land }
+  # L08
+  town:
+    tab: land
+    parent: land_shop
+    icon: BELL
+    title: "&%2街づくり"
+    description: "「旗を立てる」「店舗経営」「観光地」をすべて達成する"
+    difficulty: hard
+    trigger: { type: all_of, ids: [land_first, land_shop, land_warp] }
+  # L09
+  land_unclaim:
+    tab: land
+    icon: BLACK_BANNER
+    title: "&%2手放す"
+    description: "土地の保護を解除する"
+    difficulty: easy
+    trigger: { type: event, key: land.unclaimed }
+  # L10
+  lock_10:
+    tab: land
+    icon: CHEST
+    title: "&%2戸締まり"
+    description: "チェストを10個保護する"
+    difficulty: easy
+    trigger: { type: counter, key: lock.created, goal: 10 }
+  # L11
+  lock_50:
+    tab: land
+    parent: lock_10
+    icon: IRON_DOOR
+    title: "&%2金庫番"
+    description: "チェストを50個保護する"
+    difficulty: normal
+    trigger: { type: counter, key: lock.created, goal: 50 }
+  # L12
+  lock_remove:
+    tab: land
+    icon: SHEARS
+    title: "&%2鍵を外す"
+    description: "チェストの保護を解除する"
+    difficulty: easy
+    trigger: { type: event, key: lock.removed }
+
+  # ---------------------------------------------------------------- 移動・鉄道
+  # T01
+  rail_first:
+    tab: transport
+    icon: MINECART
+    title: "&%6出発進行！"
+    description: "初めて高速鉄道に乗る"
+    difficulty: easy
+    trigger: { type: event, key: rail.rides }
+  # T02
+  rail_lines:
+    tab: transport
+    parent: rail_first
+    icon: RAIL
+    title: "&%6乗り鉄"
+    description: "3つの異なる路線に乗る"
+    difficulty: normal
+    trigger: { type: distinct, key: rail.lines, goal: 3 }
+  # T03
+  rail_stations:
+    tab: transport
+    parent: rail_lines
+    icon: DETECTOR_RAIL
+    title: "&%6駅めぐり"
+    description: "10の異なる駅で降りる"
+    difficulty: hard
+    trigger: { type: distinct, key: rail.stations, goal: 10 }
+  # T04
+  rail_full_line:
+    tab: transport
+    parent: rail_first
+    icon: ACTIVATOR_RAIL
+    title: "&%6全線走破"
+    description: "路線の始発駅から終着駅まで乗る"
+    difficulty: normal
+    trigger: { type: event, key: rail.full_line }
+  # T05
+  rail_ride_5k:
+    tab: transport
+    parent: rail_first
+    icon: CHEST_MINECART
+    title: "&%6長旅"
+    description: "1回の乗車で5,000ブロック以上移動する"
+    difficulty: normal
+    trigger: { type: event, key: rail.ride5k }
+  # T06
+  rail_10k:
+    tab: transport
+    parent: rail_first
+    icon: POWERED_RAIL
+    title: "&%6鉄道ファン"
+    description: "高速鉄道で累計10,000ブロック移動する"
+    difficulty: normal
+    trigger: { type: counter, key: rail.distance, goal: 10000 }
+  # T07
+  rail_100k:
+    tab: transport
+    parent: rail_10k
+    icon: END_ROD
+    title: "&%6銀河鉄道？"
+    description: "高速鉄道で累計100,000ブロック移動する"
+    difficulty: hard
+    trigger: { type: counter, key: rail.distance, goal: 100000 }
+  # T08
+  walk_1k:
+    tab: transport
+    icon: LEATHER_BOOTS
+    title: "&%6おさんぽ"
+    description: "累計1,000ブロック移動する"
+    difficulty: easy
+    trigger: { type: stat, key: distance, goal: 100000 }
+  # T09
+  walk_10k:
+    tab: transport
+    parent: walk_1k
+    icon: IRON_BOOTS
+    title: "&%6旅人"
+    description: "累計10,000ブロック移動する"
+    difficulty: normal
+    trigger: { type: stat, key: distance, goal: 1000000 }
+  # T10
+  walk_100k:
+    tab: transport
+    parent: walk_10k
+    icon: DIAMOND_BOOTS
+    title: "&%6冒険家"
+    description: "累計100,000ブロック移動する"
+    difficulty: hard
+    trigger: { type: stat, key: distance, goal: 10000000 }
+
+  # ---------------------------------------------------------------- 木こり・採掘
+  # M01
+  kikori_100:
+    tab: mining
+    icon: WOODEN_AXE
+    title: "&%a見習い木こり"
+    description: "木こりで木を100本伐採する"
+    difficulty: normal
+    trigger: { type: counter, key: kikori.trees, goal: 100 }
+  # M02
+  kikori_1000:
+    tab: mining
+    parent: kikori_100
+    icon: IRON_AXE
+    title: "&%a森の敵"
+    description: "木こりで木を1,000本伐採する"
+    difficulty: hard
+    trigger: { type: counter, key: kikori.trees, goal: 1000 }
+  # M03
+  kikori_10000:
+    tab: mining
+    parent: kikori_1000
+    icon: NETHERITE_AXE
+    title: "&%a森の天敵"
+    description: "木こりで木を10,000本伐採する"
+    difficulty: challenge
+    trigger: { type: counter, key: kikori.trees, goal: 10000 }
+  # M04
+  kikori_all:
+    tab: mining
+    parent: kikori_100
+    icon: CHERRY_LOG
+    title: "&%a樹木図鑑"
+    description: "木こりで9種類すべての原木の木を伐採する"
+    difficulty: hard
+    trigger: { type: distinct, key: kikori.log_types, goal: 9 }
+  # M05
+  mine_100:
+    tab: mining
+    icon: STONE_PICKAXE
+    title: "&%a掘削入門"
+    description: "一括採掘で100個壊す"
+    difficulty: easy
+    trigger: { type: counter, key: mine.blocks, goal: 100 }
+  # M06
+  mine_1000:
+    tab: mining
+    parent: mine_100
+    icon: IRON_PICKAXE
+    title: "&%a掘削職人"
+    description: "一括採掘で1,000個壊す"
+    difficulty: normal
+    trigger: { type: counter, key: mine.blocks, goal: 1000 }
+  # M07
+  mine_10000:
+    tab: mining
+    parent: mine_1000
+    icon: NETHERITE_PICKAXE
+    title: "&%a地底人"
+    description: "一括採掘で10,000個壊す"
+    difficulty: hard
+    trigger: { type: counter, key: mine.blocks, goal: 10000 }
+  # M08
+  mine_big:
+    tab: mining
+    parent: mine_100
+    icon: DIAMOND_ORE
+    title: "&%a大当たり"
+    description: "1回の一括採掘で32個以上壊す"
+    difficulty: hard
+    trigger: { type: event, key: mine.big }
+  # M09
+  mined_10k:
+    tab: mining
+    icon: COBBLESTONE
+    title: "&%aつるはし一筋"
+    description: "ブロックを累計10,000個掘る"
+    difficulty: normal
+    trigger: { type: stat, key: mined, goal: 10000 }
+
+  # ---------------------------------------------------------------- プレイ時間・継続
+  # P01
+  playtime_1h:
+    tab: playtime
+    icon: CLOCK
+    title: "&%eひとやすみ"
+    description: "累計1時間プレイする"
+    difficulty: easy
+    trigger: { type: stat, key: playtime, goal: 3600 }
+  # P02
+  playtime_10h:
+    tab: playtime
+    parent: playtime_1h
+    icon: CLOCK
+    title: "&%eすっかり常連"
+    description: "累計10時間プレイする"
+    difficulty: normal
+    trigger: { type: stat, key: playtime, goal: 36000 }
+  # P03
+  playtime_24h:
+    tab: playtime
+    parent: playtime_10h
+    icon: CLOCK
+    title: "&%eまる一日"
+    description: "累計24時間プレイする"
+    difficulty: normal
+    trigger: { type: stat, key: playtime, goal: 86400 }
+  # P04
+  playtime_50h:
+    tab: playtime
+    parent: playtime_24h
+    icon: CLOCK
+    title: "&%e住人の風格"
+    description: "累計50時間プレイする"
+    difficulty: hard
+    trigger: { type: stat, key: playtime, goal: 180000 }
+  # P05
+  playtime_100h:
+    tab: playtime
+    parent: playtime_50h
+    icon: CLOCK
+    title: "&%eベテラン"
+    description: "累計100時間プレイする"
+    difficulty: hard
+    trigger: { type: stat, key: playtime, goal: 360000 }
+  # P06
+  playtime_500h:
+    tab: playtime
+    parent: playtime_100h
+    icon: CLOCK
+    title: "&%e生き字引"
+    description: "累計500時間プレイする"
+    difficulty: challenge
+    reward: 10000
+    trigger: { type: stat, key: playtime, goal: 1800000 }
+  # P07
+  age_7:
+    tab: playtime
+    icon: PAPER
+    title: "&%e1週間"
+    description: "初ログインから7日たつ"
+    difficulty: easy
+    trigger: { type: event, key: account.age7 }
+  # P08
+  age_30:
+    tab: playtime
+    parent: age_7
+    icon: MAP
+    title: "&%e1か月"
+    description: "初ログインから30日たつ"
+    difficulty: normal
+    trigger: { type: event, key: account.age30 }
+  # P09
+  age_100:
+    tab: playtime
+    parent: age_30
+    icon: CAKE
+    title: "&%e100日記念"
+    description: "初ログインから100日たつ"
+    difficulty: hard
+    trigger: { type: event, key: account.age100 }
+  # P10
+  streak_7:
+    tab: playtime
+    icon: SUNFLOWER
+    title: "&%e皆勤賞"
+    description: "7日連続でログインする"
+    difficulty: normal
+    trigger: { type: event, key: login.streak7 }
+  # P11
+  active_20:
+    tab: playtime
+    parent: streak_7
+    icon: GLOW_BERRIES
+    title: "&%e常連の証"
+    description: "直近30日のうち20日ログインする"
+    difficulty: hard
+    trigger: { type: event, key: login.active20of30 }
+
+  # ---------------------------------------------------------------- Warp・Home
+  # W01
+  home_first:
+    tab: warp_home
+    icon: RED_BED
+    title: "&%9はじめての我が家"
+    description: "初めて Home を登録する"
+    difficulty: easy
+    trigger: { type: event, key: home.set }
+  # W02
+  home_3:
+    tab: warp_home
+    parent: home_first
+    icon: BLUE_BED
+    title: "&%9別荘持ち"
+    description: "Home を3か所登録する"
+    difficulty: normal
+    trigger: { type: event, key: home.count3 }
+  # W03
+  home_max:
+    tab: warp_home
+    parent: home_3
+    icon: PURPLE_BED
+    title: "&%9別荘王"
+    description: "Home を上限まで登録する"
+    difficulty: hard
+    trigger: { type: event, key: home.max }
+  # W04
+  home_100:
+    tab: warp_home
+    parent: home_first
+    icon: CAMPFIRE
+    title: "&%9帰宅部"
+    description: "Home に100回テレポートする"
+    difficulty: normal
+    trigger: { type: counter, key: home.teleports, goal: 100 }
+  # W05
+  warp_first:
+    tab: warp_home
+    icon: LODESTONE
+    title: "&%9道しるべ"
+    description: "初めて Warp を作る"
+    difficulty: easy
+    trigger: { type: event, key: warp.created }
+  # W06
+  warp_3:
+    tab: warp_home
+    parent: warp_first
+    icon: RESPAWN_ANCHOR
+    title: "&%9ワープ職人"
+    description: "Warp を3個作る"
+    difficulty: normal
+    trigger: { type: event, key: warp.count3 }
+  # W07
+  warp_visit_10:
+    tab: warp_home
+    icon: ENDER_PEARL
+    title: "&%9寄り道"
+    description: "10か所の異なる Warp を訪れる"
+    difficulty: normal
+    trigger: { type: distinct, key: warp.visited, goal: 10 }
+
+  # ---------------------------------------------------------------- 投票
+  # V01
+  vote_start:
+    tab: vote
+    icon: BELL
+    title: "&%c議長"
+    description: "時間投票か天気投票を始める"
+    difficulty: easy
+    trigger: { type: event, key: vote.started }
+  # V02
+  vote_yes:
+    tab: vote
+    icon: LIME_DYE
+    title: "&%c賛成！"
+    description: "投票で賛成する"
+    difficulty: easy
+    trigger: { type: event, key: vote.yes }
+  # V03
+  vote_no:
+    tab: vote
+    icon: RED_DYE
+    title: "&%c反対！"
+    description: "投票で反対する"
+    difficulty: easy
+    trigger: { type: event, key: vote.no }
+  # V04
+  vote_passed:
+    tab: vote
+    parent: vote_start
+    icon: EMERALD
+    title: "&%c可決"
+    description: "自分が始めた投票が可決される"
+    difficulty: normal
+    trigger: { type: event, key: vote.passed }
+  # V05
+  vote_rejected:
+    tab: vote
+    parent: vote_start
+    icon: REDSTONE
+    title: "&%c否決"
+    description: "自分が始めた投票が否決される"
+    difficulty: normal
+    trigger: { type: event, key: vote.rejected }
+  # V06
+  timevote_10:
+    tab: vote
+    parent: vote_start
+    icon: CLOCK
+    title: "&%c時をかける"
+    description: "時間投票を10回始める"
+    difficulty: normal
+    trigger: { type: counter, key: vote.time_started, goal: 10 }
+  # V07
+  weathervote_10:
+    tab: vote
+    parent: vote_start
+    icon: BLUE_ORCHID
+    title: "&%c天気の子"
+    description: "天気投票を10回始める"
+    difficulty: normal
+    trigger: { type: counter, key: vote.weather_started, goal: 10 }
+  # V08
+  democracy:
+    tab: vote
+    icon: WRITABLE_BOOK
+    title: "&%c民主主義"
+    description: "投票に累計100回参加する"
+    difficulty: hard
+    trigger: { type: counter, key: vote.participations, goal: 100 }
+  # V09
+  server_vote:
+    tab: vote
+    icon: EMERALD
+    title: "&%c一票を投じる"
+    description: "投票サイトで初めてサーバーに投票する"
+    difficulty: easy
+    trigger: { type: event, key: vote.server }
+  # V10
+  server_vote_30:
+    tab: vote
+    parent: server_vote
+    icon: EMERALD_BLOCK
+    title: "&%c熱烈な支持者"
+    description: "投票サイトで30回投票する"
+    difficulty: hard
+    trigger: { type: counter, key: vote.server, goal: 30 }
+
+  # ---------------------------------------------------------------- HeadShop
+  # K01
+  head_first:
+    tab: headshop
+    icon: PLAYER_HEAD
+    title: "&%d頭をお迎え"
+    description: "HeadShop で初めて頭を買う"
+    difficulty: easy
+    trigger: { type: event, key: headshop.bought }
+  # K02
+  head_10:
+    tab: headshop
+    parent: head_first
+    icon: ZOMBIE_HEAD
+    title: "&%d頭コレクター"
+    description: "10種類の頭を買う"
+    difficulty: normal
+    trigger: { type: distinct, key: headshop.heads, goal: 10 }
+  # K03
+  head_50:
+    tab: headshop
+    parent: head_10
+    icon: CREEPER_HEAD
+    title: "&%d頭の博物館"
+    description: "50種類の頭を買う"
+    difficulty: hard
+    trigger: { type: distinct, key: headshop.heads, goal: 50 }
+  # K04
+  head_100:
+    tab: headshop
+    parent: head_50
+    icon: DRAGON_HEAD
+    title: "&%d首狩り族"
+    description: "100種類の頭を買う"
+    difficulty: challenge
+    trigger: { type: distinct, key: headshop.heads, goal: 100 }
+  # K05
+  head_player:
+    tab: headshop
+    parent: head_first
+    icon: SKELETON_SKULL
+    title: "&%dあの人の頭"
+    description: "プレイヤーの頭を買う"
+    difficulty: easy
+    trigger: { type: event, key: headshop.player_head }
+  # K06
+  head_daily_7:
+    tab: headshop
+    parent: head_first
+    icon: SUNFLOWER
+    title: "&%d日替わりハンター"
+    description: "日替わりの頭を7日ぶん買う"
+    difficulty: normal
+    trigger: { type: distinct, key: headshop.rotation_days, goal: 7 }
+  # K07
+  head_spent_100k:
+    tab: headshop
+    icon: GOLD_INGOT
+    title: "&%dお得意さま（頭）"
+    description: "HeadShop で累計10万円使う"
+    difficulty: normal
+    trigger: { type: counter, key: headshop.spent, goal: 100000 }
+  # K08
+  head_spent_1m:
+    tab: headshop
+    parent: head_spent_100k
+    icon: GOLD_BLOCK
+    title: "&%d頭に全振り"
+    description: "HeadShop で累計100万円使う"
+    difficulty: hard
+    trigger: { type: counter, key: headshop.spent, goal: 1000000 }

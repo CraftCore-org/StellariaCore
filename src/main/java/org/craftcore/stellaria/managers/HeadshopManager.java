@@ -82,7 +82,7 @@ public class HeadshopManager {
      * generateRotation()（書き込み）とgetTodayHeads()（読み込み）の両方がこれを使うことで、
      * キーのずれによる「reset-time前は空表示になる」不整合を防ぐ。
      */
-    private LocalDate shopDate() {
+    public LocalDate shopDate() {
         LocalDate today = LocalDate.now(JAPAN_TIME);
         return LocalTime.now(JAPAN_TIME).isBefore(resetTime()) ? today.minusDays(1) : today;
     }

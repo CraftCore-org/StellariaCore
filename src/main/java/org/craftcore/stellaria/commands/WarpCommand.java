@@ -12,6 +12,7 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.gui.WarpSelectGui;
+import org.craftcore.stellaria.managers.AdvancementManager;
 import org.craftcore.stellaria.managers.WarpManager;
 import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
@@ -23,6 +24,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -99,6 +101,19 @@ public class WarpCommand implements CommandExecutor, TabCompleter {
     /**
      * 名前付きワープへ移動する。/warp とGUI選択のどちらからも呼ばれ、危険地点の確認状態も共有する。
      */
+    /** Warp の利用を進捗に記録する。自分の Warp は「他人の Warp」「使われた回数」に数えない。 */
+    private void recordWarpVisit(Player player, String name) {
+        AdvancementManager advancements = plugin.getAdvancementManager();
+        String key = name.toLowerCase(Locale.ROOT);
+        advancements.addDistinct(player, "warp.visited", key);
+        UUID owner = plugin.getWarpManager().getOwner(name);
+        if (owner != null && !owner.equals(player.getUniqueId())) {
+            advancements.addDistinct(player, "warp.visited_other", key);
+            advancements.addDistinct(player, "warp.visited_owners", owner.toString());
+            advancements.event(owner, "warp.my_used");
+        }
+    }
+
     public void teleportToWarp(Player player, String name) {
         Location destination = plugin.getWarpManager().get(name);
         if (destination == null) {
@@ -112,6 +127,7 @@ public class WarpCommand implements CommandExecutor, TabCompleter {
         }
         TeleportSafetyUtil.Result result = TeleportSafetyUtil.attempt(player, destination, PENDING_CONFIRM);
         if (result == TeleportSafetyUtil.Result.TELEPORTED) {
+            recordWarpVisit(player, name);
             playTeleportEffect(destination);
         } else if (result == TeleportSafetyUtil.Result.WARNED) {
             player.sendMessage(plugin.getConfigManager().getMessage("warp.unsafe_warning", player));

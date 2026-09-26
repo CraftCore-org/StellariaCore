@@ -61,6 +61,7 @@ public class WeatherVoteCommand implements CommandExecutor, TabCompleter {
         session.votingWorld = world;
         session.voteStartPlayer = player;
         activeVotes.put(world.getUID(), session);
+        plugin.getAdvancementManager().onVoteStarted(player, true);
 
         Component voteMessage = Component.text("   ")
                 .append(button(plugin.getConfigManager().getMessage("weathervote.accept", player), "/wvaccept", "weathervote.accept_tooltip", player))
@@ -78,6 +79,8 @@ public class WeatherVoteCommand implements CommandExecutor, TabCompleter {
     private void endWeatherVote(UUID worldId) {
         VoteSession session = activeVotes.remove(worldId);
         if (session == null) return;
+        plugin.getAdvancementManager().event(session.voteStartPlayer.getUniqueId(),
+                session.voteAccepts >= session.voteDenys ? "vote.passed" : "vote.rejected");
         if (session.voteAccepts >= session.voteDenys) {
             String message = FormatUtil.replace(FormatUtil.replace(plugin.getConfigManager().getMessage("weathervote.vote_end_accept", (OfflinePlayer) session.voteStartPlayer), "%world%", plugin.getConfigManager().getString("weathervote.worldname." + session.votingWorld.getName(), "")), "%weather%", session.votingWeather);
             for (Player recipient : session.votingWorld.getPlayers()) {
@@ -150,6 +153,7 @@ public class WeatherVoteCommand implements CommandExecutor, TabCompleter {
             }
             session.votedPlayers.add(player);
             session.voteAccepts++;
+            plugin.getAdvancementManager().onVoteCast(player, true);
             player.sendMessage(plugin.getConfigManager().getMessage("weathervote.vote_accept", player));
         }
         if (command.getName().equalsIgnoreCase("wvdeny")) {
@@ -164,6 +168,7 @@ public class WeatherVoteCommand implements CommandExecutor, TabCompleter {
             }
             session.votedPlayers.add(player);
             session.voteDenys++;
+            plugin.getAdvancementManager().onVoteCast(player, false);
             player.sendMessage(plugin.getConfigManager().getMessage("weathervote.vote_deny", player));
         }
         return false;
