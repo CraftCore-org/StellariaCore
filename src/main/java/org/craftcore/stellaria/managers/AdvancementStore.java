@@ -58,6 +58,15 @@ public final class AdvancementStore {
             uuid.toString(), key, amount) > 0;
     }
 
+    /** 同期で加算して、加算後の値を返す（日ごとの売上のように、その場でしきい値を判定したい値用）。 */
+    public static long addCounterAndGet(UUID uuid, String key, long amount) {
+        addCounter(uuid, key, amount);
+        Long value = DatabaseManager.queryOne(
+            "SELECT value FROM player_counters WHERE uuid = ? AND counter_key = ?",
+            rs -> rs.getLong("value"), uuid.toString(), key);
+        return value != null ? value : 0L;
+    }
+
     public static void addCounterAsync(UUID uuid, String key, long amount) {
         DatabaseManager.executeAsync(
             "INSERT INTO player_counters (uuid, counter_key, value) VALUES (?, ?, ?) "

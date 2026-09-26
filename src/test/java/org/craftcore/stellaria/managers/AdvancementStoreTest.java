@@ -47,6 +47,12 @@ class AdvancementStoreTest {
     }
 
     @Test
+    void addCounterAndGetReturnsNewTotal() {
+        assertEquals(40L, AdvancementStore.addCounterAndGet(PLAYER, "shop.sales.2026-10-03", 40));
+        assertEquals(100L, AdvancementStore.addCounterAndGet(PLAYER, "shop.sales.2026-10-03", 60));
+    }
+
+    @Test
     void distinctMembersAreCountedOnce() {
         assertTrue(AdvancementStore.addMember(PLAYER, "pay.recipients", "alice"));
         assertFalse(AdvancementStore.addMember(PLAYER, "pay.recipients", "alice"));

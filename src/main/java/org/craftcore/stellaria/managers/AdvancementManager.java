@@ -15,7 +15,11 @@ import org.craftcore.stellaria.utils.AdvancementDefinitions.TriggerType;
 import org.craftcore.stellaria.utils.AdvancementJson;
 import org.craftcore.stellaria.utils.AdvancementRules;
 import org.craftcore.stellaria.utils.FormatUtil;
+import org.craftcore.stellaria.utils.LoginDays;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -32,9 +36,13 @@ import java.util.function.ToLongFunction;
  */
 public class AdvancementManager implements Listener {
 
+    private static final ZoneId JAPAN = ZoneId.of("Asia/Tokyo");
+
     private final StellariaCore plugin;
     private final AdvancementRegistrar registrar;
     private final Map<UUID, AdvancementRules.State> cache = new ConcurrentHashMap<>();
+    /** プレイヤーごとの [日本時間の epochDay, その日のチャット回数]。 */
+    private final Map<UUID, long[]> chatToday = new ConcurrentHashMap<>();
     private boolean enabled;
     private AdvancementDefinitions.Parsed parsed = new AdvancementDefinitions.Parsed(Map.of(), List.of());
     private Map<String, List<Definition>> byKey = Map.of();
@@ -62,6 +70,38 @@ public class AdvancementManager implements Listener {
         for (Player online : plugin.getServer().getOnlinePlayers()) {
             onJoin(online);
         }
+        // 日付をまたいでログインし続けている人の当日分を記録する（連続ログインが途切れないように）。
+        plugin.getServer().getGlobalRegionScheduler().runAtFixedRate(plugin, task -> {
+            for (Player online : plugin.getServer().getOnlinePlayers()) {
+                if (cache.containsKey(online.getUniqueId())) {
+                    recordLoginDay(online.getUniqueId());
+                }
+            }
+        }, 12_000L, 12_000L);
+    }
+
+    /** ログイン時にわかる事実（時刻・初ログインからの日数・ログイン日）を記録する。 */
+    private void recordJoinFacts(Player player) {
+        UUID uuid = player.getUniqueId();
+        if (LocalTime.now(JAPAN).getHour() == 3) {
+            event(uuid, "join.3am");
+        }
+        long firstPlayed = player.getFirstPlayed();
+        if (firstPlayed > 0) {
+            long days = (System.currentTimeMillis() - firstPlayed) / 86_400_000L;
+            if (days >= 7) event(uuid, "account.age7");
+            if (days >= 30) event(uuid, "account.age30");
+            if (days >= 100) event(uuid, "account.age100");
+        }
+        recordLoginDay(uuid);
+    }
+
+    private void recordLoginDay(UUID uuid) {
+        LocalDate today = LoginDays.today();
+        LoginDaysStore.record(uuid, today);
+        Set<LocalDate> days = LoginDaysStore.since(uuid, today.minusDays(30));
+        if (LoginDays.streak(days, today) >= 7) event(uuid, "login.streak7");
+        if (LoginDays.countWithin(days, today, 30) >= 20) event(uuid, "login.active20of30");
     }
 
     /** /minecraft:reload などでデータパックが読み直されると独自進捗が消えるため、登録し直して表示を合わせる。 */
@@ -125,12 +165,14 @@ public class AdvancementManager implements Listener {
                 new HashMap<>(loaded.counters()), new HashMap<>(loaded.distinctCounts()), new HashSet<>(loaded.completed())));
         syncVanilla(player);
         increment(player, "join.count", 1);
+        recordJoinFacts(player);
         checkStats(player);
         evaluate(player, parsed.definitions(), key -> 0L);
     }
 
     public void onQuit(Player player) {
         cache.remove(player.getUniqueId());
+        chatToday.remove(player.getUniqueId());
     }
 
     /** DB を正として、バニラ側の達成状況を合わせる。ここでは報酬を払わない。 */
@@ -178,7 +220,7 @@ public class AdvancementManager implements Listener {
         if (!enabled) {
             return;
         }
-        Runnable apply = () -> {
+        onMain(() -> {
             Player player = plugin.getServer().getPlayer(uuid);
             AdvancementRules.State state = cache.get(uuid);
             if (player == null || state == null) {
@@ -186,24 +228,60 @@ public class AdvancementManager implements Listener {
             }
             state.counters().merge(key, amount, Long::sum);
             evaluate(player, byKey.getOrDefault(key, List.of()), k -> 0L);
-        };
-        if (plugin.getServer().isPrimaryThread()) {
-            apply.run();
-        } else {
-            plugin.getServer().getGlobalRegionScheduler().execute(plugin, apply);
-        }
+        });
+    }
+
+    /** 1 回起きたことを記録する（event 型の進捗用）。オフラインの相手・非同期スレッドからでもよい。 */
+    public void event(UUID uuid, String key) {
+        addToCounter(uuid, key, 1);
     }
 
     public void addDistinct(Player player, String key, String member) {
-        if (!enabled || !AdvancementStore.addMember(player.getUniqueId(), key, member)) {
+        addDistinct(player.getUniqueId(), key, member);
+    }
+
+    /**
+     * distinct 型の値を記録する。オフラインの相手・非同期スレッドからでもよい。
+     * DB には独自進捗が無効でも記録し、新しい値だったときだけ、オンラインならメインスレッドでキャッシュに反映して判定する。
+     */
+    public void addDistinct(UUID uuid, String key, String member) {
+        if (!AdvancementStore.addMember(uuid, key, member) || !enabled) {
             return;
         }
-        AdvancementRules.State state = cache.get(player.getUniqueId());
-        if (state == null) {
-            return;
+        onMain(() -> {
+            Player player = plugin.getServer().getPlayer(uuid);
+            AdvancementRules.State state = cache.get(uuid);
+            if (player == null || state == null) {
+                return;
+            }
+            state.distinctCounts().merge(key, 1L, Long::sum);
+            evaluate(player, byKey.getOrDefault(key, List.of()), k -> 0L);
+        });
+    }
+
+    private void onMain(Runnable task) {
+        if (plugin.getServer().isPrimaryThread()) {
+            task.run();
+        } else {
+            plugin.getServer().getGlobalRegionScheduler().execute(plugin, task);
         }
-        state.distinctCounts().merge(key, 1L, Long::sum);
-        evaluate(player, byKey.getOrDefault(key, List.of()), k -> 0L);
+    }
+
+    /** prefix.<日本時間の日付> に同期で加算して、その日の合計を返す。 */
+    public long addDaily(UUID uuid, String prefix, long amount) {
+        return AdvancementStore.addCounterAndGet(uuid, prefix + "." + LoginDays.today(), amount);
+    }
+
+    /** AsyncChatEvent から呼ばれる。日ごとの回数はメモリだけで数える（再起動でその日の回数はリセット）。 */
+    public void onChat(Player player) {
+        UUID uuid = player.getUniqueId();
+        addToCounter(uuid, "chat.messages", 1);
+        long today = LoginDays.today().toEpochDay();
+        long[] entry = chatToday.compute(uuid, (id, old) ->
+                old == null || old[0] != today ? new long[]{today, 1} : new long[]{today, old[1] + 1});
+        if (entry[1] == 100) {
+            event(uuid, "chat.day100");
+        }
     }
 
     /** stat 型の進捗を、その場の統計で判定する（ログイン時）。 */
