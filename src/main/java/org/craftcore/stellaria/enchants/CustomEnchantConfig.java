@@ -60,7 +60,7 @@ public final class CustomEnchantConfig {
         lastStandDurationTicks = intAtLeast("last-stand.duration-ticks", 200, 1);
         lastStandSpeedAmplifier = intAtLeast("last-stand.speed-amplifier", 1, 0);
         lastStandStrengthAmplifier = intAtLeast("last-stand.strength-amplifier", 0, 0);
-        lastStandCooldownMillis = intAtLeast("last-stand.cooldown-seconds", 900, 0) * 1000L;
+        lastStandCooldownMillis = intAtLeast("last-stand.cooldown-seconds", 180, 0) * 1000L;
         harvestChancePerLevel = chance("harvest.chance-per-level", 0.05);
         glideBoostIntervalSeconds = perLevel("glide-boost.interval-seconds", new double[]{15, 12, 10});
         glideBoostStrength = nonNegative("glide-boost.strength", 0.6);

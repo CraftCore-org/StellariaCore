@@ -647,7 +647,7 @@ custom-enchants:
     duration-ticks: 200
     speed-amplifier: 1          # 0=移動速度I、1=移動速度II
     strength-amplifier: 0       # 0=攻撃力上昇I
-    cooldown-seconds: 900
+    cooldown-seconds: 180       # 背水が再び発動できるまでの秒数
   harvest:
     chance-per-level: 0.05      # 作物1個ごとに上質作物になる確率（レベル×この値）
   glide-boost:
