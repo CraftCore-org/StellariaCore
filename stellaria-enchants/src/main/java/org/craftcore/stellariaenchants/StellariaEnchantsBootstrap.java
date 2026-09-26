@@ -9,6 +9,7 @@ import io.papermc.paper.registry.event.RegistryComposeEvent;
 import io.papermc.paper.registry.event.RegistryEvents;
 import io.papermc.paper.registry.keys.EnchantmentKeys;
 import io.papermc.paper.registry.keys.tags.EnchantmentTagKeys;
+import io.papermc.paper.registry.keys.tags.ItemTypeTagKeys;
 import io.papermc.paper.registry.set.RegistryKeySet;
 import io.papermc.paper.registry.set.RegistrySet;
 import io.papermc.paper.tag.TagEntry;
@@ -29,6 +30,12 @@ public final class StellariaEnchantsBootstrap implements PluginBootstrap {
 
     @Override
     public void bootstrap(BootstrapContext context) {
+        context.getLifecycleManager().registerEventHandler(
+                LifecycleEvents.TAGS.preFlatten(RegistryKey.ITEM).newHandler(event ->
+                        event.registrar().setTag(EnchantDefinitions.EXCAVATION_ITEMS, List.of(
+                                TagEntry.tagEntry(ItemTypeTagKeys.PICKAXES),
+                                TagEntry.tagEntry(ItemTypeTagKeys.SHOVELS)))));
+
         context.getLifecycleManager().registerEventHandler(RegistryEvents.ENCHANTMENT.compose().newHandler(event -> {
             for (EnchantDefinition definition : EnchantDefinitions.ALL) {
                 event.registry().register(definition.typedKey(), builder -> builder
@@ -50,7 +57,8 @@ public final class StellariaEnchantsBootstrap implements PluginBootstrap {
 
         context.getLifecycleManager().registerEventHandler(
                 LifecycleEvents.TAGS.preFlatten(RegistryKey.ENCHANTMENT).newHandler(event -> {
-                    List<TagEntry<Enchantment>> entries = EnchantDefinitions.ALL.stream()
+                    // treasure のものはテーブル・取引に出さない（入手手段は StellariaCore 側で用意する）
+                    List<TagEntry<Enchantment>> entries = EnchantDefinitions.discoverable().stream()
                             .map(definition -> TagEntry.valueEntry(definition.typedKey()))
                             .toList();
                     event.registrar().addToTag(EnchantmentTagKeys.IN_ENCHANTING_TABLE, entries);

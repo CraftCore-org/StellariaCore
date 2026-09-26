@@ -14,7 +14,8 @@ public enum CustomEnchant {
     LIFESTEAL(EnchantKeys.LIFESTEAL),
     LAST_STAND(EnchantKeys.LAST_STAND),
     DOUBLE_JUMP(EnchantKeys.DOUBLE_JUMP),
-    ANGLER(EnchantKeys.ANGLER);
+    ANGLER(EnchantKeys.ANGLER),
+    EXCAVATION(EnchantKeys.EXCAVATION);
 
     private final String id;
 

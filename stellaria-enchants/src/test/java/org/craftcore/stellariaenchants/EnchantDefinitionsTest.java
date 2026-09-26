@@ -3,6 +3,7 @@ package org.craftcore.stellariaenchants;
 import org.craftcore.stellaria.enchantkeys.EnchantKeys;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -21,11 +22,13 @@ class EnchantDefinitionsTest {
     void maxLevelsMatchTheSpec() {
         Map<String, Integer> levels = EnchantDefinitions.ALL.stream()
                 .collect(Collectors.toMap(EnchantDefinition::id, EnchantDefinition::maxLevel));
-        assertEquals(Map.of(
-                EnchantKeys.SMELTING, 1, EnchantKeys.PURSUIT, 3, EnchantKeys.REPLANT, 1,
-                EnchantKeys.HARVEST, 3, EnchantKeys.GLIDE_BOOST, 3, EnchantKeys.LAUNCH, 2,
-                EnchantKeys.LIFESTEAL, 3, EnchantKeys.LAST_STAND, 1, EnchantKeys.DOUBLE_JUMP, 2,
-                EnchantKeys.ANGLER, 3), levels);
+        assertEquals(Map.ofEntries(
+                Map.entry(EnchantKeys.SMELTING, 1), Map.entry(EnchantKeys.PURSUIT, 3),
+                Map.entry(EnchantKeys.REPLANT, 1), Map.entry(EnchantKeys.HARVEST, 3),
+                Map.entry(EnchantKeys.GLIDE_BOOST, 3), Map.entry(EnchantKeys.LAUNCH, 2),
+                Map.entry(EnchantKeys.LIFESTEAL, 3), Map.entry(EnchantKeys.LAST_STAND, 1),
+                Map.entry(EnchantKeys.DOUBLE_JUMP, 2), Map.entry(EnchantKeys.ANGLER, 3),
+                Map.entry(EnchantKeys.EXCAVATION, 1)), levels);
     }
 
     @Test
@@ -46,5 +49,28 @@ class EnchantDefinitionsTest {
             assertTrue(definition.minCostBase() >= 1, definition.id());
             assertTrue(definition.anvilCost() >= 0, definition.id());
         }
+    }
+
+    @Test
+    void onlyExcavationIsTreasure() {
+        for (EnchantDefinition definition : EnchantDefinitions.ALL) {
+            assertEquals(definition.id().equals(EnchantKeys.EXCAVATION), definition.treasure(), definition.id());
+        }
+    }
+
+    @Test
+    void discoverableExcludesTreasureEnchantments() {
+        List<String> ids = EnchantDefinitions.discoverable().stream().map(EnchantDefinition::id).toList();
+        assertFalse(ids.contains(EnchantKeys.EXCAVATION));
+        assertEquals(EnchantDefinitions.ALL.size() - 1, ids.size());
+    }
+
+    @Test
+    void excavationTargetsTheCustomPickaxeAndShovelTag() {
+        EnchantDefinition excavation = EnchantDefinitions.ALL.stream()
+                .filter(definition -> definition.id().equals(EnchantKeys.EXCAVATION))
+                .findFirst().orElseThrow();
+        assertEquals(EnchantDefinitions.EXCAVATION_ITEMS, excavation.itemTag());
+        assertEquals("stellaria:enchantable/excavation", EnchantDefinitions.EXCAVATION_ITEMS.key().asString());
     }
 }

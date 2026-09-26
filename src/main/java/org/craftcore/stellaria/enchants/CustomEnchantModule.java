@@ -41,6 +41,8 @@ public final class CustomEnchantModule {
         register(new LaunchListener(plugin, registry, config));
         register(new GlideBoostListener(plugin, registry, config));
         register(new AnglerListener(plugin, registry, config));
+        register(new ExcavationListener(plugin, registry, config));
+        register(new AncientCityLootListener(registry, config));
     }
 
     public void reload() {

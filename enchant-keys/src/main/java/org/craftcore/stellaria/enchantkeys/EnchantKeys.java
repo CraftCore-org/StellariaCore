@@ -20,10 +20,11 @@ public final class EnchantKeys {
     public static final String LAST_STAND = "last_stand";
     public static final String DOUBLE_JUMP = "double_jump";
     public static final String ANGLER = "angler";
+    public static final String EXCAVATION = "excavation";
 
     public static final List<String> ALL = List.of(
             SMELTING, PURSUIT, REPLANT, HARVEST, GLIDE_BOOST,
-            LAUNCH, LIFESTEAL, LAST_STAND, DOUBLE_JUMP, ANGLER
+            LAUNCH, LIFESTEAL, LAST_STAND, DOUBLE_JUMP, ANGLER, EXCAVATION
     );
 
     private EnchantKeys() {

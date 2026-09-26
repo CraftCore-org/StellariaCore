@@ -647,7 +647,7 @@ custom-enchants:
     duration-ticks: 200
     speed-amplifier: 1          # 0=移動速度I、1=移動速度II
     strength-amplifier: 0       # 0=攻撃力上昇I
-    cooldown-seconds: 900
+    cooldown-seconds: 180       # 背水が再び発動できるまでの秒数
   harvest:
     chance-per-level: 0.05      # 作物1個ごとに上質作物になる確率（レベル×この値）
   glide-boost:
@@ -668,3 +668,6 @@ custom-enchants:
     max-streak: 10
     level-multipliers: [1.0, 1.5, 2.0]
     daily-cap: 3000             # 1日（日本時間0時リセット）の支払い上限
+  excavation:
+    ancient-city-chance: 0.10   # 古代都市のチェスト1個ごとに、範囲破壊の本が入る確率（0.0〜1.0）
+    min-durability: 10          # 道具の残り耐久値がこの値を下回ると範囲破壊を止め、中心の1ブロックだけ掘る

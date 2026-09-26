@@ -928,6 +928,7 @@ custom-enchants:
   launch_charged: "&%e跳躍の準備完了！ &%fジャンプで発射"
   angler_streak: "&%b連続釣り &%fx%streak% &%a+%amount%"
   angler_daily_cap: "&%7今日の連続釣りボーナスは上限に達しました。"
+  excavation_low_durability: "&%c道具の耐久値が残りわずかのため、範囲破壊を止めました。"
   premium_crop_blocked: "&%c上質作物はこのままでは使えません。クラフトで通常の作物3個に戻してください。"
   premium-crop:
     name: "&%e上質な%crop%"
