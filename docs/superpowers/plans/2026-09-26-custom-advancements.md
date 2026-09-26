@@ -1013,7 +1013,7 @@ class AdvancementJsonTest {
     @Test
     void hashChangesWithContent() {
         JsonObject a = AdvancementJson.advancement(def("x", null, AdvancementDefinitions.Difficulty.EASY, false), false, JsonPrimitive::new);
-        JsonObject b = AdvancementJson.advancement(def("x", null, AdvancementDefinitions.Difficulty.NORMAL, false), false, JsonPrimitive::new);
+        JsonObject b = AdvancementJson.advancement(def("x", null, AdvancementDefinitions.Difficulty.HARD, false), false, JsonPrimitive::new);
         assertEquals(AdvancementJson.hash(a), AdvancementJson.hash(a.deepCopy()));
         assertNotEquals(AdvancementJson.hash(a), AdvancementJson.hash(b));
         assertEquals(64, AdvancementJson.hash(a).length());
