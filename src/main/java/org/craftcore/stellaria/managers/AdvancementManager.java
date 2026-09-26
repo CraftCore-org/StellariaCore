@@ -170,6 +170,7 @@ public class AdvancementManager implements Listener {
         cache.put(player.getUniqueId(), new AdvancementRules.State(
                 new HashMap<>(loaded.counters()), new HashMap<>(loaded.distinctCounts()), new HashSet<>(loaded.completed())));
         syncVanilla(player);
+        payUnpaidRewards(player);
         increment(player, "join.count", 1);
         recordJoinFacts(player);
         checkStats(player);
@@ -393,22 +394,36 @@ public class AdvancementManager implements Listener {
             state.completed().add(def.id());
         }
         setVanilla(player, AdvancementJson.path(def.tab(), def.id()), true);
-        long reward = rewardFor(def);
-        if (AdvancementStore.claimReward(uuid, def.id(), reward) && reward > 0) {
-            EconomyResponse response = plugin.getEconomyManager().depositPlayer(player, reward);
-            if (response.transactionSuccess()) {
-                plugin.getEconomyManager().recordEarning(uuid, reward);
-                player.sendMessage(FormatUtil.replace(FormatUtil.replace(
-                        plugin.getConfigManager().getMessage("advancements.reward", player),
-                        "%title%", def.title()),
-                        "%amount%", plugin.getEconomyManager().formatExact(reward)));
-            } else {
-                AdvancementStore.unclaimReward(uuid, def.id());
-                plugin.getLogger().warning("進捗 " + def.id() + " の報酬を " + player.getName()
-                        + " に入金できませんでした: " + response.errorMessage);
-            }
-        }
+        payReward(player, def);
         evaluate(player, dependents, key -> 0L);
+    }
+
+    /** 報酬を払う。支払い済みなら何もしない。入金に失敗したら未払いに戻し、次のログイン時に払い直す。 */
+    private void payReward(Player player, Definition def) {
+        UUID uuid = player.getUniqueId();
+        long reward = rewardFor(def);
+        if (!AdvancementStore.claimReward(uuid, def.id(), reward) || reward <= 0) {
+            return;
+        }
+        EconomyResponse response = plugin.getEconomyManager().depositPlayer(player, reward);
+        if (response.transactionSuccess()) {
+            plugin.getEconomyManager().recordEarning(uuid, reward);
+            player.sendMessage(FormatUtil.replace(FormatUtil.replace(
+                    plugin.getConfigManager().getMessage("advancements.reward", player),
+                    "%title%", FormatUtil.color(def.title())),
+                    "%amount%", plugin.getEconomyManager().formatExact(reward)));
+        } else {
+            AdvancementStore.unclaimReward(uuid, def.id());
+            plugin.getLogger().warning("進捗 " + def.id() + " の報酬を " + player.getName()
+                    + " に入金できませんでした: " + response.errorMessage);
+        }
+    }
+
+    /** 以前の入金失敗で未払いのまま残っている報酬を払い直す。 */
+    private void payUnpaidRewards(Player player) {
+        for (String id : AdvancementStore.unpaidCompleted(player.getUniqueId())) {
+            parsed.find(id).ifPresent(def -> payReward(player, def));
+        }
     }
 
     // ------------------------------------------------------------------
