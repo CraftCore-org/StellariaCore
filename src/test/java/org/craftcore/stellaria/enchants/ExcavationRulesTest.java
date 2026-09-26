@@ -59,10 +59,22 @@ class ExcavationRulesTest {
     }
 
     @Test
-    void skipsBlocksHarderThanTheCenter() {
-        // ネザーラック（0.4）を掘ったとき、隣の石（1.5）や黒曜石（50）は壊さない
-        assertFalse(ExcavationRules.canBreakAround(false, true, true, 1.5f, 0.4f, false));
+    void breaksOresAndDeepslateAroundSofterCenters() {
+        // 石（1.5）やネザーラック（0.4）を掘り進めても、鉱石・丸石・深層岩・深層岩の鉱石（最大 4.5）は一緒に掘れる
+        assertTrue(ExcavationRules.canBreakAround(false, true, true, 3.0f, 1.5f, false));
+        assertTrue(ExcavationRules.canBreakAround(false, true, true, 2.0f, 1.5f, false));
+        assertTrue(ExcavationRules.canBreakAround(false, true, true, 4.5f, 1.5f, false));
+        assertTrue(ExcavationRules.canBreakAround(false, true, true, 3.0f, 0.4f, false));
+    }
+
+    @Test
+    void skipsBlocksHarderThanBothTheCenterAndTheLimit() {
+        // 黒曜石（50）・鉄ブロック（5）・古代の残骸（30）は、石を掘っても巻き込まない
         assertFalse(ExcavationRules.canBreakAround(false, true, true, 50f, 1.5f, false));
+        assertFalse(ExcavationRules.canBreakAround(false, true, true, 5.0f, 3.0f, false));
+        assertFalse(ExcavationRules.canBreakAround(false, true, true, 30f, 4.5f, false));
+        // 中心自体が硬ければ、それ以下の周囲は壊す（黒曜石を掘ったら隣の黒曜石も掘れる）
+        assertTrue(ExcavationRules.canBreakAround(false, true, true, 50f, 50f, false));
     }
 
     @Test

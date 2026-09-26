@@ -11,8 +11,9 @@ import java.util.Set;
 
 /**
  * 範囲破壊の判定ロジック。殴った面に垂直な 3x3 の平面のうち、中心を除いた 8 マスを求める。
- * 周囲のブロックは「道具の mineable タグに入っていて、ランクが足りていて、中心以下の硬さで、
- * ブロックエンティティや替えの利かないブロックではない」ものだけ壊す。
+ * 周囲のブロックは「道具の mineable タグに入っていて、ランクが足りていて、硬さが中心と HARDNESS_LIMIT の
+ * 大きい方以下で、ブロックエンティティや替えの利かないブロックではない」ものだけ壊す。
+ * 石を掘り進めたときに鉱石・丸石・深層岩を残さず、黒曜石や金属ブロックは巻き込まないようにするため。
  * isPreferredTool は道具を選ばないブロック（ガラス・松明・作物・木材など）にも true を返すため、
  * mineable タグの判定と組み合わせてランクの確認にだけ使う。
  */
@@ -22,6 +23,9 @@ public final class ExcavationRules {
     }
 
     public enum Tool { PICKAXE, SHOVEL }
+
+    /** 中心がこれより柔らかくても、この硬さまでの周囲は壊す（深層岩の鉱石が 4.5、鉄ブロックが 5.0）。 */
+    static final float HARDNESS_LIMIT = 4.5f;
 
     /** 壊すと二度と手に入らない、またはシルクタッチでも回収できないブロック。 */
     private static final Set<Material> IRREPLACEABLE = EnumSet.of(
@@ -79,7 +83,7 @@ public final class ExcavationRules {
                 && mineableByTool
                 && preferredTool
                 && hardness >= 0
-                && hardness <= centerHardness
+                && hardness <= Math.max(centerHardness, HARDNESS_LIMIT)
                 && !irreplaceable;
     }
 
