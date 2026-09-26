@@ -669,4 +669,5 @@ custom-enchants:
     level-multipliers: [1.0, 1.5, 2.0]
     daily-cap: 3000             # 1日（日本時間0時リセット）の支払い上限
   excavation:
+    ancient-city-chance: 0.10   # 古代都市のチェスト1個ごとに、範囲破壊の本が入る確率（0.0〜1.0）
     min-durability: 10          # 道具の残り耐久値がこの値を下回ると範囲破壊を止め、中心の1ブロックだけ掘る

@@ -63,6 +63,11 @@ public final class CustomEnchantRegistry {
         return Collections.unmodifiableList(missingIds);
     }
 
+    /** 登録済みのエンチャント本体。無効なら null。 */
+    public @Nullable Enchantment enchantment(CustomEnchant enchant) {
+        return resolved.get(enchant);
+    }
+
     /** アイテムに付いているレベル。アイテムが無い・エンチャントが無効なら 0。 */
     public int level(@Nullable ItemStack item, CustomEnchant enchant) {
         if (item == null || item.isEmpty()) {
