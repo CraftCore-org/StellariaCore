@@ -10,6 +10,7 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.managers.ConfigManager;
+import org.craftcore.stellaria.managers.AdvancementStore;
 import org.craftcore.stellaria.managers.EarningsStore;
 import org.craftcore.stellaria.managers.EconomyManager;
 import org.craftcore.stellaria.managers.PlaytimeManager;
@@ -52,7 +53,7 @@ public class RankingCommand implements CommandExecutor, TabCompleter {
 
         String type = args[0].toLowerCase();
         boolean isStat = plugin.getStatSnapshotManager().getEnabledKeys().contains(type);
-        if (!type.equals("money") && !type.equals("playtime") && !type.equals("earned") && !isStat) {
+        if (!type.equals("money") && !type.equals("playtime") && !type.equals("earned") && !type.equals("advancements") && !isStat) {
             sender.sendMessage(config.getMessage("ranking.invalid_type", null)
                     .replace("%types%", String.join(", ", availableTypes())));
             return true;
@@ -73,6 +74,7 @@ public class RankingCommand implements CommandExecutor, TabCompleter {
             case "money" -> plugin.getEconomyManager().getPublicPlayerCount();
             case "playtime" -> plugin.getPlaytimeManager().getPlayerCount();
             case "earned" -> EarningsStore.publicCount();
+            case "advancements" -> AdvancementStore.completedPublicCount();
             default -> plugin.getStatSnapshotManager().getPublicCount(type);
         };
         int maxPage = Math.max(1, (int) Math.ceil(totalPlayers / (double) pageSize));
@@ -93,6 +95,7 @@ public class RankingCommand implements CommandExecutor, TabCompleter {
             case "money" -> showMoney(sender, pageSize, offset);
             case "playtime" -> showPlaytime(sender, pageSize, offset);
             case "earned" -> showEarned(sender, pageSize, offset);
+            case "advancements" -> showAdvancements(sender, pageSize, offset);
             default -> showStat(sender, type, pageSize, offset);
         };
 
@@ -101,6 +104,25 @@ public class RankingCommand implements CommandExecutor, TabCompleter {
         }
         if (sender instanceof Player player) {
             sendSelfRank(player, type, totalPlayers);
+        }
+        return true;
+    }
+
+    private boolean showAdvancements(CommandSender sender, int pageSize, int offset) {
+        List<AdvancementStore.RankEntry> entries = AdvancementStore.topCompleted(pageSize, offset);
+        if (entries.isEmpty()) {
+            sender.sendMessage(plugin.getConfigManager().getMessage("ranking.empty", null));
+            return false;
+        }
+        long[] ranks = RankingFormat.competitionRanks(
+                entries.stream().mapToLong(AdvancementStore.RankEntry::value).toArray(), offset,
+                RankingFormat.rank(AdvancementStore.countCompletedPublicAbove(entries.get(0).value())));
+        for (int i = 0; i < entries.size(); i++) {
+            AdvancementStore.RankEntry entry = entries.get(i);
+            sender.sendMessage(plugin.getConfigManager().getMessage("ranking.advancements_entry", null)
+                    .replace("%rank%", String.valueOf(ranks[i]))
+                    .replace("%player%", entry.name())
+                    .replace("%value%", RankingFormat.value("", entry.value())));
         }
         return true;
     }
@@ -198,6 +220,14 @@ public class RankingCommand implements CommandExecutor, TabCompleter {
                 value = plugin.getEconomyManager().formatExact(coins);
                 counted = !hidden;
             }
+            case "advancements" -> {
+                long completed = AdvancementStore.completedCount(player.getUniqueId());
+                hidden = plugin.getStatSnapshotManager().isHidden(player);
+                above = AdvancementStore.countCompletedPublicAbove(completed);
+                value = FormatUtil.replace(plugin.getConfigManager().getMessage("ranking.advancements_value", player),
+                        "%value%", RankingFormat.value("", completed));
+                counted = !hidden && completed > 0;
+            }
             case "earned" -> {
                 long earned = EarningsStore.total(player.getUniqueId());
                 hidden = plugin.getEconomyManager().isHideBalance(player);
@@ -234,7 +264,7 @@ public class RankingCommand implements CommandExecutor, TabCompleter {
     }
 
     private List<String> availableTypes() {
-        List<String> types = new ArrayList<>(List.of("money", "earned", "playtime"));
+        List<String> types = new ArrayList<>(List.of("money", "earned", "playtime", "advancements"));
         types.addAll(plugin.getStatSnapshotManager().getEnabledKeys());
         return types;
     }

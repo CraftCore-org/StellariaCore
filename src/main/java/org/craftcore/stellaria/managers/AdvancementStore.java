@@ -121,6 +121,43 @@ public final class AdvancementStore {
         return result;
     }
 
+    /** /ranking advancements の 1 行分。 */
+    public record RankEntry(String name, long value) {
+    }
+
+    /** 達成数の多い順。統計ランキングを非公開にしている人と、1 個も達成していない人は除く。 */
+    public static List<RankEntry> topCompleted(int limit, int offset) {
+        return DatabaseManager.query(
+            "SELECT p.name AS name, COUNT(*) AS cnt FROM player_advancements a JOIN players p ON p.uuid = a.uuid "
+                + "WHERE a.completed_at > 0 AND p.hide_stats_ranking = 0 "
+                + "GROUP BY a.uuid, p.name ORDER BY cnt DESC, p.name ASC LIMIT ? OFFSET ?",
+            rs -> new RankEntry(rs.getString("name"), rs.getLong("cnt")), limit, offset);
+    }
+
+    public static int completedPublicCount() {
+        Integer count = DatabaseManager.queryOne(
+            "SELECT COUNT(DISTINCT a.uuid) AS cnt FROM player_advancements a JOIN players p ON p.uuid = a.uuid "
+                + "WHERE a.completed_at > 0 AND p.hide_stats_ranking = 0",
+            rs -> rs.getInt("cnt"));
+        return count != null ? count : 0;
+    }
+
+    /** 達成数が value より多い公開プレイヤーの人数（自分の順位用）。 */
+    public static int countCompletedPublicAbove(long value) {
+        Integer count = DatabaseManager.queryOne(
+            "SELECT COUNT(*) AS cnt FROM (SELECT a.uuid FROM player_advancements a JOIN players p ON p.uuid = a.uuid "
+                + "WHERE a.completed_at > 0 AND p.hide_stats_ranking = 0 GROUP BY a.uuid HAVING COUNT(*) > ?)",
+            rs -> rs.getInt("cnt"), value);
+        return count != null ? count : 0;
+    }
+
+    public static long completedCount(UUID uuid) {
+        Long count = DatabaseManager.queryOne(
+            "SELECT COUNT(*) AS cnt FROM player_advancements WHERE uuid = ? AND completed_at > 0",
+            rs -> rs.getLong("cnt"), uuid.toString());
+        return count != null ? count : 0L;
+    }
+
     public static long rewardTotal(UUID uuid) {
         Long total = DatabaseManager.queryOne(
             "SELECT COALESCE(SUM(reward_amount), 0) AS total FROM player_advancements WHERE uuid = ? AND reward_paid = 1",
