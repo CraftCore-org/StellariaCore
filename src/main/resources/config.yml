@@ -629,3 +629,42 @@ shop:
     view-range: 16
     buy-format: "&%a販売 &%f%price% &%e在庫 &%f%stock%"
     sell-format: "&%c買取 &%f%price% &%e在庫&%f%stock%"
+
+# カスタムエンチャント（StellariaEnchants で登録したエンチャントの効果の調整値）
+# 最大レベル・対応アイテム・出現しやすさは StellariaEnchants 側の定義で、変更には再起動が必要。
+custom-enchants:
+  # 移動系（二段跳び・跳躍・滑空加速）が発動できる最低の満腹度。6以下（ダッシュできない値）では発動しない
+  movement:
+    min-food-level: 7
+  pursuit:
+    chance-per-level: 0.10      # 追撃の発動確率（レベル×この値）
+    delay-ticks: 8              # 本命の攻撃から追撃までの間隔
+    damage-multiplier: 0.5      # 元のダメージに対する追撃ダメージの倍率
+  lifesteal:
+    heal-per-level: 2.0         # 倒したときの回復量（HP、2でハート1個）×レベル
+  last-stand:
+    health-threshold: 0.3       # 最大体力に対する割合。これ以下になったら発動
+    duration-ticks: 200
+    speed-amplifier: 1          # 0=移動速度I、1=移動速度II
+    strength-amplifier: 0       # 0=攻撃力上昇I
+    cooldown-seconds: 900
+  harvest:
+    chance-per-level: 0.05      # 作物1個ごとに上質作物になる確率（レベル×この値）
+  glide-boost:
+    interval-seconds: [15, 12, 10]   # レベルI/II/IIIの加速間隔
+    strength: 0.6
+    exhaustion: 1.5
+  launch:
+    charge-ticks: 30
+    velocity: [1.4, 1.9]        # レベルI/IIの打ち上げの速さ
+    exhaustion: 3.0
+  double-jump:
+    velocity-y: 0.6
+    forward: 0.3
+    exhaustion: 1.0
+  angler:
+    streak-window-seconds: 60   # 前回の釣り上げからこの秒数以内なら連続扱い
+    base-amount: 5
+    max-streak: 10
+    level-multipliers: [1.0, 1.5, 2.0]
+    daily-cap: 3000             # 1日（日本時間0時リセット）の支払い上限

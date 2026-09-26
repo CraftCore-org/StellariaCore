@@ -22,6 +22,7 @@ import org.craftcore.stellaria.listeners.*;
 import org.craftcore.stellaria.managers.*;
 import org.craftcore.stellaria.gui.GuiListener;
 import org.craftcore.stellaria.features.Feature;
+import org.craftcore.stellaria.enchants.CustomEnchantModule;
 import org.craftcore.stellaria.features.KikoriFeature;
 import org.craftcore.stellaria.features.MineFeature;
 import org.craftcore.stellaria.managers.ActionBarManager;
@@ -103,6 +104,7 @@ public class StellariaCore extends JavaPlugin {
     private RailStationParticleManager railStationParticleManager;
     private JapanTimeSyncManager japanTimeSyncManager;
     private ShopManager shopManager;
+    private CustomEnchantModule customEnchantModule;
     private ShopListener shopListener;
     private List<Feature> features;
     private ScheduledTask actionBarTask;
@@ -385,6 +387,8 @@ public class StellariaCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new VanishListener(this), this);
         getServer().getPluginManager().registerEvents(new LobbyProtectListener(this),this);
         getServer().getPluginManager().registerEvents(new WorldResetListener(this), this);
+        this.customEnchantModule = new CustomEnchantModule(this);
+        customEnchantModule.enable();
 
         // 6. Scoreboard/Tablist/Belowname のインスタンス化とtick開始
         this.scoreboardManager = new ScoreboardManager(
@@ -824,6 +828,7 @@ public class StellariaCore extends JavaPlugin {
         railConfig.reload();
         restartConfigScheduledTasks();
         discordBotManager.restartAfterConfigReload();
+        customEnchantModule.reload();
     }
 
     private void restartConfigScheduledTasks() {
