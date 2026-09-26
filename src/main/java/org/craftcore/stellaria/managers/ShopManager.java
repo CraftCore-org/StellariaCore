@@ -178,6 +178,7 @@ public final class ShopManager {
             give(player, old.item(), tradeQuantity);
             plugin.getEconomyManager().invalidateBalance(player.getUniqueId());
             plugin.getEconomyManager().invalidateBalance(old.owner());
+            plugin.getEconomyManager().recordEarning(old.owner(), total);
             updateCached(
                     old,
                     old.stock() - tradeQuantity,
@@ -212,6 +213,7 @@ public final class ShopManager {
         if (!done) return TradeResult.FAILED;
         take(player, old.item(), quantity);
         plugin.getEconomyManager().invalidateBalance(player.getUniqueId());
+        plugin.getEconomyManager().recordEarning(player.getUniqueId(), total);
         updateCached(
                 old,
                 old.stock() + quantity,

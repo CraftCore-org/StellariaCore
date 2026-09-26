@@ -437,6 +437,9 @@ public class LandManager {
 
         claimsByChunk.remove(key);
         claimsVersion++;
+        if (refundEnabled) {
+            plugin.getEconomyManager().recordEarning(claim.owner(), refundAmount);
+        }
 
         boolean areaStillUsed = claimsByChunk.values().stream()
                 .anyMatch(c -> c.areaId().equals(claim.areaId()));

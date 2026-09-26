@@ -338,6 +338,8 @@ ranking:
   empty: "&%7該当するプレイヤーがいません。"
   money_header: "&%6&l--- 所持金ランキング ---"
   money_entry: "&%7#%rank% &%f%player% &%7- %value%"
+  earned_header: "&%6&l--- 稼いだお金ランキング ---"
+  earned_entry: "&%7#%rank% &%f%player% &%7- %value%"
   playtime_header: "&%6&l--- プレイ時間ランキング ---"
   playtime_entry: "&%7#%rank% &%f%player% &%7- %value%"
   prev_arrow: "&%f◀"

@@ -162,16 +162,36 @@ public class AdvancementManager implements Listener {
     // ------------------------------------------------------------------
 
     public void increment(Player player, String key, long amount) {
-        if (!enabled || amount <= 0) {
+        addToCounter(player.getUniqueId(), key, amount);
+    }
+
+    /**
+     * オフラインのプレイヤーにも使えるカウンターの加算（ショップの売上がオフラインのオーナーに入る場合など）。
+     * DB には独自進捗が無効でも必ず加算する（稼いだお金ランキングのように、進捗以外も同じカウンターを読むため）。
+     * オンラインなら、メインスレッドでキャッシュに反映して判定する。
+     */
+    public void addToCounter(UUID uuid, String key, long amount) {
+        if (amount <= 0) {
             return;
         }
-        AdvancementStore.addCounterAsync(player.getUniqueId(), key, amount);
-        AdvancementRules.State state = cache.get(player.getUniqueId());
-        if (state == null) {
+        AdvancementStore.addCounterAsync(uuid, key, amount);
+        if (!enabled) {
             return;
         }
-        state.counters().merge(key, amount, Long::sum);
-        evaluate(player, byKey.getOrDefault(key, List.of()), k -> 0L);
+        Runnable apply = () -> {
+            Player player = plugin.getServer().getPlayer(uuid);
+            AdvancementRules.State state = cache.get(uuid);
+            if (player == null || state == null) {
+                return;
+            }
+            state.counters().merge(key, amount, Long::sum);
+            evaluate(player, byKey.getOrDefault(key, List.of()), k -> 0L);
+        };
+        if (plugin.getServer().isPrimaryThread()) {
+            apply.run();
+        } else {
+            plugin.getServer().getGlobalRegionScheduler().execute(plugin, apply);
+        }
     }
 
     public void addDistinct(Player player, String key, String member) {
@@ -245,6 +265,7 @@ public class AdvancementManager implements Listener {
         if (AdvancementStore.claimReward(uuid, def.id(), reward) && reward > 0) {
             EconomyResponse response = plugin.getEconomyManager().depositPlayer(player, reward);
             if (response.transactionSuccess()) {
+                plugin.getEconomyManager().recordEarning(uuid, reward);
                 player.sendMessage(FormatUtil.replace(FormatUtil.replace(
                         plugin.getConfigManager().getMessage("advancements.reward", player),
                         "%title%", def.title()),
