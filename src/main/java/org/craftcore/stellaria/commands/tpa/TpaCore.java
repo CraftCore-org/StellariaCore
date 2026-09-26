@@ -19,6 +19,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.managers.ConfigManager;
 import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
 import org.craftcore.stellaria.utils.ParticleUtil;
@@ -48,6 +49,15 @@ public class TpaCore implements CommandExecutor, Listener, TabCompleter {
     }
 
     /**
+     * 相手プレイヤーの名前を %player% に入れたメッセージを返す。
+     * getMessage は渡したプレイヤーで %player% を先に埋めてしまうため、受け手を渡してから後で
+     * 相手の名前に置き換えようとしても効かない（受け手自身の名前が表示される）。必ず相手を渡すこと。
+     */
+    static String messageAbout(ConfigManager config, String key, OfflinePlayer other) {
+        return config.getMessage(key, other);
+    }
+
+    /**
      * プレイヤー退出時の後片付け。このプレイヤーが「詠唱中のmover」だった場合は待っているdestinationへ、
      * 「詠唱中に待たれていたdestination」だった場合は詠唱中のmoverへ、それぞれ切断を通知してからキャンセルする。
      */
@@ -59,9 +69,8 @@ public class TpaCore implements CommandExecutor, Listener, TabCompleter {
         if (destinationId != null) {
             Player waitingDestination = Bukkit.getPlayer(destinationId);
             if (waitingDestination != null) {
-                waitingDestination.sendMessage(FormatUtil.replace(
-                        plugin.getConfigManager().getMessage("tpa.tpa_warmup_mover_disconnected", waitingDestination),
-                        "%player%", player.getName()));
+                waitingDestination.sendMessage(
+                        messageAbout(plugin.getConfigManager(), "tpa.tpa_warmup_mover_disconnected", player));
             }
         }
 
@@ -123,12 +132,8 @@ public class TpaCore implements CommandExecutor, Listener, TabCompleter {
             Player senderPlayer = Bukkit.getPlayer(senderId);
             Player targetPlayer = Bukkit.getPlayer(targetId);
             if (senderPlayer != null && targetPlayer != null) {
-                senderPlayer.sendMessage(FormatUtil.replace(
-                        plugin.getConfigManager().getMessage(expiredSenderKey, senderPlayer),
-                        "%player%", targetPlayer.getName()));
-                targetPlayer.sendMessage(FormatUtil.replace(
-                        plugin.getConfigManager().getMessage(expiredReceiverKey, targetPlayer),
-                        "%player%", senderPlayer.getName()));
+                senderPlayer.sendMessage(messageAbout(plugin.getConfigManager(), expiredSenderKey, targetPlayer));
+                targetPlayer.sendMessage(messageAbout(plugin.getConfigManager(), expiredReceiverKey, senderPlayer));
             }
         }, expireSeconds * 20L);
     }
@@ -151,9 +156,8 @@ public class TpaCore implements CommandExecutor, Listener, TabCompleter {
             if (destinationId != null) {
                 Player waitingDestination = Bukkit.getPlayer(destinationId);
                 if (waitingDestination != null) {
-                    waitingDestination.sendMessage(FormatUtil.replace(
-                            plugin.getConfigManager().getMessage("tpa.tpa_warmup_cancelled_target", waitingDestination),
-                            "%player%", player.getName()));
+                    waitingDestination.sendMessage(
+                            messageAbout(plugin.getConfigManager(), "tpa.tpa_warmup_cancelled_target", player));
                 }
             }
         }
@@ -212,9 +216,8 @@ public class TpaCore implements CommandExecutor, Listener, TabCompleter {
         mover.sendMessage(FormatUtil.replace(
                 plugin.getConfigManager().getMessage("tpa.tpa_warmup", mover),
                 "%seconds%", String.valueOf(delaySeconds)));
-        destination.sendMessage(FormatUtil.replace(FormatUtil.replace(
-                plugin.getConfigManager().getMessage("tpa.tpa_warmup_target", destination),
-                "%player%", mover.getName()),
+        destination.sendMessage(FormatUtil.replace(
+                messageAbout(plugin.getConfigManager(), "tpa.tpa_warmup_target", mover),
                 "%seconds%", String.valueOf(delaySeconds)));
 
         startCountdown(mover, delaySeconds);
