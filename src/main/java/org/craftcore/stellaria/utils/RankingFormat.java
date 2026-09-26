@@ -29,8 +29,8 @@ public final class RankingFormat {
         return publicCountAbove + 1L;
     }
 
-    /** 母数。自分が非公開なら公開人数に自分を足す。 */
-    public static long total(long publicCount, boolean selfHidden) {
-        return selfHidden ? publicCount + 1L : publicCount;
+    /** 母数。自分が publicCount に含まれていない（非公開、またはまだ記録がない）なら自分を足す。 */
+    public static long totalWithSelf(long publicCount, boolean selfCounted) {
+        return selfCounted ? publicCount : publicCount + 1L;
     }
 }

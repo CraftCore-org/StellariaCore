@@ -1,10 +1,12 @@
 package org.craftcore.stellaria.utils;
 
+import org.bukkit.Statistic;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -33,5 +35,15 @@ class StatDefinitionsTest {
                 List.of(" Deaths", "mobkills", "unknown", "deaths", "cake"), warnings::add);
         assertEquals(List.of("deaths", "mobkills", "cake"), result);
         assertEquals(2, warnings.size());
+    }
+
+    @Test
+    void everyCustomIdResolvesToBukkitStatistic() {
+        for (StatDefinitions.Definition def : StatDefinitions.all()) {
+            for (String id : def.customIds()) {
+                assertDoesNotThrow(() -> Statistic.valueOf(StatDefinitions.bukkitName(id)), id);
+            }
+        }
+        assertEquals("CAKE_SLICES_EATEN", StatDefinitions.bukkitName("eat_cake_slice"));
     }
 }

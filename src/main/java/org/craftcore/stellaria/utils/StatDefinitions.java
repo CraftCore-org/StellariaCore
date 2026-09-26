@@ -4,14 +4,15 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 
 /**
  * /ranking に出す統計ランキングの定義。キーごとに、どのバニラ統計をどう合計するかを持つ。
- * customIds はバニラの統計 ID（stats/*.json の "minecraft:custom" 内のキーから名前空間を除いたもの）で、
- * Bukkit の Statistic 定数名を小文字にしたものと一致する。
+ * customIds はバニラの統計 ID（stats/*.json の "minecraft:custom" 内のキーから名前空間を除いたもの）。
+ * Bukkit の Statistic 定数名は、ほとんどが ID を大文字にしたものだが例外がある（{@link #bukkitName}）。
  */
 public final class StatDefinitions {
 
@@ -53,6 +54,16 @@ public final class StatDefinitions {
 
     public static List<Definition> all() {
         return ALL;
+    }
+
+    /** Bukkit の定数名がバニラの ID を大文字にしたものと一致しない統計。 */
+    private static final Map<String, String> BUKKIT_NAME_OVERRIDES = Map.of(
+            "eat_cake_slice", "CAKE_SLICES_EATEN"
+    );
+
+    /** バニラの統計 ID に対応する Bukkit の Statistic 定数名。 */
+    public static String bukkitName(String customId) {
+        return BUKKIT_NAME_OVERRIDES.getOrDefault(customId, customId.toUpperCase(Locale.ROOT));
     }
 
     public static Optional<Definition> find(String key) {

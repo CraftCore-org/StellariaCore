@@ -156,6 +156,8 @@ public class RankingCommand implements CommandExecutor, TabCompleter {
     /** 一覧の下に、実行したプレイヤー自身の順位を 1 行出す。値は DB ではなくその場の最新値を使う。 */
     private void sendSelfRank(Player player, String type, int publicCount) {
         boolean hidden;
+        // publicCount に自分が含まれているか。統計は、まだスナップショットが無い新規プレイヤーだと含まれない。
+        boolean counted;
         long above;
         String value;
         switch (type) {
@@ -164,24 +166,27 @@ public class RankingCommand implements CommandExecutor, TabCompleter {
                 hidden = plugin.getEconomyManager().isHideBalance(player);
                 above = plugin.getEconomyManager().countPublicAbove(coins);
                 value = plugin.getEconomyManager().formatExact(coins);
+                counted = !hidden;
             }
             case "playtime" -> {
                 long seconds = plugin.getPlaytimeManager().getPlaytimeSeconds(player.getUniqueId());
                 hidden = plugin.getStatSnapshotManager().isHidden(player);
                 above = plugin.getPlaytimeManager().countPublicAbove(seconds);
                 value = DurationParser.formatDuration(seconds);
+                counted = !hidden;
             }
             default -> {
                 long live = plugin.getStatSnapshotManager().readLive(player).getOrDefault(type, 0L);
                 hidden = plugin.getStatSnapshotManager().isHidden(player);
                 above = plugin.getStatSnapshotManager().countPublicAbove(type, live);
                 value = RankingFormat.value(type, live);
+                counted = !hidden && StatSnapshotManager.hasSnapshot(player.getUniqueId(), type);
             }
         }
         String key = hidden ? "ranking.self_rank_hidden" : "ranking.self_rank";
         player.sendMessage(plugin.getConfigManager().getMessage(key, player)
                 .replace("%rank%", String.valueOf(RankingFormat.rank(above)))
-                .replace("%total%", String.valueOf(RankingFormat.total(publicCount, hidden)))
+                .replace("%total%", String.valueOf(RankingFormat.totalWithSelf(publicCount, counted)))
                 .replace("%value%", value));
     }
 

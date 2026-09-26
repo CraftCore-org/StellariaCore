@@ -33,8 +33,13 @@ class RankingFormatTest {
     }
 
     @Test
-    void hiddenSelfIsAddedToTotal() {
-        assertEquals(10, RankingFormat.total(10, false));
-        assertEquals(11, RankingFormat.total(10, true));
+    void selfAlreadyCountedIsNotAddedAgain() {
+        assertEquals(10, RankingFormat.totalWithSelf(10, true));
+    }
+
+    @Test
+    void hiddenOrNotYetSnapshottedSelfIsAddedToTotal() {
+        assertEquals(11, RankingFormat.totalWithSelf(10, false));
+        assertEquals(1, RankingFormat.totalWithSelf(0, false));
     }
 }

@@ -16,7 +16,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -95,7 +94,7 @@ public class StatSnapshotManager {
         for (StatDefinitions.Definition def : StatDefinitions.all()) {
             for (String id : def.customIds()) {
                 try {
-                    resolved.put(id, Statistic.valueOf(id.toUpperCase(Locale.ROOT)));
+                    resolved.put(id, Statistic.valueOf(StatDefinitions.bukkitName(id)));
                 } catch (IllegalArgumentException e) {
                     plugin.getLogger().warning("統計 " + id + " はこのサーバーに存在しないため、ランキングの集計から除外します。");
                 }
@@ -152,15 +151,32 @@ public class StatSnapshotManager {
     }
 
     private void write(UUID uuid, Map<String, Long> values) {
+        writeValues(uuid, values, true);
+    }
+
+    /**
+     * 1 人分の値をまとめて書き込む。1 行でも失敗したら全体を取り消して false を返す
+     * （DatabaseManager.execute は SQLException を握りつぶして -1 を返すため、ここで例外に変えてロールバックさせる）。
+     *
+     * @param overwrite false なら既存の行を上書きしない（起動時の取り込みが、先に書かれた新しい値を古い値で潰さないため）
+     */
+    static boolean writeValues(UUID uuid, Map<String, Long> values, boolean overwrite) {
         long now = System.currentTimeMillis();
-        DatabaseManager.transaction(conn -> {
+        String sql = "INSERT INTO player_stat_snapshots (uuid, stat_key, value, updated_at) VALUES (?, ?, ?, ?) "
+            + (overwrite
+                ? "ON CONFLICT (uuid, stat_key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at"
+                : "ON CONFLICT (uuid, stat_key) DO NOTHING");
+        return DatabaseManager.transaction(conn -> {
             for (Map.Entry<String, Long> entry : values.entrySet()) {
-                DatabaseManager.execute(
-                    "INSERT INTO player_stat_snapshots (uuid, stat_key, value, updated_at) VALUES (?, ?, ?, ?) "
-                        + "ON CONFLICT (uuid, stat_key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
-                    uuid.toString(), entry.getKey(), entry.getValue(), now);
+                if (DatabaseManager.execute(sql, uuid.toString(), entry.getKey(), entry.getValue(), now) < 0) {
+                    throw new IllegalStateException("統計スナップショットの書き込みに失敗しました: " + entry.getKey());
+                }
             }
         });
+    }
+
+    public static boolean hasSnapshot(UUID uuid, String statKey) {
+        return DatabaseManager.exists("player_stat_snapshots", "uuid = ? AND stat_key = ?", uuid.toString(), statKey);
     }
 
     // ------------------------------------------------------------------
@@ -183,8 +199,9 @@ public class StatSnapshotManager {
                 }
                 try {
                     String json = Files.readString(file, StandardCharsets.UTF_8);
-                    write(UUID.fromString(uuid), StatFileParser.parse(json, StatSnapshotManager::isBlockItem));
-                    imported++;
+                    if (writeValues(UUID.fromString(uuid), StatFileParser.parse(json, StatSnapshotManager::isBlockItem), false)) {
+                        imported++;
+                    }
                 } catch (IOException | IllegalArgumentException e) {
                     plugin.getLogger().warning("統計ファイルを取り込めませんでした: " + file.getFileName() + " / " + e.getMessage());
                 }
