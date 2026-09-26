@@ -104,6 +104,9 @@ public class LandAreaStatusListener implements Listener {
         }
         boolean leftPvpArea = previous != null && previous.pvpEnabled() && !signature.pvpEnabled();
 
+        if (owner != null && !owner.equals(player.getUniqueId())) {
+            plugin.getAdvancementManager().increment(player, "land.visited_other", 1);
+        }
         if (owner == null) {
             plugin.getActionBarManager().clearChannel(player, AREA_STATUS_CHANNEL);
             notifyPvpAreaLeft(player, leftPvpArea);

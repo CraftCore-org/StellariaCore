@@ -68,6 +68,7 @@ public class ChatListener implements Listener {
             return;
         }
 
+        plugin.getAdvancementManager().onChat(sender);
         String rawPlainMessage = PlainTextComponentSerializer.plainText().serialize(event.message());
         int nearTier = config.getBoolean("chat.near.enabled", true)
                 ? Math.min(countLeadingNearMarkers(rawPlainMessage), 3)

@@ -66,6 +66,7 @@ public class MentionService {
         String allPermission = config.getString("mention.all.permission", "stellaria.chat.mention.all");
 
         Set<Player> mentioned = new LinkedHashSet<>();
+        Set<Player> direct = new LinkedHashSet<>(); // @all 以外で名前を指定されたプレイヤー（進捗用）
         Matcher matcher = MENTION_PATTERN.matcher(plainMessage);
         Component result = Component.empty();
         int lastEnd = 0;
@@ -96,6 +97,7 @@ public class MentionService {
                 mentioned.addAll(Bukkit.getOnlinePlayers());
             } else {
                 mentioned.add(target);
+                direct.add(target);
             }
         }
         if (lastEnd < plainMessage.length()) {
@@ -104,6 +106,11 @@ public class MentionService {
 
         if (sender != null) {
             mentioned.remove(sender);
+            for (Player target : direct) {
+                if (!target.equals(sender)) {
+                    plugin.getAdvancementManager().addDistinct(sender.getUniqueId(), "mention.targets", target.getUniqueId().toString());
+                }
+            }
         }
         if (notifySound) {
             playSound(mentioned);

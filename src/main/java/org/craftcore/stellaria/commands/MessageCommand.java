@@ -61,7 +61,9 @@ public class MessageCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(plugin.getConfigManager().getMessage("msg.self", sender));
             return;
         }
-        trySend(sender, target, String.join(" ", Arrays.copyOfRange(args, 1, args.length)));
+        if (trySend(sender, target, String.join(" ", Arrays.copyOfRange(args, 1, args.length)))) {
+            plugin.getAdvancementManager().addDistinct(sender, "msg.targets", target.getUniqueId().toString());
+        }
     }
 
     private void handleReply(Player sender, String[] args) {
@@ -79,19 +81,24 @@ public class MessageCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(plugin.getConfigManager().getMessage("msg.player_not_found", Bukkit.getOfflinePlayer(lastUuid)));
             return;
         }
-        trySend(sender, target, String.join(" ", args));
+        if (trySend(sender, target, String.join(" ", args))) {
+            plugin.getAdvancementManager().addDistinct(sender, "msg.targets", target.getUniqueId().toString());
+            plugin.getAdvancementManager().increment(sender, "msg.reply", 1);
+        }
     }
 
-    private void trySend(Player sender, Player target, String message) {
+    /** 送れたら true。PM スコープのミュート中は送らずに false。 */
+    private boolean trySend(Player sender, Player target, String message) {
         MuteManager.MuteRecord record = plugin.getMuteManager()
                 .getRestrictingRecord(sender.getUniqueId(), MuteManager.MuteScope.PM);
         if (record != null) {
             sender.sendMessage(plugin.getConfigManager().getMessage("mute.blocked_pm", sender)
                     .replace("%remaining%", DurationParser.formatRemaining(record.expiresAt()))
                     .replace("%reason%", record.reason()));
-            return;
+            return false;
         }
         plugin.getPrivateMessageManager().send(sender, target, message);
+        return true;
     }
 
     @Override
