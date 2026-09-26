@@ -101,9 +101,18 @@ public class MenuGui extends Gui {
             case "map" -> runCommand(player, "map");
             case "homepage" -> runCommand(player, "homepage");
             case "tpa-help" -> sendHelpLines(player, "menu.tpa_help_lines");
-            case "land-help" -> runCommand(player, "land help");
-            case "warp" -> new WarpSelectGui(plugin, new WarpCommand(plugin), this).open(player);
-            case "home" -> new HomeSelectGui(plugin, new HomeCommand(plugin), player, this).open(player);
+            case "land-help" -> {
+                plugin.getAdvancementManager().recordTour(player, "land");
+                runCommand(player, "land help");
+            }
+            case "warp" -> {
+                plugin.getAdvancementManager().recordTour(player, "warp");
+                new WarpSelectGui(plugin, new WarpCommand(plugin), this).open(player);
+            }
+            case "home" -> {
+                plugin.getAdvancementManager().recordTour(player, "home");
+                new HomeSelectGui(plugin, new HomeCommand(plugin), player, this).open(player);
+            }
             case "get-menu-item" -> MenuItemUtil.give(plugin, player);
             case "headshop" -> new HeadshopGui(plugin, player, this).open(player);
             case "advancements" -> new AdvancementGui(plugin, player, this).open(player);

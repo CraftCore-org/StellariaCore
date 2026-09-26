@@ -10,7 +10,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.managers.AdvancementManager;
-import org.craftcore.stellaria.utils.LoginDays;
 import org.craftcore.stellaria.managers.HeadshopManager;
 import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.FormatUtil;
@@ -195,7 +194,7 @@ public class HeadshopGui extends Gui {
         AdvancementManager advancements = plugin.getAdvancementManager();
         advancements.increment(player, "headshop.bought", 1);
         advancements.addDistinct(player, "headshop.heads", head.texture());
-        advancements.addDistinct(player, "headshop.rotation_days", LoginDays.today().toString());
+        advancements.addDistinct(player, "headshop.rotation_days", plugin.getHeadshopManager().shopDate().toString());
         advancements.increment(player, "headshop.spent", price);
         Component purchasedMessage = ColorUtil.component(FormatUtil.replace(
                 plugin.getConfigManager().getMessage("headshop.purchased", player),

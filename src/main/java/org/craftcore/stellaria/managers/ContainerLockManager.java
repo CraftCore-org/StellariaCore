@@ -284,7 +284,6 @@ public class ContainerLockManager {
             return CreateResult.DATABASE_ERROR;
         }
         registerLoadedLock(lock);
-        plugin.getAdvancementManager().increment(owner, "lock.created", 1);
         return CreateResult.SUCCESS;
     }
 
@@ -334,7 +333,6 @@ public class ContainerLockManager {
         });
         if (!persisted) return RemoveResult.DATABASE_ERROR;
         removeLockFromCache(lock);
-        plugin.getAdvancementManager().event(lock.owner(), "lock.removed");
         return RemoveResult.SUCCESS;
     }
 

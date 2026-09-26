@@ -28,7 +28,7 @@
 
 | キー | 型 | 記録する場所と条件 |
 |---|---|---|
-| `tour.commands` | distinct | `/home` `/warp` `/tpa` `/shop` `/land` の実行時（値はコマンド名） |
+| `tour.commands` | distinct | `/home` `/warp` `/tpa` `/shop` `/land` の実行時（値はコマンド名）。`/menu` から Home・Warp の画面や土地のヘルプを開いた場合も数える |
 | `economy.zero` | event | 出金・送金の後、残高が 0 になったプレイヤー |
 | `pay.sent_count`, `pay.sent_total` | counter | `/pay` 成功時（送った人。total は金額） |
 | `pay.big` | event | `/pay` の金額が 100,000 以上 |
@@ -60,8 +60,8 @@
 | `land.trusted_other` | event | メンバー追加の成功時（追加した人） |
 | `land.became_member` | event | 同上（追加された人。オフラインでも記録） |
 | `land.unclaimed` | event | 保護解除の成功時 |
-| `lock.created` | counter | チェスト保護の作成時 |
-| `lock.removed` | event | チェスト保護の解除時 |
+| `lock.created` | counter | `/lock` でチェストを保護したとき（設置時の自動保護は、置いて壊すだけで稼げるため数えない） |
+| `lock.removed` | event | `/lock` で保護を解除したとき（解除した人） |
 | `rail.rides` | event | 高速鉄道で駅に到着したとき（乗っていた全プレイヤー） |
 | `rail.lines` | distinct | 同上（到着駅の路線名） |
 | `rail.stations` | distinct | 同上（到着駅名） |
@@ -70,7 +70,7 @@
 | `rail.ride5k`, `rail.ride20k` | event | 1 回の乗車で 5,000・20,000 ブロック以上 |
 | `kikori.trees` | counter | 木こりの伐採が最後まで終わったとき（木 1 本につき 1。元の案の「100 本の木」に合わせ、原木の個数ではなく木の本数で数える） |
 | `kikori.log_types` | distinct | 同上（伐採した木の原木の種類。樹皮付きの `_WOOD` は `_LOG` と同じ種類として数える） |
-| `mine.blocks` | counter | 一括採掘で壊した個数（1 回の採掘の合計） |
+| `mine.blocks` | counter | 一括採掘で実際に壊した個数（1 回の採掘の合計。土地保護などで壊せなかったブロックは数えない） |
 | `mine.big` | event | 1 回の一括採掘で 32 個以上 |
 | `join.count` | event | 基盤で記録済み |
 | `join.3am` | event | 日本時間 3:00〜3:59 のログイン |
@@ -95,7 +95,7 @@
 | `headshop.bought` | event | HeadShop での購入成功時 |
 | `headshop.heads` | distinct | 同上（値は頭のテクスチャ） |
 | `headshop.player_head` | event | プレイヤーの頭の購入 |
-| `headshop.rotation_days` | distinct | 日替わりの頭の購入（値はローテーションの日付） |
+| `headshop.rotation_days` | distinct | 日替わりの頭の購入（値はローテーションの日付。`headshop.reset-time` を境にした「ショップの 1 日」） |
 | `headshop.spent` | counter | 購入額 |
 
 `stat` 型（ジャンプ回数、移動距離、掘ったブロック数、プレイ時間）は基盤の仕組みで判定する。

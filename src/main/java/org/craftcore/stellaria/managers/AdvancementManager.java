@@ -311,8 +311,15 @@ public class AdvancementManager implements Listener {
         String label = event.getMessage().substring(1).split(" ", 2)[0].toLowerCase(Locale.ROOT);
         label = label.substring(label.indexOf(':') + 1);
         PluginCommand command = plugin.getServer().getPluginCommand(label);
-        if (command != null && command.getPlugin() == plugin && TOUR_COMMANDS.contains(command.getName())) {
-            addDistinct(event.getPlayer(), "tour.commands", command.getName());
+        if (command != null && command.getPlugin() == plugin) {
+            recordTour(event.getPlayer(), command.getName());
+        }
+    }
+
+    /** メニューから開いた場合のように、コマンドを経由しない利用も「すてらりあへようこそ」に数える。 */
+    public void recordTour(Player player, String commandName) {
+        if (TOUR_COMMANDS.contains(commandName)) {
+            addDistinct(player, "tour.commands", commandName);
         }
     }
 
