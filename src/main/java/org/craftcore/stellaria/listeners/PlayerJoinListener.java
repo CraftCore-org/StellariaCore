@@ -52,6 +52,7 @@ public class PlayerJoinListener implements Listener {
 
         playJoinEffect(player);
         plugin.getPlaytimeManager().onJoin(player);
+        plugin.getAdvancementManager().onJoin(player);
         plugin.getLandBorderParticleManager().restoreOnJoin(player);
         plugin.getRailStationParticleManager().restoreOnJoin(player);
 

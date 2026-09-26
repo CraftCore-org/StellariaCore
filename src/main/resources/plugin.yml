@@ -71,6 +71,8 @@ commands:
   settings:
   ranking:
     aliases: [rank]
+  advancements:
+    aliases: [adv]
   scoreboard:
     aliases: [sb]
   sethome:
@@ -122,6 +124,8 @@ permissions:
     default: true
   stellaria.profile:
     default: true
+  stellaria.advancements.admin:
+    default: op
   stellaria.ranking:
     default: true
   stellaria.scoreboard:

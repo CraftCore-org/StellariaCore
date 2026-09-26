@@ -179,6 +179,25 @@ ranking:
     - bred
     - cake
 
+# 独自進捗。進捗そのものの定義は advancements.yml に書く。
+advancements:
+  enabled: true
+  # 難易度ごとの報酬（円）と、達成を全員のチャットに流すか。
+  # announce の変更は再起動で反映される。gamerule announceAdvancements が false の場合は流れない。
+  difficulties:
+    easy:
+      reward: 50
+      announce: false
+    normal:
+      reward: 300
+      announce: false
+    hard:
+      reward: 1500
+      announce: true
+    challenge:
+      reward: 5000
+      announce: true
+
 profile:
   info-lines:
     - "&%7名前: &%f%player%"
@@ -542,6 +561,10 @@ menu:
       material: PLAYER_HEAD
       name: "&%bプロフィール"
       action: "profile"
+    - slot: 4
+      material: NETHER_STAR
+      name: "&%d進捗"
+      action: "advancements"
     - slot: 8
       material: ENDER_CHEST
       name: "&%2エンダーチェスト"
