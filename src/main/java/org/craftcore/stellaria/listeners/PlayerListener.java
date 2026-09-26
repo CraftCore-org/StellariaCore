@@ -30,6 +30,7 @@ public class PlayerListener implements Listener {
     // Join時にここで手動更新する必要は無くなった（旧 TabList.updateAllPlayersTablist()）。
     @EventHandler
     public void onPlayerLeave(PlayerQuitEvent event){
+        plugin.getStatSnapshotManager().snapshotAsync(event.getPlayer());
         TpaCore.resetPlayerTeleportRequests(event.getPlayer(), plugin);
         HomeCommand.clearPendingConfirm(event.getPlayer().getUniqueId());
         WarpCommand.clearPendingConfirm(event.getPlayer().getUniqueId());

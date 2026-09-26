@@ -82,6 +82,8 @@ public class StellariaCore extends JavaPlugin {
     private ActionBarManager actionBarManager;
     private BossBarManager bossBarManager;
     private PlaytimeManager playtimeManager;
+    private StatSnapshotManager statSnapshotManager;
+    private ScheduledTask statSnapshotTask;
     private RankManager rankManager;
     private HomeManager homeManager;
     private WarpManager warpManager;
@@ -211,6 +213,7 @@ public class StellariaCore extends JavaPlugin {
         DatabaseManager.addColumnIfNotExists("players", "hide_balance INTEGER NOT NULL DEFAULT 0");
         DatabaseManager.addColumnIfNotExists("players", "mine_unlocked INTEGER NOT NULL DEFAULT 0");
         DatabaseManager.addColumnIfNotExists("players", "mine_enabled INTEGER NOT NULL DEFAULT 0");
+        DatabaseManager.addColumnIfNotExists("players", "hide_stats_ranking INTEGER NOT NULL DEFAULT 0");
 
         DatabaseManager.createTableIfNotExists("land_claims",
             "world TEXT NOT NULL",
@@ -289,9 +292,17 @@ public class StellariaCore extends JavaPlugin {
             "id INTEGER PRIMARY KEY AUTOINCREMENT", "owner_uuid TEXT NOT NULL", "shop_id INTEGER NOT NULL",
             "mode TEXT NOT NULL", "item_data TEXT NOT NULL", "amount INTEGER NOT NULL",
             "total INTEGER NOT NULL", "created_at INTEGER NOT NULL");
+        DatabaseManager.createTableIfNotExists("player_stat_snapshots",
+            "uuid TEXT NOT NULL", "stat_key TEXT NOT NULL", "value INTEGER NOT NULL",
+            "updated_at INTEGER NOT NULL", "PRIMARY KEY (uuid, stat_key)");
+        DatabaseManager.execute("CREATE INDEX IF NOT EXISTS idx_player_stat_snapshots_key_value "
+            + "ON player_stat_snapshots (stat_key, value DESC)");
 
         this.afkManager = new AfkManager(this);
         this.playtimeManager = new PlaytimeManager(this);
+        this.statSnapshotManager = new StatSnapshotManager(this);
+        this.statSnapshotManager.reload();
+        this.statSnapshotManager.backfillAsync();
         this.rankManager = new RankManager(this);
         this.homeManager = new HomeManager(this);
         this.warpManager = new WarpManager(this);
@@ -634,6 +645,7 @@ public class StellariaCore extends JavaPlugin {
             discordBotManager.stop();
         }
         playtimeManager.flushAll();
+        statSnapshotManager.flushAllSync();
         railManager.shutdown();
         // プラグイン停止時は Vault から自動解除されるため、DB切断だけでOK
         DatabaseManager.disconnect();
@@ -702,6 +714,10 @@ public class StellariaCore extends JavaPlugin {
 
     public PlaytimeManager getPlaytimeManager() {
         return this.playtimeManager;
+    }
+
+    public StatSnapshotManager getStatSnapshotManager() {
+        return this.statSnapshotManager;
     }
 
     public RankManager getRankManager() {
@@ -825,6 +841,7 @@ public class StellariaCore extends JavaPlugin {
         japanTimeSyncManager.restart();
         headshopManager.start();
         rankManager.reload();
+        statSnapshotManager.reload();
         railConfig.reload();
         restartConfigScheduledTasks();
         discordBotManager.restartAfterConfigReload();
@@ -844,6 +861,7 @@ public class StellariaCore extends JavaPlugin {
         cancelTask(afkTask);
         cancelTask(kikoriTask);
         cancelTask(mineTask);
+        cancelTask(statSnapshotTask);
 
         boolean actionBarEnabled = configManager.getBoolean("action-bar.enabled", true);
         boolean persistentActionBarEnabled = actionBarEnabled
@@ -891,6 +909,9 @@ public class StellariaCore extends JavaPlugin {
         if (configManager.getBoolean("mine.enabled", true)) {
             mineTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> mineManager.tick(), 200L, 200L);
         }
+        long statSnapshotInterval = SchedulerIntervalUtil.minutesToTicks(configManager.getInt("ranking.snapshot-interval-minutes", 5));
+        statSnapshotTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(this,
+            task -> statSnapshotManager.snapshotAllOnlineAsync(), statSnapshotInterval, statSnapshotInterval);
     }
 
     private static void cancelTask(ScheduledTask task) {

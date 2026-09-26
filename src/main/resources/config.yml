@@ -163,6 +163,21 @@ warp:
 
 ranking:
   page-size: 10
+  snapshot-interval-minutes: 5 # オンライン中のプレイヤーの統計をDBへ書き出す間隔（分）
+  # /ranking に出す統計ランキング。並び順がタブ補完の順になる。
+  # 使えるキー: mobkills, pvpkills, deaths, fishing, mined, placed, distance, jumps, trades, bred, cake
+  stats:
+    - mobkills
+    - pvpkills
+    - deaths
+    - fishing
+    - mined
+    - placed
+    - distance
+    - jumps
+    - trades
+    - bred
+    - cake
 
 profile:
   info-lines:

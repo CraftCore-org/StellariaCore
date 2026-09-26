@@ -123,19 +123,32 @@ public class PlaytimeManager {
     }
 
     /** プレイ時間降順で limit 件、offset 件スキップして取得する（/ranking playtime のページング用）。
-     * player_stats には名前を持たないので players テーブルと uuid で突き合わせる。 */
+     * player_stats には名前を持たないので players テーブルと uuid で突き合わせる。
+     * 統計ランキングを非公開にしているプレイヤー（players.hide_stats_ranking）は除外する。 */
     public List<PlaytimeEntry> getTopPlaytimes(int limit, int offset) {
         return DatabaseManager.query(
             "SELECT p.name AS name, ps.playtime_seconds AS seconds FROM player_stats ps " +
-                "JOIN players p ON p.uuid = ps.uuid ORDER BY ps.playtime_seconds DESC LIMIT ? OFFSET ?",
+                "JOIN players p ON p.uuid = ps.uuid WHERE p.hide_stats_ranking = 0 " +
+                "ORDER BY ps.playtime_seconds DESC LIMIT ? OFFSET ?",
             rs -> new PlaytimeEntry(rs.getString("name"), rs.getLong("seconds")),
             limit, offset
         );
     }
 
-    /** player_stats テーブルの総レコード数（/ranking playtime のページ数計算用）。 */
+    /** 公開プレイヤーの件数（/ranking playtime のページ数計算用）。 */
     public int getPlayerCount() {
-        Integer count = DatabaseManager.queryOne("SELECT COUNT(*) as cnt FROM player_stats", rs -> rs.getInt("cnt"));
+        Integer count = DatabaseManager.queryOne(
+            "SELECT COUNT(*) as cnt FROM player_stats ps JOIN players p ON p.uuid = ps.uuid WHERE p.hide_stats_ranking = 0",
+            rs -> rs.getInt("cnt"));
+        return count != null ? count : 0;
+    }
+
+    /** 自分より累計プレイ時間が長い公開プレイヤーの数（/ranking playtime の自分の順位用）。 */
+    public int countPublicAbove(long seconds) {
+        Integer count = DatabaseManager.queryOne(
+            "SELECT COUNT(*) as cnt FROM player_stats ps JOIN players p ON p.uuid = ps.uuid " +
+                "WHERE p.hide_stats_ranking = 0 AND ps.playtime_seconds > ?",
+            rs -> rs.getInt("cnt"), seconds);
         return count != null ? count : 0;
     }
 }
