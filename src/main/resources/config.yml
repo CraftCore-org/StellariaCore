@@ -329,6 +329,7 @@ report:
 
 tpa:
   teleport-delay-seconds: 5 # 承認後、実際にテレポートするまでの詠唱時間。0以下で即時テレポート。ダメージを受けるとキャンセルされる
+  request-expire-seconds: 60
 
 teleport-effect:
   enabled: true
