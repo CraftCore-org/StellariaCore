@@ -353,6 +353,14 @@ public class EconomyManager extends AbstractEconomy {
         return count != null ? count : 0;
     }
 
+    /** 自分より所持金が多い公開プレイヤーの数（/ranking money の自分の順位用）。 */
+    public int countPublicAbove(double coins) {
+        Integer count = DatabaseManager.queryOne(
+            "SELECT COUNT(*) as cnt FROM players WHERE hide_balance = 0 AND coins > ?",
+            rs -> rs.getInt("cnt"), coins);
+        return count != null ? count : 0;
+    }
+
     // -------------------------------------------------------------
     // アカウント作成・確認
     // -------------------------------------------------------------

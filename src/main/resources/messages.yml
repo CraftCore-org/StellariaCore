@@ -328,8 +328,8 @@ settings:
 
 ranking:
   no_permission: "&%cこのコマンドを実行する権限がありません。"
-  usage: "&%c使用方法: /ranking <money|playtime> [ページ]"
-  invalid_type: "&%c不明な種類です。money または playtime を指定してください。"
+  usage: "&%c使用方法: /ranking <種類> [ページ]"
+  invalid_type: "&%c不明な種類です。使える種類: &%f%types%"
   empty: "&%7該当するプレイヤーがいません。"
   money_header: "&%6&l--- 所持金ランキング ---"
   money_entry: "&%7#%rank% &%f%player% &%7- %value%"
@@ -340,6 +340,22 @@ ranking:
   prev_arrow_disabled: "&%8◀"
   next_arrow_disabled: "&%8▶"
   page_indicator: "&%7%page%&%8/&%7%max_page%"
+  stat_header: "&%6&l--- %stat%ランキング ---"
+  stat_entry: "&%7#%rank% &%f%player% &%7- %value%"
+  self_rank: "&%eあなたの順位: &%f%rank%位 &%7/ %total%人中（%value%）"
+  self_rank_hidden: "&%8あなたの順位（非公開中のため参考）: &%7%rank%位 / %total%人中（%value%）"
+  stat_names:
+    mobkills: "モンスター討伐数"
+    pvpkills: "プレイヤーキル数"
+    deaths: "死亡回数"
+    fishing: "釣り回数"
+    mined: "掘ったブロック数"
+    placed: "置いたブロック数"
+    distance: "移動距離"
+    jumps: "ジャンプ回数"
+    trades: "村人との取引数"
+    bred: "動物の繁殖数"
+    cake: "ケーキを食べた数"
   balance_hidden: "&%8非公開"
 
 scoreboard:
