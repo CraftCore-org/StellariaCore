@@ -1,0 +1,113 @@
+package org.craftcore.stellaria.managers;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
+/**
+ * 独自進捗の DB 操作。DB が達成状況の正であり、バニラ進捗は表示係として扱う。
+ * player_advancements の completed_at = 0 は「revoke で未達成に戻した」行を表し、reward_paid はそのまま残す
+ * （再び達成しても報酬を二重に払わないため）。
+ */
+public final class AdvancementStore {
+
+    public record Loaded(Map<String, Long> counters, Map<String, Long> distinctCounts, Set<String> completed) {
+    }
+
+    private AdvancementStore() {
+    }
+
+    public static void createTables() {
+        DatabaseManager.createTableIfNotExists("player_counters",
+            "uuid TEXT NOT NULL", "counter_key TEXT NOT NULL", "value INTEGER NOT NULL",
+            "PRIMARY KEY (uuid, counter_key)");
+        DatabaseManager.createTableIfNotExists("player_counter_members",
+            "uuid TEXT NOT NULL", "counter_key TEXT NOT NULL", "member TEXT NOT NULL",
+            "PRIMARY KEY (uuid, counter_key, member)");
+        DatabaseManager.createTableIfNotExists("player_advancements",
+            "uuid TEXT NOT NULL", "advancement_id TEXT NOT NULL", "completed_at INTEGER NOT NULL",
+            "reward_paid INTEGER NOT NULL DEFAULT 0", "reward_amount INTEGER NOT NULL DEFAULT 0",
+            "PRIMARY KEY (uuid, advancement_id)");
+    }
+
+    public static Loaded load(UUID uuid) {
+        String id = uuid.toString();
+        Map<String, Long> counters = new HashMap<>();
+        for (Map.Entry<String, Long> e : DatabaseManager.query(
+                "SELECT counter_key, value FROM player_counters WHERE uuid = ?",
+                rs -> Map.entry(rs.getString("counter_key"), rs.getLong("value")), id)) {
+            counters.put(e.getKey(), e.getValue());
+        }
+        Map<String, Long> distinct = new HashMap<>();
+        for (Map.Entry<String, Long> e : DatabaseManager.query(
+                "SELECT counter_key, COUNT(*) AS cnt FROM player_counter_members WHERE uuid = ? GROUP BY counter_key",
+                rs -> Map.entry(rs.getString("counter_key"), rs.getLong("cnt")), id)) {
+            distinct.put(e.getKey(), e.getValue());
+        }
+        Set<String> completed = new HashSet<>(completedAt(uuid).keySet());
+        return new Loaded(counters, distinct, completed);
+    }
+
+    public static boolean addCounter(UUID uuid, String key, long amount) {
+        return DatabaseManager.execute(
+            "INSERT INTO player_counters (uuid, counter_key, value) VALUES (?, ?, ?) "
+                + "ON CONFLICT (uuid, counter_key) DO UPDATE SET value = value + excluded.value",
+            uuid.toString(), key, amount) > 0;
+    }
+
+    public static void addCounterAsync(UUID uuid, String key, long amount) {
+        DatabaseManager.executeAsync(
+            "INSERT INTO player_counters (uuid, counter_key, value) VALUES (?, ?, ?) "
+                + "ON CONFLICT (uuid, counter_key) DO UPDATE SET value = value + excluded.value",
+            uuid.toString(), key, amount);
+    }
+
+    public static boolean addMember(UUID uuid, String key, String member) {
+        return DatabaseManager.execute(
+            "INSERT OR IGNORE INTO player_counter_members (uuid, counter_key, member) VALUES (?, ?, ?)",
+            uuid.toString(), key, member) == 1;
+    }
+
+    public static boolean recordCompletion(UUID uuid, String id, long now) {
+        return DatabaseManager.execute(
+            "INSERT INTO player_advancements (uuid, advancement_id, completed_at) VALUES (?, ?, ?) "
+                + "ON CONFLICT (uuid, advancement_id) DO UPDATE SET completed_at = excluded.completed_at "
+                + "WHERE player_advancements.completed_at = 0",
+            uuid.toString(), id, now) == 1;
+    }
+
+    public static boolean claimReward(UUID uuid, String id, long amount) {
+        return DatabaseManager.execute(
+            "UPDATE player_advancements SET reward_paid = 1, reward_amount = ? "
+                + "WHERE uuid = ? AND advancement_id = ? AND reward_paid = 0 AND completed_at > 0",
+            amount, uuid.toString(), id) == 1;
+    }
+
+    public static boolean revoke(UUID uuid, String id) {
+        return DatabaseManager.execute(
+            "UPDATE player_advancements SET completed_at = 0 WHERE uuid = ? AND advancement_id = ? AND completed_at > 0",
+            uuid.toString(), id) == 1;
+    }
+
+    /** 達成済みの進捗と達成日時（epoch millis）。 */
+    public static Map<String, Long> completedAt(UUID uuid) {
+        Map<String, Long> result = new HashMap<>();
+        List<Map.Entry<String, Long>> rows = DatabaseManager.query(
+            "SELECT advancement_id, completed_at FROM player_advancements WHERE uuid = ? AND completed_at > 0",
+            rs -> Map.entry(rs.getString("advancement_id"), rs.getLong("completed_at")), uuid.toString());
+        for (Map.Entry<String, Long> row : rows) {
+            result.put(row.getKey(), row.getValue());
+        }
+        return result;
+    }
+
+    public static long rewardTotal(UUID uuid) {
+        Long total = DatabaseManager.queryOne(
+            "SELECT COALESCE(SUM(reward_amount), 0) AS total FROM player_advancements WHERE uuid = ? AND reward_paid = 1",
+            rs -> rs.getLong("total"), uuid.toString());
+        return total != null ? total : 0L;
+    }
+}
