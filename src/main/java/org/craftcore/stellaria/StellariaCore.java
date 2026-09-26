@@ -553,6 +553,9 @@ public class StellariaCore extends JavaPlugin {
         RankingCommand rankingCommand = new RankingCommand(this);
         getCommand("ranking").setExecutor(rankingCommand);
         getCommand("ranking").setTabCompleter(rankingCommand);
+        AdvancementCommand advancementCommand = new AdvancementCommand(this);
+        getCommand("advancements").setExecutor(advancementCommand);
+        getCommand("advancements").setTabCompleter(advancementCommand);
 
         ScoreboardCommand scoreboardCommand = new ScoreboardCommand(this);
         getCommand("scoreboard").setExecutor(scoreboardCommand);

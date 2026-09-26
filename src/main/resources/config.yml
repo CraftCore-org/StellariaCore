@@ -561,6 +561,10 @@ menu:
       material: PLAYER_HEAD
       name: "&%bプロフィール"
       action: "profile"
+    - slot: 4
+      material: NETHER_STAR
+      name: "&%d進捗"
+      action: "advancements"
     - slot: 8
       material: ENDER_CHEST
       name: "&%2エンダーチェスト"

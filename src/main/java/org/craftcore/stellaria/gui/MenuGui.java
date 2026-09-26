@@ -106,6 +106,7 @@ public class MenuGui extends Gui {
             case "home" -> new HomeSelectGui(plugin, new HomeCommand(plugin), player, this).open(player);
             case "get-menu-item" -> MenuItemUtil.give(plugin, player);
             case "headshop" -> new HeadshopGui(plugin, player, this).open(player);
+            case "advancements" -> new AdvancementGui(plugin, player, this).open(player);
             case "links" -> {
                 runCommand(player,"discord");
                 runCommand(player, "homepage");
