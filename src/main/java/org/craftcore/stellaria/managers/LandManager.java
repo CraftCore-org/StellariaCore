@@ -290,7 +290,23 @@ public class LandManager {
 
         Area area = areas.get(resolution.areaId());
         boolean pvpEnabled = area != null && area.pvpEnabled;
+        AdvancementManager advancements = plugin.getAdvancementManager();
+        advancements.increment(player, "land.claimed", 1);
+        int size = areaChunkCount(resolution.areaId());
+        if (size >= 10) advancements.increment(player, "land.area10", 1);
+        if (size >= 25) advancements.increment(player, "land.area25", 1);
         return new ClaimOutcome(ClaimResult.SUCCESS, resolution.merged(), pvpEnabled);
+    }
+
+    /** そのエリア（つながった土地）のチャンク数。 */
+    private int areaChunkCount(String areaId) {
+        int count = 0;
+        for (Claim claim : claimsByChunk.values()) {
+            if (claim.areaId().equals(areaId)) {
+                count++;
+            }
+        }
+        return count;
     }
 
     /** resolveAreaForNewClaimの結果。mergedは2つ以上の既存エリアを統合した場合だけtrue。 */
@@ -449,6 +465,9 @@ public class LandManager {
             DatabaseManager.execute("DELETE FROM land_territories WHERE territory_id = ?", claim.areaId());
         }
 
+        if (!adminOverride) {
+            plugin.getAdvancementManager().increment(player, "land.unclaimed", 1);
+        }
         return new UnclaimOutcome(ActionResult.SUCCESS, refundEnabled ? refundAmount : 0);
     }
 
@@ -688,6 +707,8 @@ public class LandManager {
             ));
             if (inserted > 0) {
                 area.trusted.add(target);
+                plugin.getAdvancementManager().increment(owner, "land.trusted_other", 1);
+                plugin.getAdvancementManager().event(target, "land.became_member");
             }
         }
         return ActionResult.SUCCESS;
