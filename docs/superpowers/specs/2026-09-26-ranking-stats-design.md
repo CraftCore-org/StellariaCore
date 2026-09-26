@@ -66,11 +66,11 @@ player_stat_snapshots
 
 1. **ログアウト時**: `PlayerListener` の退出処理から、そのプレイヤーの全項目を書き出す。
 2. **オンライン中の定期更新**: `ranking.snapshot-interval-minutes`（既定 5 分）ごとに、オンラインの全プレイヤー分を書き出す。
-3. **起動時の取り込み**: スナップショットが 1 件もないプレイヤーだけを対象に、`OfflinePlayer#getStatistic` で統計ファイルから読み込む。サーバーが止まらないよう、1 tick あたり `ranking.backfill-per-tick`（既定 5 人）ずつに分けて処理する。これにより、導入前の記録も初日から反映される。
+3. **起動時の取り込み**: `players` テーブルにいて、スナップショットが 1 件もないプレイヤーだけを対象に、メインワールドの `stats/<uuid>.json` を非同期で読み込んで解析する。これにより、導入前の記録も初日から反映される。`OfflinePlayer#getStatistic` は呼ぶたびに統計ファイルを読み直すため、ブロック種類ごとの合計（1 人あたり数千回の呼び出し）には使わない。
 
-統計の読み取りはメインスレッドで行い、DB への書き込みだけを `DatabaseManager` の非同期メソッドで行う。1 人分の書き込みは `transaction()` でまとめる。
+オンラインのプレイヤーの統計は Bukkit API で読み取る。読み取りはメインスレッドで行い、DB への書き込みだけを非同期で行う。1 人分の書き込みは `transaction()` でまとめる。
 
-`mined` と `placed` は全ブロック種類（1,000 種類以上）を走査するため、読み取りの重さを計測する。問題があれば、全 `Material` のうち対象となる種類の配列を起動時に 1 回だけ作ってキャッシュする。
+`mined` と `placed` は全ブロック種類（1,000 種類以上）を走査する。対象となる `Material` の配列は初回に 1 回だけ作ってキャッシュし、Bukkit API が受け付けない種類はその時点で除外する。
 
 ### 3.3 名前の解決
 
@@ -119,7 +119,6 @@ player_stat_snapshots
 ranking:
   page-size: 10
   snapshot-interval-minutes: 5
-  backfill-per-tick: 5
   # 表示する統計ランキング。並び順がタブ補完の順になる。
   stats:
     - mobkills
@@ -139,7 +138,8 @@ ranking:
 
 ### 6.2 messages.yml
 
-- `ranking.<キー>_header` と `ranking.<キー>_entry`（11 種類分）
+- `ranking.stat_names.<キー>`（11 種類分の表示名）
+- `ranking.stat_header`, `ranking.stat_entry`（全種類で共通。表示名は `%stat%` で埋め込む）
 - `ranking.self_rank`, `ranking.self_rank_hidden`
 - `ranking.usage`, `ranking.invalid_type` の文言を、種類が増えたことに合わせて更新する
 - `settings.stats_ranking_visibility`, `settings.stats_ranking_visible`, `settings.stats_ranking_hidden`, `settings.stats_ranking_visible_enabled`, `settings.stats_ranking_hidden_enabled`
@@ -150,6 +150,7 @@ ranking:
 - 手動確認（`./gradlew runServer`）:
   - ログアウト後にランキングへ値が反映される。
   - 導入前にプレイしたプレイヤーが、起動後の取り込みでランキングに出る。
+  - 統計ファイルの解析（`StatFileParser`）を、実際の `stats/*.json` と同じ形の JSON で単体テストする。
   - 非公開に切り替えると他人の一覧から消え、本人には参考順位が出る。
   - `/mine` や木こりで壊した分が `mined` に加算される。
 
@@ -164,5 +165,5 @@ ranking:
 ## 9. 本番反映時の注意
 
 - **DB**: `player_stat_snapshots` テーブルの新規作成と、`players.hide_stats_ranking` 列の追加がある。どちらも起動時に自動で作成されるが、反映には再起動が必要である。初回起動時は全プレイヤー分の取り込みが走る。
-- **config.yml**: `ranking.snapshot-interval-minutes`, `ranking.backfill-per-tick`, `ranking.stats` が増える。既存の `config.yml` には手動で追記が必要である（`stats` が無い場合は統計ランキングが 1 つも表示されない）。
+- **config.yml**: `ranking.snapshot-interval-minutes`, `ranking.stats` が増える。既存の `config.yml` には手動で追記が必要である（`stats` が無い場合は統計ランキングが 1 つも表示されない）。
 - **messages.yml**: 6.2 のキーが増え、`ranking.usage` と `ranking.invalid_type` の既定文言が変わる。既存の `messages.yml` には手動で追記と更新が必要である。
