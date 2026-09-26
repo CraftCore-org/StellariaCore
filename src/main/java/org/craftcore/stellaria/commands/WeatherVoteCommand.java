@@ -67,7 +67,7 @@ public class WeatherVoteCommand implements CommandExecutor, TabCompleter {
                 .append(button(plugin.getConfigManager().getMessage("weathervote.accept", player), "/wvaccept", "weathervote.accept_tooltip", player))
                 .append(Component.text("   "))
                 .append(button(plugin.getConfigManager().getMessage("weathervote.deny", player), "/wvdeny", "weathervote.deny_tooltip", player));
-        String message = FormatUtil.replace(FormatUtil.replace(FormatUtil.replace(plugin.getConfigManager().getMessage("weathervote.start_vote", player), "%world%", plugin.getConfigManager().getString("weathervote.worldname." + world.getName(), "")), "%weather%", weatherType), "%votetime%", String.valueOf(plugin.getConfigManager().getInt("weathervote.votetime", 15)));
+        String message = FormatUtil.replace(FormatUtil.replace(FormatUtil.replace(plugin.getConfigManager().getMessage("weathervote.start_vote", player), "%world%", FormatUtil.color(plugin.getConfigManager().getString("weathervote.worldname." + world.getName(), ""))), "%weather%", weatherType), "%votetime%", String.valueOf(plugin.getConfigManager().getInt("weathervote.votetime", 15)));
         for (Player recipient : world.getPlayers()) {
             recipient.sendMessage(message);
             recipient.sendMessage(voteMessage);
@@ -82,7 +82,7 @@ public class WeatherVoteCommand implements CommandExecutor, TabCompleter {
         plugin.getAdvancementManager().event(session.voteStartPlayer.getUniqueId(),
                 session.voteAccepts >= session.voteDenys ? "vote.passed" : "vote.rejected");
         if (session.voteAccepts >= session.voteDenys) {
-            String message = FormatUtil.replace(FormatUtil.replace(plugin.getConfigManager().getMessage("weathervote.vote_end_accept", (OfflinePlayer) session.voteStartPlayer), "%world%", plugin.getConfigManager().getString("weathervote.worldname." + session.votingWorld.getName(), "")), "%weather%", session.votingWeather);
+            String message = FormatUtil.replace(FormatUtil.replace(plugin.getConfigManager().getMessage("weathervote.vote_end_accept", (OfflinePlayer) session.voteStartPlayer), "%world%", FormatUtil.color(plugin.getConfigManager().getString("weathervote.worldname." + session.votingWorld.getName(), ""))), "%weather%", session.votingWeather);
             for (Player recipient : session.votingWorld.getPlayers()) {
                 recipient.sendMessage(message);
             }

@@ -103,6 +103,13 @@ public final class AdvancementStore {
             uuid.toString(), id);
     }
 
+    /** 達成済みで報酬が未払いの進捗 ID（入金に失敗して unclaimReward したもの）。 */
+    public static List<String> unpaidCompleted(UUID uuid) {
+        return DatabaseManager.query(
+            "SELECT advancement_id FROM player_advancements WHERE uuid = ? AND completed_at > 0 AND reward_paid = 0",
+            rs -> rs.getString("advancement_id"), uuid.toString());
+    }
+
     public static boolean revoke(UUID uuid, String id) {
         return DatabaseManager.execute(
             "UPDATE player_advancements SET completed_at = 0 WHERE uuid = ? AND advancement_id = ? AND completed_at > 0",

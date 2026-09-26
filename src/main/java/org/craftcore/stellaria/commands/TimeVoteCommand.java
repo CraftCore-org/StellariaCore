@@ -67,7 +67,7 @@ public class TimeVoteCommand implements CommandExecutor, TabCompleter {
                 .append(button(plugin.getConfigManager().getMessage("timevote.accept", player), "/tvaccept", "timevote.accept_tooltip", player))
                 .append(Component.text("   "))
                 .append(button(plugin.getConfigManager().getMessage("timevote.deny", player), "/tvdeny", "timevote.deny_tooltip", player));
-        String message = FormatUtil.replace(FormatUtil.replace(FormatUtil.replace(plugin.getConfigManager().getMessage("timevote.start_vote", player), "%world%", plugin.getConfigManager().getString("timevote.worldname." + world.getName(), "")), "%time%", timeType), "%votetime%", String.valueOf(plugin.getConfigManager().getInt("timevote.votetime", 15)));
+        String message = FormatUtil.replace(FormatUtil.replace(FormatUtil.replace(plugin.getConfigManager().getMessage("timevote.start_vote", player), "%world%", FormatUtil.color(plugin.getConfigManager().getString("timevote.worldname." + world.getName(), ""))), "%time%", timeType), "%votetime%", String.valueOf(plugin.getConfigManager().getInt("timevote.votetime", 15)));
         for (Player recipient : world.getPlayers()) {
             recipient.sendMessage(message);
             recipient.sendMessage(voteMessage);
@@ -82,7 +82,7 @@ public class TimeVoteCommand implements CommandExecutor, TabCompleter {
         plugin.getAdvancementManager().event(session.voteStartPlayer.getUniqueId(),
                 session.voteAccepts >= session.voteDenys ? "vote.passed" : "vote.rejected");
         if (session.voteAccepts >= session.voteDenys) {
-            String message = FormatUtil.replace(FormatUtil.replace(plugin.getConfigManager().getMessage("timevote.vote_end_accept", (OfflinePlayer) session.voteStartPlayer), "%world%", plugin.getConfigManager().getString("timevote.worldname." + session.votingWorld.getName(), "")), "%time%", session.votingTime);
+            String message = FormatUtil.replace(FormatUtil.replace(plugin.getConfigManager().getMessage("timevote.vote_end_accept", (OfflinePlayer) session.voteStartPlayer), "%world%", FormatUtil.color(plugin.getConfigManager().getString("timevote.worldname." + session.votingWorld.getName(), ""))), "%time%", session.votingTime);
             for (Player recipient : session.votingWorld.getPlayers()) {
                 recipient.sendMessage(message);
             }
