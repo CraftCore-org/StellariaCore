@@ -298,6 +298,11 @@ public class MineManager {
         } finally {
             claimedBlocks.removeAll(breakQueue);
         }
+        int broken = breakQueue.size() + 1; // 起点はバニラが壊す
+        plugin.getAdvancementManager().increment(player, "mine.blocks", broken);
+        if (broken >= 32) {
+            plugin.getAdvancementManager().increment(player, "mine.big", 1);
+        }
     }
 
     /** 26方向（斜め含む）の隣接ブロックを返す。 */

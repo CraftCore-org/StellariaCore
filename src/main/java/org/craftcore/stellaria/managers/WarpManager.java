@@ -87,6 +87,14 @@ public class WarpManager {
             result.set(SetResult.SUCCESS);
         });
         plugin.getEconomyManager().invalidateBalance(owner);
+        if (committed && result.get() == SetResult.SUCCESS) {
+            AdvancementManager advancements = plugin.getAdvancementManager();
+            advancements.increment(player, "warp.created", 1);
+            if (count(owner) >= 3) advancements.increment(player, "warp.count3", 1);
+            if (owner.equals(plugin.getLandManager().ownerOf(location))) {
+                advancements.increment(player, "land.warp_in_land", 1);
+            }
+        }
         return committed ? result.get() : SetResult.DATABASE_ERROR;
     }
 

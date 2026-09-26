@@ -48,6 +48,16 @@ public class KikoriManager {
 
     private FellCompleteHandler fellCompleteHandler = (player, axe, logType, roots) -> { };
 
+    /** 伐採が最後まで終わった木を進捗に記録する（木の本数と原木の種類）。 */
+    private void recordFelled(Player player, Material logType) {
+        AdvancementManager advancements = plugin.getAdvancementManager();
+        advancements.increment(player, "kikori.trees", 1);
+        String type = logType.name().replace("_WOOD", "_LOG");
+        if (type.endsWith("_LOG")) {
+            advancements.addDistinct(player, "kikori.log_types", type);
+        }
+    }
+
     public void setFellCompleteHandler(FellCompleteHandler handler) {
         this.fellCompleteHandler = handler;
     }
@@ -289,7 +299,10 @@ public class KikoriManager {
             // 起点はこのイベントの後にバニラが壊すため、完了通知は1tick後に出す
             ItemStack axe = player.getInventory().getItemInMainHand();
             player.getScheduler().run(plugin,
-                    task -> fellCompleteHandler.onFellComplete(player, axe, logType, roots), null);
+                    task -> {
+                        recordFelled(player, logType);
+                        fellCompleteHandler.onFellComplete(player, axe, logType, roots);
+                    }, null);
             return;
         }
 
@@ -432,6 +445,7 @@ public class KikoriManager {
             if (breakQueue.isEmpty()) {
                 scheduledTask.cancel();
                 removeActiveTask(uuid, taskRef[0]);
+                recordFelled(current, logType);
                 fellCompleteHandler.onFellComplete(current, current.getInventory().getItem(axeSlot), logType, roots);
             }
 
