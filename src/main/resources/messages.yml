@@ -324,6 +324,11 @@ settings:
   toggle_hint: "&%7クリックで切り替え"
   balance_visible_enabled: "&%a所持金を他のプレイヤーに公開しました。"
   balance_hidden_enabled: "&%a所持金を他のプレイヤーに非公開にしました。"
+  stats_ranking_visibility: "&%e統計ランキングへの掲載"
+  stats_ranking_visible: "&%a現在: 掲載する"
+  stats_ranking_hidden: "&%8現在: 掲載しない"
+  stats_ranking_visible_enabled: "&%a統計ランキングに掲載するようにしました。"
+  stats_ranking_hidden_enabled: "&%a統計ランキングに掲載しないようにしました。"
   database_error: "&%c設定を保存できませんでした。しばらくしてからもう一度お試しください。"
 
 ranking:
