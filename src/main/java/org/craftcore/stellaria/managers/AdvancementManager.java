@@ -6,8 +6,11 @@ import org.bukkit.Material;
 import org.bukkit.advancement.Advancement;
 import org.bukkit.advancement.AdvancementProgress;
 import org.bukkit.entity.Player;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.AdvancementDefinitions;
 import org.craftcore.stellaria.utils.AdvancementDefinitions.Definition;
@@ -284,6 +287,32 @@ public class AdvancementManager implements Listener {
                 old == null || old[0] != today ? new long[]{today, 1} : new long[]{today, old[1] + 1});
         if (entry[1] == 100) {
             event(uuid, "chat.day100");
+        }
+    }
+
+    /** 時間投票・天気投票を始めたとき。 */
+    public void onVoteStarted(Player player, boolean weather) {
+        increment(player, "vote.started", 1);
+        increment(player, weather ? "vote.weather_started" : "vote.time_started", 1);
+        increment(player, "vote.participations", 1);
+    }
+
+    /** 投票で賛成・反対したとき。 */
+    public void onVoteCast(Player player, boolean yes) {
+        increment(player, yes ? "vote.yes" : "vote.no", 1);
+        increment(player, "vote.participations", 1);
+    }
+
+    private static final Set<String> TOUR_COMMANDS = Set.of("home", "warp", "tpa", "shop", "land");
+
+    /** 「すてらりあへようこそ」用に、/home・/warp・/tpa・/shop・/land を（別名も含めて）使ったことを記録する。 */
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
+    public void onCommandUsed(PlayerCommandPreprocessEvent event) {
+        String label = event.getMessage().substring(1).split(" ", 2)[0].toLowerCase(Locale.ROOT);
+        label = label.substring(label.indexOf(':') + 1);
+        PluginCommand command = plugin.getServer().getPluginCommand(label);
+        if (command != null && command.getPlugin() == plugin && TOUR_COMMANDS.contains(command.getName())) {
+            addDistinct(event.getPlayer(), "tour.commands", command.getName());
         }
     }
 
