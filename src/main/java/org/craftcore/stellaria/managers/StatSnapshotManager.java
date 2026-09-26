@@ -51,54 +51,73 @@ public class StatSnapshotManager {
     // 読み取り
     // ------------------------------------------------------------------
 
-    /** オンラインのプレイヤーの統計を読む。メインスレッドから呼ぶこと。 */
+    /** オンラインのプレイヤーの全統計を読む。メインスレッドから呼ぶこと。 */
     public Map<String, Long> readLive(Player player) {
-        ensureCaches(player);
         Map<String, Long> values = new LinkedHashMap<>();
         for (StatDefinitions.Definition def : StatDefinitions.all()) {
-            long sum = 0L;
-            switch (def.kind()) {
-                case CUSTOM_SUM -> {
-                    for (String id : def.customIds()) {
-                        Statistic statistic = customStatistics.get(id);
-                        if (statistic != null) {
-                            sum += player.getStatistic(statistic);
-                        }
-                    }
-                }
-                case MINED_ALL -> {
-                    for (Material material : minedMaterials) {
-                        sum += player.getStatistic(Statistic.MINE_BLOCK, material);
-                    }
-                }
-                case PLACED_BLOCKS -> {
-                    for (Material material : placedMaterials) {
-                        sum += player.getStatistic(Statistic.USE_ITEM, material);
-                    }
-                }
-            }
-            values.put(def.key(), sum);
+            values.put(def.key(), compute(player, def));
         }
         return values;
     }
 
-    /**
-     * 初回だけ Statistic と Material の対応を作る。getStatistic が例外を投げる種類
-     * （空気・レガシー・アイテム化できないブロックなど）はここで除外しておく。
-     */
-    private void ensureCaches(Player probe) {
-        if (customStatistics != null) {
-            return;
-        }
-        Map<String, Statistic> resolved = new LinkedHashMap<>();
-        for (StatDefinitions.Definition def : StatDefinitions.all()) {
-            for (String id : def.customIds()) {
-                try {
-                    resolved.put(id, Statistic.valueOf(StatDefinitions.bukkitName(id)));
-                } catch (IllegalArgumentException e) {
-                    plugin.getLogger().warning("統計 " + id + " はこのサーバーに存在しないため、ランキングの集計から除外します。");
+    /** 1 種類だけ読む（/ranking の自分の順位用）。ブロック系以外は全ブロックの走査をしない。 */
+    public long readLive(Player player, String statKey) {
+        return StatDefinitions.find(statKey).map(def -> compute(player, def)).orElse(0L);
+    }
+
+    private long compute(Player player, StatDefinitions.Definition def) {
+        long sum = 0L;
+        switch (def.kind()) {
+            case CUSTOM_SUM -> {
+                Map<String, Statistic> statistics = customStatistics();
+                for (String id : def.customIds()) {
+                    Statistic statistic = statistics.get(id);
+                    if (statistic != null) {
+                        sum += player.getStatistic(statistic);
+                    }
                 }
             }
+            case MINED_ALL -> {
+                ensureMaterials(player);
+                for (Material material : minedMaterials) {
+                    sum += player.getStatistic(Statistic.MINE_BLOCK, material);
+                }
+            }
+            case PLACED_BLOCKS -> {
+                ensureMaterials(player);
+                for (Material material : placedMaterials) {
+                    sum += player.getStatistic(Statistic.USE_ITEM, material);
+                }
+            }
+        }
+        return sum;
+    }
+
+    /** customIds から Statistic への対応を初回だけ作る。サーバーに存在しない統計は警告して除外する。 */
+    private Map<String, Statistic> customStatistics() {
+        if (customStatistics == null) {
+            Map<String, Statistic> resolved = new LinkedHashMap<>();
+            for (StatDefinitions.Definition def : StatDefinitions.all()) {
+                for (String id : def.customIds()) {
+                    try {
+                        resolved.put(id, Statistic.valueOf(StatDefinitions.bukkitName(id)));
+                    } catch (IllegalArgumentException e) {
+                        plugin.getLogger().warning("統計 " + id + " はこのサーバーに存在しないため、ランキングの集計から除外します。");
+                    }
+                }
+            }
+            customStatistics = resolved;
+        }
+        return customStatistics;
+    }
+
+    /**
+     * 集計対象の Material を初回だけ作る。getStatistic が例外を投げる種類
+     * （空気・レガシー・アイテム化できないブロックなど）はここで除外しておく。
+     */
+    private void ensureMaterials(Player probe) {
+        if (minedMaterials != null) {
+            return;
         }
         List<Material> mined = new ArrayList<>();
         List<Material> placed = new ArrayList<>();
@@ -113,9 +132,8 @@ public class StatSnapshotManager {
                 placed.add(material);
             }
         }
-        customStatistics = resolved;
-        minedMaterials = mined.toArray(Material[]::new);
         placedMaterials = placed.toArray(Material[]::new);
+        minedMaterials = mined.toArray(Material[]::new);
     }
 
     private static boolean accepts(Player probe, Statistic statistic, Material material) {
@@ -137,9 +155,11 @@ public class StatSnapshotManager {
         Bukkit.getAsyncScheduler().runNow(plugin, task -> write(uuid, values));
     }
 
+    /** オンラインの全員を書き出す。1 tick に全員分の統計を読むと重いので、1 秒に分散させる。 */
     public void snapshotAllOnlineAsync() {
+        int index = 0;
         for (Player player : Bukkit.getOnlinePlayers()) {
-            snapshotAsync(player);
+            player.getScheduler().runDelayed(plugin, task -> snapshotAsync(player), null, spreadDelayTicks(index++));
         }
     }
 
@@ -166,17 +186,28 @@ public class StatSnapshotManager {
             + (overwrite
                 ? "ON CONFLICT (uuid, stat_key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at"
                 : "ON CONFLICT (uuid, stat_key) DO NOTHING");
-        return DatabaseManager.transaction(conn -> {
-            for (Map.Entry<String, Long> entry : values.entrySet()) {
-                if (DatabaseManager.execute(sql, uuid.toString(), entry.getKey(), entry.getValue(), now) < 0) {
-                    throw new IllegalStateException("統計スナップショットの書き込みに失敗しました: " + entry.getKey());
+        try {
+            return DatabaseManager.transaction(conn -> {
+                for (Map.Entry<String, Long> entry : values.entrySet()) {
+                    if (DatabaseManager.execute(sql, uuid.toString(), entry.getKey(), entry.getValue(), now) < 0) {
+                        throw new IllegalStateException("統計スナップショットの書き込みに失敗しました: " + entry.getKey());
+                    }
                 }
-            }
-        });
+            });
+        } catch (IllegalStateException e) {
+            // サーバー停止で DB 接続が閉じた後に、非同期の書き込みが遅れて届いた場合。取りこぼしは次回の起動・ログアウトで埋まる。
+            return false;
+        }
     }
 
-    public static boolean hasSnapshot(UUID uuid, String statKey) {
-        return DatabaseManager.exists("player_stat_snapshots", "uuid = ? AND stat_key = ?", uuid.toString(), statKey);
+    /** 定期書き出しで、index 番目のプレイヤーを何 tick 後に処理するか。20 tick（1 秒）に分散させる。 */
+    static long spreadDelayTicks(int index) {
+        return 1L + index % 20;
+    }
+
+    /** ランキングの一覧に載る値（1 以上）が保存されているか。「あなたの順位」の母数に自分が含まれているかの判定に使う。 */
+    public static boolean isListed(UUID uuid, String statKey) {
+        return DatabaseManager.exists("player_stat_snapshots", "uuid = ? AND stat_key = ? AND value > 0", uuid.toString(), statKey);
     }
 
     // ------------------------------------------------------------------
@@ -228,7 +259,7 @@ public class StatSnapshotManager {
         return DatabaseManager.query(
             "SELECT p.name AS name, s.value AS value FROM player_stat_snapshots s "
                 + "JOIN players p ON p.uuid = s.uuid "
-                + "WHERE s.stat_key = ? AND p.hide_stats_ranking = 0 "
+                + "WHERE s.stat_key = ? AND p.hide_stats_ranking = 0 AND s.value > 0 "
                 + "ORDER BY s.value DESC, p.name ASC LIMIT ? OFFSET ?",
             rs -> new Entry(rs.getString("name"), rs.getLong("value")),
             statKey, limit, offset);
@@ -237,7 +268,7 @@ public class StatSnapshotManager {
     public int getPublicCount(String statKey) {
         Integer count = DatabaseManager.queryOne(
             "SELECT COUNT(*) AS cnt FROM player_stat_snapshots s JOIN players p ON p.uuid = s.uuid "
-                + "WHERE s.stat_key = ? AND p.hide_stats_ranking = 0",
+                + "WHERE s.stat_key = ? AND p.hide_stats_ranking = 0 AND s.value > 0",
             rs -> rs.getInt("cnt"), statKey);
         return count != null ? count : 0;
     }

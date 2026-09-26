@@ -15,6 +15,7 @@ import org.craftcore.stellaria.managers.PlaytimeManager;
 import org.craftcore.stellaria.managers.StatSnapshotManager;
 import org.craftcore.stellaria.utils.ColorUtil;
 import org.craftcore.stellaria.utils.DurationParser;
+import org.craftcore.stellaria.utils.FormatUtil;
 import org.craftcore.stellaria.utils.RankingFormat;
 import org.craftcore.stellaria.utils.TabCompleteUtil;
 import org.jetbrains.annotations.NotNull;
@@ -79,7 +80,8 @@ public class RankingCommand implements CommandExecutor, TabCompleter {
         int offset = (int) Math.min(offsetLong, Integer.MAX_VALUE);
 
         if (isStat) {
-            sender.sendMessage(config.getMessage("ranking.stat_header", null).replace("%stat%", statName(type)));
+            // 表示名に色コードが使えるよう、整形前のテンプレートに埋め込んでからまとめて整形する。
+            sender.sendMessage(FormatUtil.text(null, config.getRawMessage("ranking.stat_header").replace("%stat%", statName(type))));
         } else {
             String headerKey = type.equals("money") ? "ranking.money_header" : "ranking.playtime_header";
             sender.sendMessage(config.getMessage(headerKey, null));
@@ -107,14 +109,16 @@ public class RankingCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(plugin.getConfigManager().getMessage("ranking.empty", null));
             return false;
         }
-        int rank = offset + 1;
-        for (EconomyManager.BalanceEntry entry : entries) {
+        long[] ranks = RankingFormat.competitionRanks(
+                entries.stream().mapToLong(EconomyManager.BalanceEntry::coins).toArray(), offset,
+                RankingFormat.rank(economy.countPublicAbove(entries.get(0).coins())));
+        for (int i = 0; i < entries.size(); i++) {
+            EconomyManager.BalanceEntry entry = entries.get(i);
             String value = economy.formatExact(entry.coins());
             sender.sendMessage(plugin.getConfigManager().getMessage("ranking.money_entry", null)
-                    .replace("%rank%", String.valueOf(rank))
+                    .replace("%rank%", String.valueOf(ranks[i]))
                     .replace("%player%", entry.name())
                     .replace("%value%", value));
-            rank++;
         }
         return true;
     }
@@ -125,13 +129,15 @@ public class RankingCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(plugin.getConfigManager().getMessage("ranking.empty", null));
             return false;
         }
-        int rank = offset + 1;
-        for (PlaytimeManager.PlaytimeEntry entry : entries) {
+        long[] ranks = RankingFormat.competitionRanks(
+                entries.stream().mapToLong(PlaytimeManager.PlaytimeEntry::seconds).toArray(), offset,
+                RankingFormat.rank(plugin.getPlaytimeManager().countPublicAbove(entries.get(0).seconds())));
+        for (int i = 0; i < entries.size(); i++) {
+            PlaytimeManager.PlaytimeEntry entry = entries.get(i);
             sender.sendMessage(plugin.getConfigManager().getMessage("ranking.playtime_entry", null)
-                    .replace("%rank%", String.valueOf(rank))
+                    .replace("%rank%", String.valueOf(ranks[i]))
                     .replace("%player%", entry.name())
                     .replace("%value%", DurationParser.formatDuration(entry.seconds())));
-            rank++;
         }
         return true;
     }
@@ -142,13 +148,15 @@ public class RankingCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(plugin.getConfigManager().getMessage("ranking.empty", null));
             return false;
         }
-        int rank = offset + 1;
-        for (StatSnapshotManager.Entry entry : entries) {
+        long[] ranks = RankingFormat.competitionRanks(
+                entries.stream().mapToLong(StatSnapshotManager.Entry::value).toArray(), offset,
+                RankingFormat.rank(plugin.getStatSnapshotManager().countPublicAbove(type, entries.get(0).value())));
+        for (int i = 0; i < entries.size(); i++) {
+            StatSnapshotManager.Entry entry = entries.get(i);
             sender.sendMessage(plugin.getConfigManager().getMessage("ranking.stat_entry", null)
-                    .replace("%rank%", String.valueOf(rank))
+                    .replace("%rank%", String.valueOf(ranks[i]))
                     .replace("%player%", entry.name())
                     .replace("%value%", RankingFormat.value(type, entry.value())));
-            rank++;
         }
         return true;
     }
@@ -176,11 +184,11 @@ public class RankingCommand implements CommandExecutor, TabCompleter {
                 counted = !hidden;
             }
             default -> {
-                long live = plugin.getStatSnapshotManager().readLive(player).getOrDefault(type, 0L);
+                long live = plugin.getStatSnapshotManager().readLive(player, type);
                 hidden = plugin.getStatSnapshotManager().isHidden(player);
                 above = plugin.getStatSnapshotManager().countPublicAbove(type, live);
                 value = RankingFormat.value(type, live);
-                counted = !hidden && StatSnapshotManager.hasSnapshot(player.getUniqueId(), type);
+                counted = !hidden && StatSnapshotManager.isListed(player.getUniqueId(), type);
             }
         }
         String key = hidden ? "ranking.self_rank_hidden" : "ranking.self_rank";

@@ -2,6 +2,7 @@ package org.craftcore.stellaria.utils;
 
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class RankingFormatTest {
@@ -30,6 +31,17 @@ class RankingFormatTest {
     void rankCountsOnlyPlayersStrictlyAbove() {
         assertEquals(1, RankingFormat.rank(0));
         assertEquals(4, RankingFormat.rank(3));
+    }
+
+    @Test
+    void tiedValuesShareTheSameRank() {
+        assertArrayEquals(new long[]{1, 2, 2, 4}, RankingFormat.competitionRanks(new long[]{9, 5, 5, 3}, 0, 1));
+    }
+
+    @Test
+    void tiesContinueAcrossPages() {
+        // 2ページ目の先頭が前ページ末尾と同じ値なら、先頭の順位は「自分より大きい人数+1」で決まる
+        assertArrayEquals(new long[]{9, 9, 13}, RankingFormat.competitionRanks(new long[]{5, 5, 4}, 10, 9));
     }
 
     @Test

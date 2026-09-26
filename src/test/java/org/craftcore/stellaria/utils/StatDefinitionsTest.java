@@ -26,6 +26,7 @@ class StatDefinitionsTest {
         assertTrue(distance.customIds().contains("walk_one_cm"));
         assertTrue(distance.customIds().contains("aviate_one_cm"));
         assertTrue(distance.customIds().contains("happy_ghast_one_cm"));
+        assertTrue(distance.customIds().contains("nautilus_one_cm"));
     }
 
     @Test
