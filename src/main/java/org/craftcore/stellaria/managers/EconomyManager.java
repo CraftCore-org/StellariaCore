@@ -25,6 +25,17 @@ public class EconomyManager extends AbstractEconomy {
     }
 
     /** 同一トランザクション内で残高を更新した機能から呼ぶキャッシュ無効化用。 */
+    /**
+     * 稼いだお金（/ranking earned と独自進捗の economy.earned）に加算する。入金が確定した後に呼ぶこと。
+     * 返金・ショップ資金の出し入れのような「自分のお金が戻っただけ」の入金では呼ばない。
+     */
+    public void recordEarning(UUID playerId, double amount) {
+        AdvancementManager advancements = plugin.getAdvancementManager();
+        if (advancements != null) {
+            advancements.addToCounter(playerId, EarningsStore.KEY, (long) Math.floor(amount));
+        }
+    }
+
     public void invalidateBalance(UUID playerId) {
         balanceCache.remove(playerId);
     }

@@ -52,6 +52,9 @@ public class IncomeManager {
         }
 
         var response = plugin.getEconomyManager().depositPlayer(player, amount);
+        if (response.transactionSuccess()) {
+            plugin.getEconomyManager().recordEarning(uuid, amount);
+        }
 
         if (!response.transactionSuccess()) {
             plugin.getLogger().warning(

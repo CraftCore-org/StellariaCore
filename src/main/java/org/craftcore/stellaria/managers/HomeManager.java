@@ -123,6 +123,9 @@ public class HomeManager {
         if (!committed || !deleted.get()) {
             return DeleteResult.NOT_FOUND;
         }
+        if (refundEnabled) {
+            plugin.getEconomyManager().recordEarning(owner, refundAmount);
+        }
         return new DeleteResult(true, refundEnabled ? refundAmount : 0);
     }
 

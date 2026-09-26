@@ -50,6 +50,7 @@ public class VoteListener implements Listener {
             );
             return;
         }
+        plugin.getEconomyManager().recordEarning(offlinePlayer.getUniqueId(), amount);
 
         Player player = offlinePlayer.getPlayer();
 

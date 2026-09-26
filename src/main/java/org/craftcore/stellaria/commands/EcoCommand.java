@@ -67,6 +67,7 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage(plugin.getConfigManager().getMessage("eco.database_error", null));
                     return true;
                 }
+                economy.recordEarning(target.getUniqueId(), amount);
                 notify(sender, target, "eco.give_sender", "eco.give_receiver", amount);
             }
             case "set" -> {
