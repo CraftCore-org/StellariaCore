@@ -104,6 +104,11 @@ public final class ShopManager {
         if (id.isEmpty()) return null;
         Shop shop = new Shop(id.getAsInt(), owner.getUniqueId(), key, mode, one(item), price, 0, 0, null, null);
         shops.put(key, shop);
+        AdvancementManager advancements = plugin.getAdvancementManager();
+        advancements.event(owner.getUniqueId(), "shop.created");
+        if (owner.getUniqueId().equals(plugin.getLandManager().ownerOf(block.getLocation()))) {
+            advancements.event(owner.getUniqueId(), "land.shop_in_land");
+        }
         return createDisplays(shop);
     }
 
@@ -184,6 +189,7 @@ public final class ShopManager {
                     old.stock() - tradeQuantity,
                     old.funds()
             );
+            recordPurchase(player, old, tradeQuantity, total);
             notifyOwner(old, player, tradeQuantity, total, old.stock() - tradeQuantity, old.funds());
             return TradeResult.SUCCESS;
         }
@@ -219,8 +225,35 @@ public final class ShopManager {
                 old.stock() + quantity,
                 old.funds() - total
         );
+        if (!old.owner().equals(player.getUniqueId())) {
+            plugin.getAdvancementManager().increment(player, "shop.sold_to_shop", 1);
+        }
         notifyOwner(old, player, quantity, total, old.stock() + quantity, old.funds() - total);
         return TradeResult.SUCCESS;
+    }
+
+    /** 購入の進捗。自分のショップでの購入はオーナー側・他人向けの進捗に数えない。 */
+    private void recordPurchase(Player buyer, Shop shop, int quantity, long total) {
+        AdvancementManager advancements = plugin.getAdvancementManager();
+        UUID owner = shop.owner();
+        if (quantity == 1) {
+            advancements.increment(buyer, "shop.bought_one", 1);
+        }
+        plugin.getEconomyManager().checkZero(buyer);
+        if (owner.equals(buyer.getUniqueId())) {
+            return;
+        }
+        advancements.increment(buyer, "shop.bought_other", 1);
+        advancements.addDistinct(buyer, "shop.bought_shops", String.valueOf(shop.id()));
+        advancements.event(owner, "shop.sold_count");
+        advancements.addToCounter(owner, "shop.sold_items", quantity);
+        advancements.addDistinct(owner, "shop.customers", buyer.getUniqueId().toString());
+        if (advancements.addDaily(owner, "shop.sales", total) >= 100_000) {
+            advancements.event(owner, "shop.daily100k");
+        }
+        if (shop.stock() - quantity == 0) {
+            advancements.event(owner, "shop.sold_out");
+        }
     }
 
     private static void require(int affected) {

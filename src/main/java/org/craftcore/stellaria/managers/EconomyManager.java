@@ -170,6 +170,7 @@ public class EconomyManager extends AbstractEconomy {
             return new EconomyResponse(0, getBalance(player), EconomyResponse.ResponseType.FAILURE, "残高が足りません");
         }
 
+        checkZero(player);
         return new EconomyResponse(amount, getBalance(player), EconomyResponse.ResponseType.SUCCESS, null);
     }
 
@@ -304,7 +305,7 @@ public class EconomyManager extends AbstractEconomy {
             return false;
         }
         long amountLong = (long) amount;
-        return DatabaseManager.transaction(conn -> {
+        boolean ok = DatabaseManager.transaction(conn -> {
             int affected = DatabaseManager.execute(
                 "UPDATE players SET coins = coins - ? WHERE uuid = ? AND coins >= ?",
                 amountLong, from.getUniqueId().toString(), amountLong
@@ -328,6 +329,18 @@ public class EconomyManager extends AbstractEconomy {
                 throw new IllegalStateException("送金先の残高レコードを作成できなかったため送金を中止");
             }
         });
+        if (ok) {
+            checkZero(from);
+        }
+        return ok;
+    }
+
+    /** 出金の後に呼ぶ。残高がちょうど 0 になっていれば進捗 economy.zero を記録する。 */
+    public void checkZero(OfflinePlayer player) {
+        AdvancementManager advancements = plugin.getAdvancementManager();
+        if (advancements != null && player != null && getBalance(player) == 0) {
+            advancements.event(player.getUniqueId(), "economy.zero");
+        }
     }
 
     /** /balance top のランキング1行分。 */

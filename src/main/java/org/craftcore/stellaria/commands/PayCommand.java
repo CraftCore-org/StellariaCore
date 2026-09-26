@@ -7,6 +7,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.craftcore.stellaria.StellariaCore;
+import org.craftcore.stellaria.managers.AdvancementManager;
 import org.craftcore.stellaria.managers.EconomyManager;
 import org.craftcore.stellaria.utils.TabCompleteUtil;
 import org.jetbrains.annotations.NotNull;
@@ -61,12 +62,24 @@ public class PayCommand implements CommandExecutor, TabCompleter {
         }
 
         EconomyManager economy = plugin.getEconomyManager();
+        double before = economy.getBalance(player);
         if (!economy.transfer(player, target, amount)) {
             player.sendMessage(plugin.getConfigManager().getMessage("pay.insufficient_balance", player));
             return true;
         }
 
         economy.recordEarning(target.getUniqueId(), amount);
+        AdvancementManager advancements = plugin.getAdvancementManager();
+        advancements.increment(player, "pay.sent_count", 1);
+        advancements.increment(player, "pay.sent_total", amount);
+        if (amount >= 100_000) advancements.increment(player, "pay.big", 1);
+        if (amount == 1) {
+            advancements.increment(player, "pay.one_yen", 1);
+            if (before >= 1_000_000) advancements.increment(player, "pay.rich_one_yen", 1);
+        }
+        advancements.event(target.getUniqueId(), "pay.received_count");
+        advancements.addDistinct(player, "pay.partners", target.getUniqueId().toString());
+        advancements.addDistinct(target, "pay.partners", player.getUniqueId().toString());
         String amountText = economy.formatExact(amount);
         player.sendMessage(plugin.getConfigManager().getMessage("pay.sender", target)
                 .replace("%amount%", amountText));
