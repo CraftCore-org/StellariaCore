@@ -42,6 +42,7 @@ public final class CustomEnchantConfig {
     private volatile int anglerMaxStreak;
     private volatile double[] anglerLevelMultipliers;
     private volatile long anglerDailyCap;
+    private volatile int excavationMinDurability;
 
     public CustomEnchantConfig(StellariaCore plugin) {
         this.plugin = plugin;
@@ -74,6 +75,7 @@ public final class CustomEnchantConfig {
         anglerMaxStreak = intAtLeast("angler.max-streak", 10, 1);
         anglerLevelMultipliers = perLevel("angler.level-multipliers", new double[]{1.0, 1.5, 2.0});
         anglerDailyCap = intAtLeast("angler.daily-cap", 3000, 0);
+        excavationMinDurability = intAtLeast("excavation.min-durability", 10, 0);
     }
 
     private ConfigManager config() {
@@ -154,4 +156,5 @@ public final class CustomEnchantConfig {
     public int anglerMaxStreak() { return anglerMaxStreak; }
     public double[] anglerLevelMultipliers() { return anglerLevelMultipliers; }
     public long anglerDailyCap() { return anglerDailyCap; }
+    public int excavationMinDurability() { return excavationMinDurability; }
 }
