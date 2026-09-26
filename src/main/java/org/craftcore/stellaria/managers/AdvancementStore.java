@@ -86,6 +86,14 @@ public final class AdvancementStore {
             amount, uuid.toString(), id) == 1;
     }
 
+    /** 入金に失敗したとき、支払い済みの印を取り消す（次の機会に払い直せるように）。 */
+    public static void unclaimReward(UUID uuid, String id) {
+        DatabaseManager.execute(
+            "UPDATE player_advancements SET reward_paid = 0, reward_amount = 0 "
+                + "WHERE uuid = ? AND advancement_id = ? AND reward_paid = 1",
+            uuid.toString(), id);
+    }
+
     public static boolean revoke(UUID uuid, String id) {
         return DatabaseManager.execute(
             "UPDATE player_advancements SET completed_at = 0 WHERE uuid = ? AND advancement_id = ? AND completed_at > 0",

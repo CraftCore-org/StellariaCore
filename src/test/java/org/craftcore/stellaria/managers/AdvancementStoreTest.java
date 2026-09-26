@@ -72,6 +72,15 @@ class AdvancementStoreTest {
     }
 
     @Test
+    void failedPaymentCanBeUnclaimedAndClaimedAgain() {
+        AdvancementStore.recordCompletion(PLAYER, "kikori_100", 1000L);
+        assertTrue(AdvancementStore.claimReward(PLAYER, "kikori_100", 300));
+        AdvancementStore.unclaimReward(PLAYER, "kikori_100");
+        assertEquals(0L, AdvancementStore.rewardTotal(PLAYER));
+        assertTrue(AdvancementStore.claimReward(PLAYER, "kikori_100", 300));
+    }
+
+    @Test
     void revokedAdvancementCanBeCompletedAgainWithoutSecondReward() {
         AdvancementStore.recordCompletion(PLAYER, "kikori_100", 1000L);
         AdvancementStore.claimReward(PLAYER, "kikori_100", 300);

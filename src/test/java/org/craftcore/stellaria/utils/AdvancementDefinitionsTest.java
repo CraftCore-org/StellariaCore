@@ -75,6 +75,21 @@ class AdvancementDefinitionsTest {
     }
 
     @Test
+    void namespacedOrLowercaseIconIsNormalized() {
+        AdvancementDefinitions.Parsed parsed = parse("""
+                a:
+                  tab: mining
+                  icon: minecraft:iron_axe
+                  title: "A"
+                  description: "a"
+                  difficulty: easy
+                  trigger: { type: event, key: k }
+                """);
+        assertEquals("IRON_AXE", parsed.find("a").orElseThrow().icon());
+        assertTrue(warnings.isEmpty(), warnings::toString);
+    }
+
+    @Test
     void eventGoalIsOneAndAllOfGoalIsIdCount() {
         AdvancementDefinitions.Parsed parsed = parse("""
                 a:

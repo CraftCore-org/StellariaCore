@@ -4,14 +4,11 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import org.junit.jupiter.api.Test;
 
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AdvancementJsonTest {
@@ -64,47 +61,9 @@ class AdvancementJsonTest {
     }
 
     @Test
-    void hashChangesWithContent() {
-        JsonObject a = AdvancementJson.advancement(def("x", null, AdvancementDefinitions.Difficulty.EASY, false), false, JsonPrimitive::new);
-        JsonObject b = AdvancementJson.advancement(def("x", null, AdvancementDefinitions.Difficulty.HARD, false), false, JsonPrimitive::new);
-        assertEquals(AdvancementJson.hash(a), AdvancementJson.hash(a.deepCopy()));
-        assertNotEquals(AdvancementJson.hash(a), AdvancementJson.hash(b));
-        assertEquals(64, AdvancementJson.hash(a).length());
-    }
-
-    private static LinkedHashMap<String, String> desired(String... pathsAndHashes) {
-        LinkedHashMap<String, String> map = new LinkedHashMap<>();
-        for (int i = 0; i < pathsAndHashes.length; i += 2) {
-            map.put(pathsAndHashes[i], pathsAndHashes[i + 1]);
-        }
-        return map;
-    }
-
-    private static final Map<String, String> PARENTS = Map.of("m/a", "m/root", "m/b", "m/a", "m/c", "m/root");
-
-    @Test
-    void unchangedRegisteredAdvancementsAreLeftAlone() {
-        LinkedHashMap<String, String> want = desired("m/root", "r", "m/a", "1", "m/b", "2", "m/c", "3");
-        AdvancementJson.Plan plan = AdvancementJson.plan(want, PARENTS, Map.copyOf(want), Set.copyOf(want.keySet()));
-        assertEquals(List.of(), plan.remove());
-        assertEquals(List.of(), plan.load());
-    }
-
-    @Test
-    void changedAdvancementIsReloadedWithDescendants() {
-        LinkedHashMap<String, String> want = desired("m/root", "r", "m/a", "1-new", "m/b", "2", "m/c", "3");
-        Map<String, String> stored = Map.of("m/root", "r", "m/a", "1", "m/b", "2", "m/c", "3");
-        AdvancementJson.Plan plan = AdvancementJson.plan(want, PARENTS, stored, Set.copyOf(want.keySet()));
-        assertEquals(List.of("m/b", "m/a"), plan.remove());
-        assertEquals(List.of("m/a", "m/b"), plan.load());
-    }
-
-    @Test
-    void missingAdvancementIsLoadedAndStaleOnesRemoved() {
-        LinkedHashMap<String, String> want = desired("m/root", "r", "m/a", "1", "m/b", "2", "m/c", "3");
-        Map<String, String> stored = Map.of("m/root", "r", "m/a", "1", "m/b", "2", "m/c", "3", "m/old", "9");
-        AdvancementJson.Plan plan = AdvancementJson.plan(want, PARENTS, stored, Set.of("m/root", "m/a", "m/b", "m/old"));
-        assertEquals(List.of("m/old"), plan.remove());
-        assertEquals(List.of("m/c"), plan.load());
+    void onlyUnregisteredPathsAreLoadedInGivenOrder() {
+        assertEquals(List.of("m/root", "m/b"),
+                AdvancementJson.missing(List.of("m/root", "m/a", "m/b"), Set.of("m/a")));
+        assertEquals(List.of(), AdvancementJson.missing(List.of("m/root"), Set.of("m/root")));
     }
 }

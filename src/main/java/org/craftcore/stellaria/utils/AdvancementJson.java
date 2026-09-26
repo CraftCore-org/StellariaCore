@@ -4,31 +4,19 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.HexFormat;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 
 /**
- * 独自進捗をバニラの進捗として登録するための JSON と、登録し直す範囲の計算。Bukkit に依存しない。
+ * 独自進捗をバニラの進捗として登録するための JSON。Bukkit に依存しない。
  * 条件は minecraft:impossible の done を 1 つだけ持たせ、コードからのみ達成させる。
  */
 public final class AdvancementJson {
 
     public static final String NAMESPACE = "stellaria";
     public static final String CRITERION = "done";
-
-    public record Plan(List<String> remove, List<String> load) {
-    }
 
     private AdvancementJson() {
     }
@@ -94,40 +82,9 @@ public final class AdvancementJson {
         return json;
     }
 
-    public static String hash(JsonObject json) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(json.toString().getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(digest);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException(e);
-        }
+    /** まだ登録されていない進捗のパスを、desired の順（親が先）のまま返す。 */
+    public static List<String> missing(List<String> desired, Set<String> existing) {
+        return desired.stream().filter(path -> !existing.contains(path)).toList();
     }
 
-    /**
-     * 登録し直す範囲を求める。登録されていない・前回と内容が違う進捗と、その子孫を登録し直す。
-     * 定義から消えた進捗は削除する。削除は子から、登録は親から行う順で返す。
-     */
-    public static Plan plan(LinkedHashMap<String, String> desiredHashes, Map<String, String> parentOf,
-                            Map<String, String> storedHashes, Set<String> existing) {
-        Set<String> reload = new LinkedHashSet<>();
-        for (Map.Entry<String, String> entry : desiredHashes.entrySet()) {
-            String path = entry.getKey();
-            boolean changed = !existing.contains(path) || !Objects.equals(storedHashes.get(path), entry.getValue());
-            String parent = parentOf.get(path);
-            if (changed || (parent != null && reload.contains(parent))) {
-                reload.add(path);
-            }
-        }
-        List<String> remove = new ArrayList<>();
-        for (String path : existing) {
-            if (!desiredHashes.containsKey(path)) {
-                remove.add(path);
-            }
-        }
-        remove.sort(null);
-        List<String> reloadExisting = new ArrayList<>(reload.stream().filter(existing::contains).toList());
-        java.util.Collections.reverse(reloadExisting);
-        remove.addAll(reloadExisting);
-        return new Plan(remove, List.copyOf(reload));
-    }
 }

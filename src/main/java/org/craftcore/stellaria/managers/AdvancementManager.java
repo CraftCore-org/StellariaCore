@@ -1,9 +1,13 @@
 package org.craftcore.stellaria.managers;
 
+import io.papermc.paper.event.server.ServerResourcesReloadedEvent;
+import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.Material;
 import org.bukkit.advancement.Advancement;
 import org.bukkit.advancement.AdvancementProgress;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
 import org.craftcore.stellaria.StellariaCore;
 import org.craftcore.stellaria.utils.AdvancementDefinitions;
 import org.craftcore.stellaria.utils.AdvancementDefinitions.Definition;
@@ -26,7 +30,7 @@ import java.util.function.ToLongFunction;
  * ここで判断する。DB（AdvancementStore）が正で、バニラの進捗は表示係。オンラインのプレイヤーの状態は
  * ログイン時に同期で読み込んでキャッシュし、ログアウトで破棄する。
  */
-public class AdvancementManager {
+public class AdvancementManager implements Listener {
 
     private final StellariaCore plugin;
     private final AdvancementRegistrar registrar;
@@ -54,8 +58,23 @@ public class AdvancementManager {
         dependents = AdvancementRules.dependents(parsed.definitions());
         statDefinitions = AdvancementRules.ofType(parsed.definitions(), TriggerType.STAT);
         registrar.register(parsed, this::announces);
+        plugin.getServer().getPluginManager().registerEvents(this, plugin);
         for (Player online : plugin.getServer().getOnlinePlayers()) {
             onJoin(online);
+        }
+    }
+
+    /** /minecraft:reload などでデータパックが読み直されると独自進捗が消えるため、登録し直して表示を合わせる。 */
+    @EventHandler
+    public void onResourcesReloaded(ServerResourcesReloadedEvent event) {
+        if (!enabled) {
+            return;
+        }
+        registrar.register(parsed, this::announces);
+        for (Player online : plugin.getServer().getOnlinePlayers()) {
+            if (cache.containsKey(online.getUniqueId())) {
+                syncVanilla(online);
+            }
         }
     }
 
@@ -224,11 +243,17 @@ public class AdvancementManager {
         setVanilla(player, AdvancementJson.path(def.tab(), def.id()), true);
         long reward = rewardFor(def);
         if (AdvancementStore.claimReward(uuid, def.id(), reward) && reward > 0) {
-            plugin.getEconomyManager().depositPlayer(player, reward);
-            player.sendMessage(FormatUtil.replace(FormatUtil.replace(
-                    plugin.getConfigManager().getMessage("advancements.reward", player),
-                    "%title%", def.title()),
-                    "%amount%", plugin.getEconomyManager().formatExact(reward)));
+            EconomyResponse response = plugin.getEconomyManager().depositPlayer(player, reward);
+            if (response.transactionSuccess()) {
+                player.sendMessage(FormatUtil.replace(FormatUtil.replace(
+                        plugin.getConfigManager().getMessage("advancements.reward", player),
+                        "%title%", def.title()),
+                        "%amount%", plugin.getEconomyManager().formatExact(reward)));
+            } else {
+                AdvancementStore.unclaimReward(uuid, def.id());
+                plugin.getLogger().warning("進捗 " + def.id() + " の報酬を " + player.getName()
+                        + " に入金できませんでした: " + response.errorMessage);
+            }
         }
         evaluate(player, dependents, key -> 0L);
     }

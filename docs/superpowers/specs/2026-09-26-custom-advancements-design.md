@@ -189,11 +189,10 @@ player_advancements
 `AdvancementRegistrar` が起動時に次を行う。
 
 1. 各定義から JSON を作る（`AdvancementJson`）。条件は `minecraft:impossible` の `done` を 1 つだけ持たせ、コードからのみ達成させる。
-2. 全定義の JSON をまとめたハッシュを、前回起動時の値（プラグインのデータフォルダに保存）と比べる。同じなら何もしない。
-3. 違う場合は、`stellaria` 名前空間の登録済み進捗のうち、定義にないもの・内容が変わったもの（とその子孫）を `removeAdvancement` で消し、新しいものを `loadAdvancement` で登録する。登録順は、親が子より先になるようにする。ハッシュは進捗ごとに保存し、変わったものだけを登録し直す。登録し直した進捗は、次のログイン時の同期（6.2）で達成済みの人にもう一度トーストが出るため、変更のない進捗まで登録し直さないようにする。
-4. 登録に失敗した進捗は警告を出して飛ばす。その進捗は GUI と DB 側の判定・報酬だけで動く。
+2. `stellaria` 名前空間でまだ登録されていない進捗を、親が子より先になる順で `loadAdvancement` で登録する。
+3. 登録に失敗した進捗は警告を出して飛ばす。その進捗は GUI と DB 側の判定・報酬だけで動く。
 
-`loadAdvancement` は非推奨扱いの `UnsafeValues` の API であり、登録内容はメインワールドのデータパック（`bukkit`）に保存されて再起動後も残る。`/stellariareload` では再登録しない。
+Paper 1.21.11 の `loadAdvancement` は `datapacks/bukkit/data/<名前空間>/advancements/`（複数形）に JSON を書き込むが、1.21 以降のバニラは単数形の `advancement/` しか読まない。そのため登録は再起動やデータパックの再読み込み（`/minecraft:reload`）で消える。起動時に毎回すべて登録し、`ServerResourcesReloadedEvent` でも登録し直してオンラインのプレイヤーの表示を同期する。`removeAdvancement` はファイルを消すだけでメモリ上の進捗を消さないため使わない。定義の変更は再起動で反映され、`/stellariareload` では反映しない。
 
 ## 8. 専用 GUI とコマンド
 

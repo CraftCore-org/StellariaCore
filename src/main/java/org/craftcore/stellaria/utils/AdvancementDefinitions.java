@@ -113,7 +113,7 @@ public final class AdvancementDefinitions {
             ConfigurationSection entry = section.getConfigurationSection(id);
             String title = entry == null ? null : entry.getString("title");
             String description = entry == null ? null : entry.getString("description");
-            String icon = entry == null ? null : entry.getString("icon");
+            String icon = entry == null ? null : normalizeIcon(entry.getString("icon"));
             if (!ID.matcher(id).matches() || isBlank(title) || isBlank(description) || icon == null
                     || !validIcon.test(icon)) {
                 warn.accept("advancements.yml: タブ " + id + " を無効にしました: ID・title・description・icon のいずれかが不正です");
@@ -129,8 +129,8 @@ public final class AdvancementDefinitions {
         require(ID.matcher(id).matches() && !id.equals("root"), "ID は [a-z0-9_]+ で、root 以外にしてください");
         String tab = entry.getString("tab");
         require(tab != null && tabs.containsKey(tab), "tab が存在しません: " + tab);
-        String icon = entry.getString("icon");
-        require(icon != null && validIcon.test(icon), "icon が不正です: " + icon);
+        String icon = normalizeIcon(entry.getString("icon"));
+        require(icon != null && validIcon.test(icon), "icon が不正です: " + entry.getString("icon"));
         String title = entry.getString("title");
         String description = entry.getString("description");
         require(!isBlank(title) && !isBlank(description), "title と description は必須です");
@@ -273,6 +273,18 @@ public final class AdvancementDefinitions {
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException(field + " が不正です: " + value);
         }
+    }
+
+    /** minecraft:iron_axe や iron_axe の書き方を、Material 名（IRON_AXE）にそろえる。 */
+    private static @Nullable String normalizeIcon(@Nullable String icon) {
+        if (icon == null) {
+            return null;
+        }
+        String name = icon.trim();
+        if (name.toLowerCase(Locale.ROOT).startsWith("minecraft:")) {
+            name = name.substring("minecraft:".length());
+        }
+        return name.toUpperCase(Locale.ROOT);
     }
 
     private static void require(boolean condition, String message) {
